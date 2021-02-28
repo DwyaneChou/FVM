@@ -203,17 +203,6 @@ module parameters_mod
     cts = cqe + 1
     cte = cts + nTriQuadPointsOnCell - 1
     
-    !print*,cc ,&
-    !       ccs,&
-    !       cce,&
-    !       cbs,&
-    !       cbe,&
-    !       cqs,&
-    !       cqe,&
-    !       cts,&
-    !       cte
-    !stop
-    
   end subroutine init_Parameters
   
 end module parameters_mod

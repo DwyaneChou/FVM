@@ -37,6 +37,13 @@ MODULE mesh_mod
   real(r_kind), dimension(:,:,:,:    ), allocatable :: secy    ! trigonometric function
   real(r_kind), dimension(:,:,:,:    ), allocatable :: cscy    ! trigonometric function
   
+  ! Ghost points position
+  real   (r_kind), dimension(:,:,:,:), allocatable :: ghost_x
+  real   (r_kind), dimension(:,:,:,:), allocatable :: ghost_y
+  integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_i
+  integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_j
+  integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_p
+  
   real(r_kind), dimension(:,:,:,:    ), allocatable :: zs    ! surface height
   
   real(r_kind), dimension(:,:,:    ), allocatable :: areaCell
@@ -44,13 +51,12 @@ MODULE mesh_mod
   contains
   
   subroutine init_mesh
-    integer(i_kind) :: i, j, iPatch, iVar
+    integer(i_kind) :: i, j, iPatch , iVar
     integer(i_kind) :: iQP,jQP,countQP
     integer(i_kind) :: iTOC,iVertex1,iVertex2
     integer(i_kind) :: iPOC
     
     real(r_kind) :: verticesCoord(3,2)
-    real(r_kind) :: coord(2)
     
     real(r_kind), dimension(:,:), allocatable :: areaCell_temp
     
@@ -85,6 +91,12 @@ MODULE mesh_mod
     allocate( coty     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( secy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( cscy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    
+    allocate( ghost_x (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_y (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_i (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_j (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_p (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( zs       (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
@@ -187,6 +199,68 @@ MODULE mesh_mod
           
         enddo
       enddo
+    enddo
+    !$OMP END PARALLEL DO
+    
+    ! Calculate ghost position
+    !$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP) COLLAPSE(3)
+    do iPatch = ifs,ife
+      ! Bottom
+      do j = jms,jds-1
+        do i = ims,ime
+          countQP = 0
+          do iQP = cts,cte
+            countQP = countQP + 1
+            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
+                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
+            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
+            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+          enddo
+        enddo
+      enddo
+      
+      ! Top
+      do j = jde+1,jme
+        do i = ims,ime
+          countQP = 0
+          do iQP = cts,cte
+            countQP = countQP + 1
+            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
+                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
+            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
+            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+          enddo
+        enddo
+      enddo
+      
+      ! Left
+      do j = jds,jde
+        do i = ims,ids-1
+          countQP = 0
+          do iQP = cts,cte
+            countQP = countQP + 1
+            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
+                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
+            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
+            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+          enddo
+        enddo
+      enddo
+      
+      ! Right
+      do j = jds,jde
+        do i = ide+1,ime
+          countQP = 0
+          do iQP = cts,cte
+            countQP = countQP + 1
+            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
+                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
+            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
+            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+          enddo
+        enddo
+      enddo
+      
     enddo
     !$OMP END PARALLEL DO
     
