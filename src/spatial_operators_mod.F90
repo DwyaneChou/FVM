@@ -36,10 +36,7 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: A
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: invA
   
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrixL
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrixR
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrixB
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrixT
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrix
   
   real   (r_kind) :: dV
   
@@ -65,16 +62,6 @@ module spatial_operators_mod
   real(r_kind), dimension(:,:,:,:,:), allocatable :: FeP   ! F on points on edges of each cell
   real(r_kind), dimension(:,:,:,:,:), allocatable :: GeP   ! H on points on edges of each cell
   
-  real(r_kind), dimension(:), allocatable :: xL
-  real(r_kind), dimension(:), allocatable :: xR
-  real(r_kind), dimension(:), allocatable :: xB
-  real(r_kind), dimension(:), allocatable :: xT
-  
-  real(r_kind), dimension(:), allocatable :: yL
-  real(r_kind), dimension(:), allocatable :: yR
-  real(r_kind), dimension(:), allocatable :: yB
-  real(r_kind), dimension(:), allocatable :: yT
-  
     contains
     subroutine init_spatial_operator
       integer(i_kind) :: i,j,iPatch
@@ -88,9 +75,24 @@ module spatial_operators_mod
       integer(i_kind) :: nRC
     
       real(r_kind) :: recCoef
-      real(r_kind) :: recdx  
-      real(r_kind) :: recdy  
-      real(r_kind) :: recdV  
+      real(r_kind) :: recdx
+      real(r_kind) :: recdy
+      real(r_kind) :: recdV
+      
+      integer :: pg
+  
+      real(r_kind), dimension(:), allocatable :: xL
+      real(r_kind), dimension(:), allocatable :: xR
+      real(r_kind), dimension(:), allocatable :: xB
+      real(r_kind), dimension(:), allocatable :: xT
+      
+      real(r_kind), dimension(:), allocatable :: yL
+      real(r_kind), dimension(:), allocatable :: yR
+      real(r_kind), dimension(:), allocatable :: yB
+      real(r_kind), dimension(:), allocatable :: yT
+      
+      real(r_kind), dimension(:), allocatable :: xg
+      real(r_kind), dimension(:), allocatable :: yg
     
       allocate(inDomain  (ims:ime,jms:jme,ifs:ife))
       
@@ -116,10 +118,7 @@ module spatial_operators_mod
       allocate(A   (maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
       allocate(invA(maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
-      allocate(gstMatrixL(nPointsOnEdge,maxRecCells,ids:ide,jds:jde,ifs:ife))
-      allocate(gstMatrixR(nPointsOnEdge,maxRecCells,ids:ide,jds:jde,ifs:ife))
-      allocate(gstMatrixB(nPointsOnEdge,maxRecCells,ids:ide,jds:jde,ifs:ife))
-      allocate(gstMatrixT(nPointsOnEdge,maxRecCells,ids:ide,jds:jde,ifs:ife))
+      allocate(gstMatrix(maxGhostPointsOnCell,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
       allocate(qC(nVar,              ims:ime,jms:jme,ifs:ife))
       allocate(qL(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
@@ -147,6 +146,9 @@ module spatial_operators_mod
       allocate(yR(nPointsOnEdge))
       allocate(yB(nPointsOnEdge))
       allocate(yT(nPointsOnEdge))
+      
+      allocate(xg(maxGhostPointsOnCell))
+      allocate(yg(maxGhostPointsOnCell))
       
       dV = dx * dy
     
@@ -183,7 +185,7 @@ module spatial_operators_mod
                 endif
               enddo
             enddo
-            nGstCells(i,iCOS,iPatch) = iCOS
+            nGstRecCells(i,iCOS,iPatch) = iCOS
             
           enddo
         enddo
@@ -220,7 +222,7 @@ module spatial_operators_mod
       recdy   = 1. / ( dy * recCoef )
       recdV   = 1. / ( recCoef**2 )
       
-      !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec)
+      !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -247,51 +249,50 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,invstat)
+      !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat,xg,yg,pg) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
-            nRC = nGstCells(i,j,iPatch)
-            !nxp = min( maxval(iGstCell(1:nRC,i,j,iPatch)) - minval(iGstCell(1:nRC,i,j,iPatch)) + 1, stencil_width )
-            !nyp = min( maxval(jGstCell(1:nRC,i,j,iPatch)) - minval(jGstCell(1:nRC,i,j,iPatch)) + 1, stencil_width )
-            nxp = maxval(iGstCell(1:nRC,i,j,iPatch)) - minval(iGstCell(1:nRC,i,j,iPatch)) + 1
-            nyp = maxval(jGstCell(1:nRC,i,j,iPatch)) - minval(jGstCell(1:nRC,i,j,iPatch)) + 1
-            
-            do iCOS = 1,nGstCells(i,j,iPatch)
-              iRec = iGstCell(iCOS,i,j,iPatch)
-              jRec = jGstCell(iCOS,i,j,iPatch)
+            nRC = nGstRecCells(i,j,iPatch)
+            if(nRC/=0)then
+              !nxp = min( maxval(iGstCell(1:nRC,i,j,iPatch)) - minval(iGstCell(1:nRC,i,j,iPatch)) + 1, stencil_width )
+              !nyp = min( maxval(jGstCell(1:nRC,i,j,iPatch)) - minval(jGstCell(1:nRC,i,j,iPatch)) + 1, stencil_width )
+              nxp = maxval(iGstCell(1:nRC,i,j,iPatch)) - minval(iGstCell(1:nRC,i,j,iPatch)) + 1
+              nyp = maxval(jGstCell(1:nRC,i,j,iPatch)) - minval(jGstCell(1:nRC,i,j,iPatch)) + 1
               
-              xGst(:,iCOS,i,j,iPatch) = ( x(ccs:cce,iRec,jRec,iPatch) - x(cc,i,j,iPatch) ) * recdx
-              yGst(:,iCOS,i,j,iPatch) = ( y(ccs:cce,iRec,jRec,iPatch) - y(cc,i,j,iPatch) ) * recdy
-            enddo
-            
-            iCOS = 0
-            do jR = 1,nyp
-              do iR = 1,nxp
-                iCOS = iCOS + 1
-                call calc_rectangle_poly_integration(nxp,nyp,xGst(1,iCOS,i,j,iPatch),xGst(2,iCOS,i,j,iPatch),&
-                                                             yGst(1,iCOS,i,j,iPatch),yGst(4,iCOS,i,j,iPatch),A(iCOS,1:nRC,i,j,iPatch))
+              do iCOS = 1,nRC
+                iRec = iGstCell(iCOS,i,j,iPatch)
+                jRec = jGstCell(iCOS,i,j,iPatch)
+                
+                xGst(:,iCOS,i,j,iPatch) = ( x(ccs:cce,iRec,jRec,iPatch) - x(cc,i,j,iPatch) ) * recdx
+                yGst(:,iCOS,i,j,iPatch) = ( y(ccs:cce,iRec,jRec,iPatch) - y(cc,i,j,iPatch) ) * recdy
               enddo
-            enddo
-            
-            call BRINV(nRC,A(1:nRC,1:nRC,i,j,iPatch),invA(1:nRC,1:nRC,i,j,iPatch),invstat)
-            if(invstat==0)then
-              print*,'Inverse A dost not exist'
-              print*,'i,j,iPatch,nRC,nxp,nyp are'
-              print*,i,j,iPatch,nRC,nxp,nyp
-              stop 'Check BRINV for Special treamtment on boundary cells'
+              
+              iCOS = 0
+              do jR = 1,nyp
+                do iR = 1,nxp
+                  iCOS = iCOS + 1
+                  call calc_rectangle_poly_integration(nxp,nyp,xGst(1,iCOS,i,j,iPatch),xGst(2,iCOS,i,j,iPatch),&
+                                                               yGst(1,iCOS,i,j,iPatch),yGst(4,iCOS,i,j,iPatch),A(iCOS,1:nRC,i,j,iPatch))
+                enddo
+              enddo
+              
+              call BRINV(nRC,A(1:nRC,1:nRC,i,j,iPatch),invA(1:nRC,1:nRC,i,j,iPatch),invstat)
+              if(invstat==0)then
+                print*,'Inverse A dost not exist'
+                print*,'i,j,iPatch,nRC,nxp,nyp are'
+                print*,i,j,iPatch,nRC,nxp,nyp
+                stop 'Check BRINV for Special treamtment on boundary cells'
+              endif
+              
+              ! Calculate reconstruction matrix on edge
+              pg = nGhostPointsOnCell(i,j,iPatch)
+              xg(1:pg) = ( x(cgs:cgs+pg-1,i,j,iPatch) - x(cc,i,j,iPatch) ) * recdx
+              yg(1:pg) = ( y(cgs:cgs+pg-1,i,j,iPatch) - y(cc,i,j,iPatch) ) * recdy
+              call calc_rectangle_poly_matrix(nxp,nyp,pg,xg,yg,gstMatrix(1:pg,1:nRC,i,j,iPatch))
+              
+              gstMatrix(1:pg,1:nRC,i,j,iPatch) = matmul( gstMatrix(1:pg,1:nRC,i,j,iPatch), invA(1:nRC,1:nRC,i,j,iPatch) )
             endif
-            
-            ! Calculate reconstruction matrix on edge
-            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL*recdx,yL*recdy,gstMatrixL(:,1:nRC,i,j,iPatch)) ! need to be modified to ghost position
-            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR*recdx,yR*recdy,gstMatrixR(:,1:nRC,i,j,iPatch)) ! need to be modified to ghost position
-            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB*recdx,yB*recdy,gstMatrixB(:,1:nRC,i,j,iPatch)) ! need to be modified to ghost position
-            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT*recdx,yT*recdy,gstMatrixT(:,1:nRC,i,j,iPatch)) ! need to be modified to ghost position
-            
-            gstMatrixL(:,1:nRC,i,j,iPatch) = matmul( gstMatrixL(:,1:nRC,i,j,iPatch), invA(1:nRC,1:nRC,i,j,iPatch) )
-            gstMatrixR(:,1:nRC,i,j,iPatch) = matmul( gstMatrixR(:,1:nRC,i,j,iPatch), invA(1:nRC,1:nRC,i,j,iPatch) )
-            gstMatrixB(:,1:nRC,i,j,iPatch) = matmul( gstMatrixB(:,1:nRC,i,j,iPatch), invA(1:nRC,1:nRC,i,j,iPatch) )
-            gstMatrixT(:,1:nRC,i,j,iPatch) = matmul( gstMatrixT(:,1:nRC,i,j,iPatch), invA(1:nRC,1:nRC,i,j,iPatch) )
           enddo
         enddo
       enddo

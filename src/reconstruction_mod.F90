@@ -16,7 +16,7 @@
       integer(i_kind) :: maxRecTerms
       
       integer(i_kind),dimension(:,:,:), allocatable :: nRecCells ! number of cells for reconstruction
-      integer(i_kind),dimension(:,:,:), allocatable :: nGstCells ! number of cells for ghost point reconstruction
+      integer(i_kind),dimension(:,:,:), allocatable :: nGstRecCells ! number of cells for ghost point reconstruction
       integer(i_kind),dimension(:,:,:), allocatable :: nRecTerms
       
       integer(i_kind),dimension(:,:,:), allocatable :: locPolyDegree ! degree of local reconstruction polynomial
@@ -65,9 +65,9 @@
         maxRecCells = stencil_width**2
         maxRecTerms = maxRecCells
         
-        allocate(nRecCells(ids:ide,jds:jde,ifs:ife))
-        allocate(nGstCells(ids:ide,jds:jde,ifs:ife))
-        allocate(nRecTerms(ids:ide,jds:jde,ifs:ife))
+        allocate(nRecCells   (ids:ide,jds:jde,ifs:ife))
+        allocate(nGstRecCells(ids:ide,jds:jde,ifs:ife))
+        allocate(nRecTerms   (ids:ide,jds:jde,ifs:ife))
         
         allocate(locPolyDegree(ids:ide,jds:jde,ifs:ife))
         

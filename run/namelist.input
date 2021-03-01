@@ -9,7 +9,7 @@ integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
 
 &case_select
-case_num    = 6, ! Choose from 2, 5 or 6
+case_num    = 5, ! Choose from 2, 5 or 6
 /
 
 &domain
