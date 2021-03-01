@@ -4,12 +4,11 @@
       use tend_mod
       use reconstruction_mod
       use mesh_mod
-      !use ghost_mod
-      !use test_case_mod
-      !use time_scheme_mod
-      !use output_mod
-      !use spatial_operators_mod
-      !use diag_mod
+      use test_case_mod
+      use io_mod
+      use temporal_mod
+      use spatial_operators_mod
+      use diag_mod
       implicit none
       
       integer(i_kind) it
@@ -36,8 +35,8 @@
       call init_mesh
       call init_stat
       call init_tend
-      !call initGhost
-      !call initTestCase
+      call init_testcase
+      call init_spatial_operator
       
       print*,''
       print*,'Temporal integration scheme is '//trim(adjustl(integral_scheme))
@@ -45,30 +44,29 @@
       
       output_idx       = 1
       total_output_num = nsteps * dt / history_interval
-      !call history_init      (stat(old))
-      !call history_write_stat(stat(old),1)
-      !call calc_total_mass   (total_mass0  ,stat(old))
-      !call calc_total_energy (total_energy0,stat(old))
+      call history_init      (stat(old))
+      call history_write_stat(stat(old),1)
+      call calc_total_mass   (total_mass0  ,stat(old))
+      call calc_total_energy (total_energy0,stat(old))
+      print*,'Initial total mass, total energy',total_mass0,total_energy0
       print*,'output index/total, MCR, ECR :',output_idx-1,'/',total_output_num,' ',0., 0.
       
       ! time integration
       do it = 1,nsteps
-        !if(trim(adjustl(integral_scheme))=='RK3_TVD')call RK3_TVD(stat(new),stat(old))
-        !if(trim(adjustl(integral_scheme))=='RK4'    )call RK4    (stat(new),stat(old))
+        if(trim(adjustl(integral_scheme))=='RK3_TVD')call RK3_TVD(stat(new),stat(old))
+        if(trim(adjustl(integral_scheme))=='RK4'    )call RK4    (stat(new),stat(old))
         
         ! Write output
-        if(mod(it*dt,float(history_interval))==0.and.(it*dt>=history_interval))then
+        if( mod(it*dt,float(history_interval))==0 .and. (it*dt>=history_interval) )then
           output_idx = output_idx + 1
-          !call addFillValue(stat(new))
-          !call convert_wind_P2SP (stat(new))
           
-          !call history_write_stat(stat(new),output_idx)
-          !call calc_total_mass  (total_mass  ,stat(new))
-          !call calc_total_energy(total_energy,stat(old))
-          !print*,'output index/total, MCR, ECR :',output_idx-1,'/',total_output_num,' ',(total_mass-total_mass0)/total_mass0, (total_energy-total_energy0)/total_energy0
+          call history_write_stat(stat(new),output_idx)
+          call calc_total_mass  (total_mass  ,stat(new))
+          call calc_total_energy(total_energy,stat(old))
+          print*,'output index/total, MCR, ECR :',output_idx-1,'/',total_output_num,' ',(total_mass-total_mass0)/total_mass0, (total_energy-total_energy0)/total_energy0
         endif
         
-        !call copyStat(stat(old), stat(new))
+        call copyStat(stat(old), stat(new))
       enddo
       
       ! Timing end

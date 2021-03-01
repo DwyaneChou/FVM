@@ -76,6 +76,11 @@ set(source_files
   src/math_mod.F90
   src/reconstruction_mod.F90
   src/qr_solver_mod.F90
+  src/test_case_mod.F90
+  src/io_mod.F90
+  src/spatial_operators_mod.F90
+  src/temporal_mod.F90
+  src/diag_mod.F90
 )
 
 add_library(fvm ${source_files})

@@ -11,6 +11,7 @@ MODULE mesh_mod
   real(r_kind), dimension(:,:,:,:    ), allocatable :: lon      ! longitude on cells
   real(r_kind), dimension(:,:,:,:    ), allocatable :: lat      ! latitude on cells
   real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtG    ! jacobian of Transformation, sqrt(G)
+  real(r_kind), dimension(:,:,:      ), allocatable :: sqrtGC   ! jacobian of Transformation, sqrt(G) on Cell
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixG  ! horizontal metric Tensor, which transform covariant vectors to contravariant vectors
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIG ! horizontal metric Tensor, which transform contravariant vectors to covariant vectors
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixA  ! horizontal metric Tensor, which transform 
@@ -45,9 +46,10 @@ MODULE mesh_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_p
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: zs    ! surface height
+  real(r_kind), dimension(:,:,:      ), allocatable :: zsc   ! surface height on cell
   
   real(r_kind), dimension(:,:,:    ), allocatable :: areaCell
-  
+      
   contains
   
   subroutine init_mesh
@@ -55,6 +57,7 @@ MODULE mesh_mod
     integer(i_kind) :: iQP,jQP,countQP
     integer(i_kind) :: iTOC,iVertex1,iVertex2
     integer(i_kind) :: iPOC
+    integer(i_kind) :: ig, jg, pg, ng
     
     real(r_kind) :: verticesCoord(3,2)
     
@@ -67,6 +70,7 @@ MODULE mesh_mod
     allocate( lat      (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( sqrtG    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( sqrtGC   (                     ims:ime, jms:jme, ifs:ife) )
     allocate( matrixG  (2, 2, nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( matrixIG (2, 2, nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( matrixA  (2, 2, nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
@@ -99,6 +103,7 @@ MODULE mesh_mod
     allocate( ghost_p (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( zs       (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( zsc      (                     ims:ime, jms:jme, ifs:ife) )
     
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
     
@@ -125,17 +130,17 @@ MODULE mesh_mod
           y(ccs+3,i,j,iPatch) = y(cc,i,j,iPatch) + 0.5 * dy
           
           ! Bottom Boundary Points
-          x(cbs+0*nPointsOnEdge:1*nPointsOnEdge,i,j,iPatch) = x(ccs+1,i,j,iPatch) + quad_pos_1d * dx
-          y(cbs+0*nPointsOnEdge:1*nPointsOnEdge,i,j,iPatch) = y(ccs+1,i,j,iPatch)
+          x(cbs+0*nPointsOnEdge:cbs+1*nPointsOnEdge-1,i,j,iPatch) = x(ccs+1,i,j,iPatch) + quad_pos_1d * dx
+          y(cbs+0*nPointsOnEdge:cbs+1*nPointsOnEdge-1,i,j,iPatch) = y(ccs+1,i,j,iPatch)
           ! Right Boundary Points
-          x(cbs+1*nPointsOnEdge:2*nPointsOnEdge,i,j,iPatch) = x(ccs+2,i,j,iPatch)
-          y(cbs+1*nPointsOnEdge:2*nPointsOnEdge,i,j,iPatch) = y(ccs+2,i,j,iPatch) + quad_pos_1d * dy
+          x(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = x(ccs+2,i,j,iPatch)
+          y(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = y(ccs+2,i,j,iPatch) + quad_pos_1d * dy
           ! Top Boundary Points
-          x(cbs+2*nPointsOnEdge:3*nPointsOnEdge,i,j,iPatch) = x(ccs+4,i,j,iPatch) + quad_pos_1d * dx
-          y(cbs+2*nPointsOnEdge:3*nPointsOnEdge,i,j,iPatch) = y(ccs+4,i,j,iPatch)
+          x(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = x(ccs+4,i,j,iPatch) + quad_pos_1d * dx
+          y(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = y(ccs+4,i,j,iPatch)
           ! Left Boundary Points
-          x(cbs+3*nPointsOnEdge:4*nPointsOnEdge,i,j,iPatch) = x(ccs+1,i,j,iPatch)
-          y(cbs+3*nPointsOnEdge:4*nPointsOnEdge,i,j,iPatch) = y(ccs+1,i,j,iPatch) + quad_pos_1d * dy
+          x(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = x(ccs+1,i,j,iPatch)
+          y(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = y(ccs+1,i,j,iPatch) + quad_pos_1d * dy
           
           ! Gaussian quadrature points
           countQP = 0
@@ -196,14 +201,14 @@ MODULE mesh_mod
             
             Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
           enddo
-          
+          sqrtGC(i,j,iPatch) = Gaussian_quadrature_2d(sqrtG(cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
     !$OMP END PARALLEL DO
     
     ! Calculate ghost position
-    !$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP) COLLAPSE(3)
+    !$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
     do iPatch = ifs,ife
       ! Bottom
       do j = jms,jds-1
@@ -215,6 +220,15 @@ MODULE mesh_mod
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
             ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
             ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+            
+            ! Set ghost points for interpolation
+            ig = ghost_i(countQP,i,j,iPatch)
+            jg = ghost_j(countQP,i,j,iPatch)
+            pg = ghost_p(countQP,i,j,iPatch)
+            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
+            ng = nGhostPointsOnCell(ig,jg,pg)
+            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
+            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
           enddo
         enddo
       enddo
@@ -229,6 +243,15 @@ MODULE mesh_mod
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
             ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
             ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+            
+            ! Set ghost points for interpolation
+            ig = ghost_i(countQP,i,j,iPatch)
+            jg = ghost_j(countQP,i,j,iPatch)
+            pg = ghost_p(countQP,i,j,iPatch)
+            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
+            ng = nGhostPointsOnCell(ig,jg,pg)
+            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
+            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
           enddo
         enddo
       enddo
@@ -243,6 +266,15 @@ MODULE mesh_mod
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
             ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
             ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+            
+            ! Set ghost points for interpolation
+            ig = ghost_i(countQP,i,j,iPatch)
+            jg = ghost_j(countQP,i,j,iPatch)
+            pg = ghost_p(countQP,i,j,iPatch)
+            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
+            ng = nGhostPointsOnCell(ig,jg,pg)
+            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
+            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
           enddo
         enddo
       enddo
@@ -257,12 +289,24 @@ MODULE mesh_mod
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
             ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
             ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+            
+            ! Set ghost points for interpolation
+            ig = ghost_i(countQP,i,j,iPatch)
+            jg = ghost_j(countQP,i,j,iPatch)
+            pg = ghost_p(countQP,i,j,iPatch)
+            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
+            ng = nGhostPointsOnCell(ig,jg,pg)
+            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
+            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
           enddo
         enddo
       enddo
       
     enddo
     !$OMP END PARALLEL DO
+    
+    print*,''
+    print*,'Actual max ghost points',maxval(nGhostPointsOnCell)
     
     ! Calculate areaCell
     allocate( areaCell_temp (Nx,Ny) )
@@ -274,6 +318,9 @@ MODULE mesh_mod
       areaCell(1:Nx,1:Ny,iPatch) = areaCell_temp
     enddo
     deallocate( areaCell_temp )
+    
+    print*,''
+    print*,'max areaCell sqrtGC diff ratio',maxval(abs(sqrtGC(ids:ide,jds:jde,ifs:ife)*dx*dy-areaCell(ids:ide,jds:jde,ifs:ife))/areaCell(ids:ide,jds:jde,ifs:ife))
     
   end subroutine init_mesh
   

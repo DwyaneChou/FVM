@@ -22,4 +22,5 @@ MODULE constants_mod
   real(r_kind),parameter    :: R2D       = 180./PI    ! convert radian into degree
   real(r_kind),parameter    :: Omega     = 7.292E-5
   real(r_kind),parameter    :: FillValue = -9999999999999999.
+  real(r_kind),parameter    :: Inf       = huge(Inf)
 END MODULE constants_mod

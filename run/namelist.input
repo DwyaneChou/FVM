@@ -1,15 +1,15 @@
 &time_settings
-run_days         = 15
+run_days         = 0
 run_hours        = 0
 run_minutes      = 0
-run_seconds      = 0
+run_seconds      = 360
 dt               = 360
-history_interval = 3600
-integral_scheme  = 'RK4' ! Choose from 'RK3_TVD' or 'RK4'
+history_interval = 360
+integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
 
 &case_select
-case_num    = 5, ! Choose from 2, 5 or 6
+case_num    = 6, ! Choose from 2, 5 or 6
 /
 
 &domain
@@ -18,7 +18,6 @@ dy                   = 3,  ! Unit: degree
 xhalo                = 4,  ! The ghost cell size
 yhalo                = 4,  ! The ghost cell size
 nPointsOnEdge        = 3,
-nQuadOrder           = 3,
 nTriQuadOrder        = 3,  ! Do not change for now
 /
 
