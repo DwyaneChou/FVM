@@ -62,6 +62,8 @@ module spatial_operators_mod
   real(r_kind), dimension(:,:,:,:,:), allocatable :: FeP   ! F on points on edges of each cell
   real(r_kind), dimension(:,:,:,:,:), allocatable :: GeP   ! H on points on edges of each cell
   
+  real(r_kind), dimension(:,:,:,:), allocatable :: src   ! source term
+  
     contains
     subroutine init_spatial_operator
       integer(i_kind) :: i,j,iPatch
@@ -136,6 +138,8 @@ module spatial_operators_mod
       
       allocate(FeP(nVar,nPointsOnEdge,ids:ide+1,jds:jde  ,ifs:ife))
       allocate(GeP(nVar,nPointsOnEdge,ids:ide  ,jds:jde+1,ifs:ife))
+      
+      allocate(src(nVar,ids:ide,jds:jde,ifs:ife))
       
       allocate(xL(nPointsOnEdge))
       allocate(xR(nPointsOnEdge))
