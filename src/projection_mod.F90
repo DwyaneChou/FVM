@@ -51,19 +51,19 @@ contains
     select case(iPatch)      
     case(1:4)
       lambda = x + dble(iPatch - 1) * pi / 2.
-      theta  = atan2( tan(y) * cos(x), 1. )
+      theta  = atan2( tan(y) * cos(x), 1._r_kind )
     case(5)
       a = tan(x)
       b = tan(y)
       
       lambda = atan2(a , -b           )
-      theta  = atan2(1., sqrt(a*a+b*b))
+      theta  = atan2(1._r_kind, sqrt(a*a+b*b))
     case(6)
       a = tan(x)
       b = tan(y)
       
       lambda =  atan2(a , b            )
-      theta  = -atan2(1., sqrt(a*a+b*b))  
+      theta  = -atan2(1._r_kind, sqrt(a*a+b*b))  
     end select
 
     return

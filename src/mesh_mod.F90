@@ -44,6 +44,7 @@ MODULE mesh_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_i
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_j
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_p
+  integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_n
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: zs    ! surface height
   real(r_kind), dimension(:,:,:      ), allocatable :: zsc   ! surface height on cell
@@ -101,11 +102,17 @@ MODULE mesh_mod
     allocate( ghost_i (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( ghost_j (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( ghost_p (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_n (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( zs       (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( zsc      (                     ims:ime, jms:jme, ifs:ife) )
     
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
+    
+    ghost_i = 0
+    ghost_j = 0
+    ghost_p = 0
+    ghost_n = 0
     
     !$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
     do iPatch = ifs,ife
@@ -229,6 +236,8 @@ MODULE mesh_mod
             ng = nGhostPointsOnCell(ig,jg,pg)
             x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
             y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
+
+            ghost_n(countQP,i,j,iPatch) = ng
           enddo
         enddo
       enddo
@@ -252,6 +261,8 @@ MODULE mesh_mod
             ng = nGhostPointsOnCell(ig,jg,pg)
             x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
             y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
+
+            ghost_n(countQP,i,j,iPatch) = ng
           enddo
         enddo
       enddo
@@ -275,6 +286,8 @@ MODULE mesh_mod
             ng = nGhostPointsOnCell(ig,jg,pg)
             x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
             y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
+
+            ghost_n(countQP,i,j,iPatch) = ng
           enddo
         enddo
       enddo
@@ -298,6 +311,8 @@ MODULE mesh_mod
             ng = nGhostPointsOnCell(ig,jg,pg)
             x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
             y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
+
+            ghost_n(countQP,i,j,iPatch) = ng
           enddo
         enddo
       enddo

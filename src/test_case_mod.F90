@@ -10,9 +10,9 @@ module test_case_mod
   subroutine init_testcase
     integer i,j,iPatch,iPOC
 
-    real, dimension(:,:,:), allocatable :: phi
-    real, dimension(:,:,:), allocatable :: u
-    real, dimension(:,:,:), allocatable :: v
+    real(r_kind), dimension(:,:,:), allocatable :: phi
+    real(r_kind), dimension(:,:,:), allocatable :: u
+    real(r_kind), dimension(:,:,:), allocatable :: v
     
     allocate(phi(ims:ime,jms:jme,ifs:ife))
     allocate(u  (ims:ime,jms:jme,ifs:ife))
@@ -60,13 +60,13 @@ module test_case_mod
   subroutine case2(stat)
     type(stat_field), intent(inout) :: stat
     
-    real,dimension(:,:,:,:), allocatable :: phi
-    real,dimension(:,:,:,:), allocatable :: u
-    real,dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: phi
+    real(r_kind),dimension(:,:,:,:), allocatable :: u
+    real(r_kind),dimension(:,:,:,:), allocatable :: v
     
-    real    :: u0
-    real    :: gh0 = 29400.
-    real    :: gh
+    real(r_kind)    :: u0
+    real(r_kind)    :: gh0 = 29400.
+    real(r_kind)    :: gh
     
     integer :: i,j,iPatch,iPOC
     
@@ -125,23 +125,23 @@ module test_case_mod
   subroutine case5(stat)
     type(stat_field), intent(inout) :: stat
     
-    real,dimension(:,:,:,:), allocatable :: phi
-    real,dimension(:,:,:,:), allocatable :: u
-    real,dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: phi
+    real(r_kind),dimension(:,:,:,:), allocatable :: u
+    real(r_kind),dimension(:,:,:,:), allocatable :: v
     
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: ghs
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: longitude
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: latitude
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: r
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: ghs
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: longitude
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: latitude
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: r
     
-    real,parameter :: hs0      = 2000.
-    real,parameter :: u0       = 20.
-    real,parameter :: alpha    = 0.
-    real,parameter :: gh0      = 5960.*gravity
+    real(r_kind),parameter :: hs0      = 2000.
+    real(r_kind),parameter :: u0       = 20.
+    real(r_kind),parameter :: alpha    = 0.
+    real(r_kind),parameter :: gh0      = 5960.*gravity
                                     
-    real :: rr
-    real :: labmda_c
-    real :: theta_c
+    real(r_kind) :: rr
+    real(r_kind) :: labmda_c
+    real(r_kind) :: theta_c
     
     integer :: i,j,iPatch,iPOC
     
@@ -210,21 +210,21 @@ module test_case_mod
   subroutine case6(stat)
     type(stat_field), intent(inout) :: stat
     
-    real,dimension(:,:,:,:), allocatable :: phi
-    real,dimension(:,:,:,:), allocatable :: u
-    real,dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: phi
+    real(r_kind),dimension(:,:,:,:), allocatable :: u
+    real(r_kind),dimension(:,:,:,:), allocatable :: v
     
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: u1,u2,u3                ! working array
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: AA1,Ac,A21,A22,A23,Ah   ! working array
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: Bc,BB1,BB2,Bh           ! working array
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: CC,CC1,CC2,Ch           ! working array
-    !real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: sinlat                  ! working array
-    !real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: coslat                  ! working array
-    real,dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: longitude               ! working array
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: u1,u2,u3                ! working array
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: AA1,Ac,A21,A22,A23,Ah   ! working array
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: Bc,BB1,BB2,Bh           ! working array
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: CC,CC1,CC2,Ch           ! working array
+    !real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: sinlat                  ! working array
+    !real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: coslat                  ! working array
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: longitude               ! working array
     
-    real,parameter :: omg  = 7.848d-6       ! angular velocity of RH wave
-    real,parameter :: R    = 4              ! wave number of RH wave
-    real,parameter :: h0   = 8000.          ! wave number of RH wave
+    real(r_kind),parameter :: omg  = 7.848d-6       ! angular velocity of RH wave
+    real(r_kind),parameter :: R    = 4              ! wave number of RH wave
+    real(r_kind),parameter :: h0   = 8000.          ! wave number of RH wave
     
     integer :: i,j,iPatch,iPOC
     

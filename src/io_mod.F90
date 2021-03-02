@@ -48,9 +48,9 @@ module io_mod
       if(status/=nf90_noerr) call handle_err(status)
       
       !print*,'nf90_put_att'
-      status = nf90_put_att(ncid,nf90_global       ,'dx'       ,dx*R2D)
-      status = nf90_put_att(ncid,nf90_global       ,'dy'       ,dy*R2D)
-      status = nf90_put_att(ncid,nf90_global       ,'dt'       ,dt)
+      status = nf90_put_att(ncid,nf90_global       ,'dx'       ,real(dx*R2D,r8))
+      status = nf90_put_att(ncid,nf90_global       ,'dy'       ,real(dy*R2D,r8))
+      status = nf90_put_att(ncid,nf90_global       ,'dt'       ,real(dt,r8))
       status = nf90_put_att(ncid,nf90_global       ,'xhalo'    ,xhalo)
       status = nf90_put_att(ncid,nf90_global       ,'yhalo'    ,yhalo)
       status = nf90_put_att(ncid,nf90_global       ,'case_num' ,case_num)
@@ -97,20 +97,20 @@ module io_mod
       status = nf90_put_att(ncid, zonal_wind_id     ,'_CoordinateAxisTypes','lon lat nPatch time')
       status = nf90_put_att(ncid, meridional_wind_id,'_CoordinateAxisTypes','lon lat nPatch time')
       
-      status = nf90_put_att(ncid,phi_id            ,'_FillValue',FillValue)
-      status = nf90_put_att(ncid,phis_id           ,'_FillValue',FillValue)
-      status = nf90_put_att(ncid,phit_id           ,'_FillValue',FillValue)
-      status = nf90_put_att(ncid,zonal_wind_id     ,'_FillValue',FillValue)
-      status = nf90_put_att(ncid,meridional_wind_id,'_FillValue',FillValue)
+      status = nf90_put_att(ncid,phi_id            ,'_FillValue',real(FillValue,r8))
+      status = nf90_put_att(ncid,phis_id           ,'_FillValue',real(FillValue,r8))
+      status = nf90_put_att(ncid,phit_id           ,'_FillValue',real(FillValue,r8))
+      status = nf90_put_att(ncid,zonal_wind_id     ,'_FillValue',real(FillValue,r8))
+      status = nf90_put_att(ncid,meridional_wind_id,'_FillValue',real(FillValue,r8))
       if(status/=nf90_noerr) call handle_err(status)
       
       status = nf90_enddef(ncid)
       if(status/=nf90_noerr) call handle_err(status)
       
-      status = nf90_put_var(ncid,lon_id     , lon     (cc,ids:ide,jds:jde,ifs:ife)*R2D )
-      status = nf90_put_var(ncid,lat_id     , lat     (cc,ids:ide,jds:jde,ifs:ife)*R2D )
-      status = nf90_put_var(ncid,areaCell_id, areaCell(   ids:ide,jds:jde,ifs:ife))
-      status = nf90_put_var(ncid,phis_id    , zsc     (   ids:ide,jds:jde,ifs:ife) * gravity )
+      status = nf90_put_var(ncid,lon_id     , real(lon     (cc,ids:ide,jds:jde,ifs:ife)*R2D, r8) )
+      status = nf90_put_var(ncid,lat_id     , real(lat     (cc,ids:ide,jds:jde,ifs:ife)*R2D, r8) )
+      status = nf90_put_var(ncid,areaCell_id, real(areaCell(   ids:ide,jds:jde,ifs:ife), r8))
+      status = nf90_put_var(ncid,phis_id    , real(zsc     (   ids:ide,jds:jde,ifs:ife) * gravity, r8) )
       if(status/=nf90_noerr) call handle_err(status)
       
       status = nf90_close(ncid)
@@ -131,12 +131,12 @@ module io_mod
       integer phit_id
       integer zonal_wind_id,meridional_wind_id
       
-      real, dimension(:,:,:), allocatable :: phi
-      real, dimension(:,:,:), allocatable :: u
-      real, dimension(:,:,:), allocatable :: v
+      real(r_kind), dimension(:,:,:), allocatable :: phi
+      real(r_kind), dimension(:,:,:), allocatable :: u
+      real(r_kind), dimension(:,:,:), allocatable :: v
       
       integer :: varid
-      real, dimension(ids:ide,jds:jde,ifs:ife) :: varout
+      real(r8), dimension(ids:ide,jds:jde,ifs:ife) :: varout
       
       integer :: time(1)
       

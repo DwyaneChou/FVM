@@ -189,7 +189,7 @@ module spatial_operators_mod
                 endif
               enddo
             enddo
-            nGstRecCells(i,iCOS,iPatch) = iCOS
+            nGstRecCells(i,j,iPatch) = iCOS
             
           enddo
         enddo
@@ -305,11 +305,94 @@ module spatial_operators_mod
     end subroutine init_spatial_operator
     
     subroutine spatial_operator(stat,tend)
-      type(stat_field), target, intent(in   ) :: stat
+      type(stat_field), target, intent(inout) :: stat
       type(tend_field), target, intent(inout) :: tend
       
+      integer(i_kind) :: iVar,i,j,iPatch
+      
+      print*,maxval(stat%q(1,:,:,:)),minval(stat%q(1,:,:,:))
+      
+      call fill_halo(stat%q)
+      
+      print*,maxval(stat%q(1,:,:,:)),minval(stat%q(1,:,:,:))
+      
+      open(123,file='test.txt')
+      iPatch = 1
+      iVar   = 1
+      do j = jms,jme
+        write(123,'(38f15.5)')(stat%q(iVar,i,j,iPatch),i=ims,ime)
+      enddo
+      close(123)
+      stop 'spatial_operator'
       
     end subroutine spatial_operator
+    
+    subroutine fill_halo(q)
+      real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(inout) :: q
+      
+      real(r_kind), dimension(nVar,maxGhostPointsOnCell,ims:ime,jms:jme,ifs:ife) :: qg
+      real(r_kind), dimension(nVar,nTriQuadPointsOnCell,ims:ime,jms:jme,ifs:ife) :: tgq ! value on triangle gaussian quadrature points
+      
+      integer(i_kind) :: iVar,i,j,iPatch,iPOC
+      integer(i_kind) :: iRec,jRec
+      integer(i_kind) :: ig,jg,pg,ng
+      integer(i_kind) :: m,n
+      
+      real(r_kind), dimension(maxRecCells) :: u
+      
+      real(r_kind) :: uc,vc,us,vs
+      
+      do iPatch = ifs,ife
+        do j = jds,jde
+          do i = ids,ide
+            do iVar = 1,nVar
+              m = nGstRecCells(i,j,iPatch)
+              n = nGhostPointsOnCell(i,j,iPatch)
+              do iPOC = 1,m
+                iRec = iGstCell(iPOC,i,j,iPatch)
+                jRec = jGstCell(iPOC,i,j,iPatch)
+                u(iPOC) = q(iVar,iRec,jRec,iPatch)
+              enddo
+              qg(iVar,1:n,i,j,iPatch) = matmul(gstMatrix(1:n,1:m,i,j,iPatch),u(1:m))
+              !print*,i,j,iPatch,iVar,maxval(u(1:m)),maxval(qg(iVar,1:n,i,j,iPatch))
+            enddo
+          enddo
+        enddo
+      enddo
+      
+      do iPatch = ifs,ife
+        do j = jms,jme
+          do i = ims,ime
+            !if( sum(ghost_n(:,i,j,iPatch)) /= 0 )then
+            if( ghost_p(1,i,j,iPatch) /= 0 )then
+              do iPOC = 1,nTriQuadPointsOnCell
+                ig = ghost_i(iPOC,i,j,iPatch)
+                jg = ghost_j(iPOC,i,j,iPatch)
+                pg = ghost_p(iPOC,i,j,iPatch)
+                ng = ghost_n(iPOC,i,j,iPatch)
+                do iVar = 1,nVar
+                  tgq(iVar,iPOC,i,j,iPatch) = qg(iVar,ng,ig,jg,pg)
+                enddo
+                
+                uc = tgq(2,iPOC,i,j,iPatch) / tgq(1,iPOC,i,j,iPatch)
+                vc = tgq(3,iPOC,i,j,iPatch) / tgq(1,iPOC,i,j,iPatch)
+                call contravProjPlane2Sphere(us, vs, uc, vc, matrixA (:,:,cgs+ng-1,ig,jg,pg    ))
+                call contravProjSphere2Plane(uc, vc, us, vs, matrixIA(:,:,iPOC    ,i ,j ,iPatch))
+                
+                tgq(1,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) / sqrtG(cgs+ng-1,ig,jg,pg) * sqrtG(iPOC,i,j,iPatch)
+                tgq(2,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) * uc
+                tgq(3,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) * vc
+                
+                do iVar = 1,nVar
+                  q(iVar,i,j,iPatch) = triangle_quadrature( tgq(iVar,:,i,j,iPatch) )
+                enddo
+              enddo
+            endif
+          enddo
+        enddo
+      enddo
+      
+    end subroutine fill_halo
     
 end module spatial_operators_mod
 

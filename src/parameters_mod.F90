@@ -126,7 +126,7 @@ module parameters_mod
     xhalo         = 1
     yhalo         = 1
     nPointsOnEdge = 3
-    nTriQuadOrder = 2
+    nTriQuadOrder = 3
     
     run_days         = 1
     run_hours        = 0

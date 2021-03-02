@@ -9,9 +9,9 @@ MODULE diag_mod
     contains
     subroutine calc_total_mass(total_mass,stat)
       type(stat_field), intent(in ) :: stat
-      real            , intent(out) :: total_mass
+      real(r_kind)    , intent(out) :: total_mass
       
-      real    massOnCell(ids:ide,jds:jde,ifs:ife)
+      real(r_kind)    massOnCell(ids:ide,jds:jde,ifs:ife)
       integer i,j,iPatch
       
       do iPatch = ifs, ife
@@ -28,14 +28,14 @@ MODULE diag_mod
     
     subroutine calc_total_energy(total_energy,stat)
       type(stat_field), intent(in ) :: stat
-      real            , intent(out) :: total_energy
+      real(r_kind)    , intent(out) :: total_energy
       
-      real u (ids:ide,jds:jde,ifs:ife)
-      real v (ids:ide,jds:jde,ifs:ife)
-      real uc(ids:ide,jds:jde,ifs:ife)
-      real vc(ids:ide,jds:jde,ifs:ife)
-      real energyOnCell(ids:ide,jds:jde,ifs:ife)
-      real KE,PE
+      real(r_kind) u (ids:ide,jds:jde,ifs:ife)
+      real(r_kind) v (ids:ide,jds:jde,ifs:ife)
+      real(r_kind) uc(ids:ide,jds:jde,ifs:ife)
+      real(r_kind) vc(ids:ide,jds:jde,ifs:ife)
+      real(r_kind) energyOnCell(ids:ide,jds:jde,ifs:ife)
+      real(r_kind) KE,PE
       integer i,j,iPatch
       
       do iPatch = ifs, ife

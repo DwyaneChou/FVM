@@ -96,6 +96,22 @@
         Gaussian_quadrature_2d = dot_product(quad_wts_2d,q)
         
       end function Gaussian_quadrature_2d
+      
+      function triangle_quadrature(q)
+        real(r_kind) :: triangle_quadrature
+        real(r_kind) :: q(nTriQuadPointsOnCell)
+        
+        integer(i_kind) :: iT
+        integer(i_kind) :: is,ie
+        
+        triangle_quadrature = 0
+        do iT = 1,nEdgesOnCell
+          is = 1 + ( it - 1 ) * nTriQuadOrder
+          ie = it * nTriQuadOrder
+          triangle_quadrature = triangle_quadrature + dot_product( triQuad_wts,q(is:ie) )
+        enddo
+        
+      end function triangle_quadrature
     
       function WLS_ENO(A,u,h,m,n,ic,x0)
         ! WLS_ENO
