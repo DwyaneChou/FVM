@@ -109,10 +109,13 @@ MODULE mesh_mod
     
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
     
+    ! Init arrays
     ghost_i = 0
     ghost_j = 0
     ghost_p = 0
     ghost_n = 0
+    
+    nGhostPointsOnCell = 0
     
     !$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
     do iPatch = ifs,ife
@@ -177,7 +180,7 @@ MODULE mesh_mod
           enddo
           
           ! Calculate parameters on each points on this cell
-          do iPOC = 1,nPointsOnCell
+          do iPOC = cc,cte
             call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
                                        x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
             
@@ -319,6 +322,46 @@ MODULE mesh_mod
       
     enddo
     !$OMP END PARALLEL DO
+    
+    ! Calculate mesh parameters on ghost points on halo cells
+    do iPatch = ifs,ife
+      do j = jms,jme
+        do i = ims,ime
+          ! Calculate parameters on each points on this cell
+          do iPOC = cgs,cge
+            call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
+                                       x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
+            
+            sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
+            coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
+            
+            sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
+            coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
+            
+            sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
+            cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
+            tanx(iPOC,i,j,iPatch) = tan(x(iPOC,i,j,iPatch))
+            cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
+            secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
+            cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
+            siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
+            cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
+            tany(iPOC,i,j,iPatch) = tan(y(iPOC,i,j,iPatch))
+            coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
+            secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
+            cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
+            
+            call calc_matrixG (matrixG (:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
+            call calc_matrixIG(matrixIG(:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
+            call calc_matrixA (matrixA (:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
+            call calc_matrixIA(matrixIA(:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
+            call calc_Jacobian(sqrtG   (      iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
+            
+            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
+          enddo
+        enddo
+      enddo
+    enddo
     
     print*,''
     print*,'Actual max ghost points',maxval(nGhostPointsOnCell)

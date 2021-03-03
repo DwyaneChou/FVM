@@ -310,20 +310,13 @@ module spatial_operators_mod
       
       integer(i_kind) :: iVar,i,j,iPatch
       
-      print*,maxval(stat%q(1,:,:,:)),minval(stat%q(1,:,:,:))
-      
       call fill_halo(stat%q)
       
-      print*,maxval(stat%q(1,:,:,:)),minval(stat%q(1,:,:,:))
       
-      open(123,file='test.txt')
-      iPatch = 1
-      iVar   = 1
-      do j = jms,jme
-        write(123,'(38f15.5)')(stat%q(iVar,i,j,iPatch),i=ims,ime)
-      enddo
-      close(123)
-      stop 'spatial_operator'
+      
+      !call check_halo(stat%q)
+      
+      !stop 'spatial_operator'
       
     end subroutine spatial_operator
     
@@ -337,6 +330,7 @@ module spatial_operators_mod
       integer(i_kind) :: iRec,jRec
       integer(i_kind) :: ig,jg,pg,ng
       integer(i_kind) :: m,n
+      integer(i_kind) :: igp,itp
       
       real(r_kind), dimension(maxRecCells) :: u
       
@@ -345,17 +339,18 @@ module spatial_operators_mod
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
-            do iVar = 1,nVar
-              m = nGstRecCells(i,j,iPatch)
-              n = nGhostPointsOnCell(i,j,iPatch)
-              do iPOC = 1,m
-                iRec = iGstCell(iPOC,i,j,iPatch)
-                jRec = jGstCell(iPOC,i,j,iPatch)
-                u(iPOC) = q(iVar,iRec,jRec,iPatch)
+            m = nGstRecCells(i,j,iPatch)
+            n = nGhostPointsOnCell(i,j,iPatch)
+            if(n/=0)then
+              do iVar = 1,nVar
+                do iPOC = 1,m
+                  iRec = iGstCell(iPOC,i,j,iPatch)
+                  jRec = jGstCell(iPOC,i,j,iPatch)
+                  u(iPOC) = q(iVar,iRec,jRec,iPatch)
+                enddo
+                qg(iVar,1:n,i,j,iPatch) = matmul(gstMatrix(1:n,1:m,i,j,iPatch),u(1:m))
               enddo
-              qg(iVar,1:n,i,j,iPatch) = matmul(gstMatrix(1:n,1:m,i,j,iPatch),u(1:m))
-              !print*,i,j,iPatch,iVar,maxval(u(1:m)),maxval(qg(iVar,1:n,i,j,iPatch))
-            enddo
+            endif
           enddo
         enddo
       enddo
@@ -374,12 +369,15 @@ module spatial_operators_mod
                   tgq(iVar,iPOC,i,j,iPatch) = qg(iVar,ng,ig,jg,pg)
                 enddo
                 
+                igp = cgs + ng   - 1
+                itp = cts + iPOC - 1
+                
                 uc = tgq(2,iPOC,i,j,iPatch) / tgq(1,iPOC,i,j,iPatch)
                 vc = tgq(3,iPOC,i,j,iPatch) / tgq(1,iPOC,i,j,iPatch)
-                call contravProjPlane2Sphere(us, vs, uc, vc, matrixA (:,:,cgs+ng-1,ig,jg,pg    ))
-                call contravProjSphere2Plane(uc, vc, us, vs, matrixIA(:,:,iPOC    ,i ,j ,iPatch))
+                call contravProjPlane2Sphere(us, vs, uc, vc, matrixA (:,:,igp,ig,jg,pg    ))
+                call contravProjSphere2Plane(uc, vc, us, vs, matrixIA(:,:,itp,i ,j ,iPatch))
                 
-                tgq(1,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) / sqrtG(cgs+ng-1,ig,jg,pg) * sqrtG(iPOC,i,j,iPatch)
+                tgq(1,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) / sqrtG(igp,ig,jg,pg) * sqrtG(itp,i,j,iPatch)
                 tgq(2,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) * uc
                 tgq(3,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) * vc
                 
@@ -393,6 +391,91 @@ module spatial_operators_mod
       enddo
       
     end subroutine fill_halo
+    
+    function calc_F(q,sqrtG,matrixG)
+      real(r_kind), dimension(nVar) :: calc_F
+      real(r_kind), dimension(nVar), intent(in) :: q
+      real(r_kind)                 , intent(in) :: sqrtG
+      real(r_kind), dimension(2,2) , intent(in) :: matrixG
+      
+      real(r_kind) :: phi,u,v
+      real(r_kind) :: G11,G21
+      
+      G11 = matrixG(1,1)
+      G21 = matrixG(2,1)
+      
+      phi = q(1) / sqrtG
+      u   = q(2) / q(1)
+      v   = q(3) / q(1)
+      
+      calc_F(1) = q(2)
+      calc_F(2) = q(2) * u + 0.5 * G11 * sqrtG * phi**2
+      calc_F(3) = q(2) * v + 0.5 * G21 * sqrtG * phi**2
+    end function calc_F
+    
+    function calc_G(q,sqrtG,matrixG)
+      real(r_kind), dimension(nVar) :: calc_G
+      real(r_kind), dimension(nVar), intent(in) :: q
+      real(r_kind)                 , intent(in) :: sqrtG
+      real(r_kind), dimension(2,2) , intent(in) :: matrixG
+      
+      real(r_kind) :: phi,u,v
+      real(r_kind) :: G12,G22
+      
+      G12 = matrixG(1,2)
+      G22 = matrixG(2,2)
+      
+      phi = q(1) / sqrtG
+      u   = q(2) / q(1)
+      v   = q(3) / q(1)
+      
+      calc_G(1) = q(3)
+      calc_G(2) = q(3) * u + 0.5 * G12 * sqrtG * phi**2
+      calc_G(3) = q(3) * v + 0.5 * G22 * sqrtG * phi**2
+    end function calc_G
+    
+    subroutine check_halo(q)
+      real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(in) :: q
+      
+      real(r_kind), dimension(ims:ime,jms:jme,ifs:ife) :: phi
+      real(r_kind), dimension(ims:ime,jms:jme,ifs:ife) :: uc,vc
+      real(r_kind), dimension(ims:ime,jms:jme,ifs:ife) :: us,vs
+      
+      integer(i_kind) :: iVar,i,j,iPatch
+      
+      open(123,file='check_halo.txt')
+      do iPatch = ifs,ife
+        do j = jms,jme
+          do i = ims,ime
+            phi(i,j,iPatch) = q(1,i,j,iPatch) / sqrtGC(i,j,iPatch)
+            uc (i,j,iPatch) = q(2,i,j,iPatch) / q(1,i,j,iPatch)
+            vc (i,j,iPatch) = q(3,i,j,iPatch) / q(1,i,j,iPatch)
+            call contravProjPlane2Sphere(us(i,j,iPatch), vs(i,j,iPatch), uc(i,j,iPatch), vc(i,j,iPatch), matrixA(:,:,cc,i,j,iPatch))
+          enddo
+        enddo
+      enddo
+
+      do iPatch = ifs,ife
+        do j = jms,jme
+          write(123,'(38f35.5)')(phi(i,j,iPatch),i=ims,ime)
+        enddo
+      enddo
+
+      do iPatch = ifs,ife
+        do j = jms,jme
+          write(123,'(38f35.5)')(us(i,j,iPatch),i=ims,ime)
+        enddo
+      enddo
+
+      do iPatch = ifs,ife
+        do j = jms,jme
+          write(123,'(38f35.5)')(vs(i,j,iPatch),i=ims,ime)
+        enddo
+      enddo
+      
+      close(123)
+    
+    end subroutine check_halo
     
 end module spatial_operators_mod
 

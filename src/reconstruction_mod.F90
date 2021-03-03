@@ -110,7 +110,7 @@
           ie = it * nTriQuadOrder
           triangle_quadrature = triangle_quadrature + dot_product( triQuad_wts,q(is:ie) )
         enddo
-        
+        triangle_quadrature = triangle_quadrature / nEdgesOnCell
       end function triangle_quadrature
     
       function WLS_ENO(A,u,h,m,n,ic,x0)
