@@ -33,6 +33,14 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixB
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixT
   
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixL
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixR
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixB
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixT
+  
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: Apoly
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: invApoly
+  
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: A
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: invA
   
@@ -116,6 +124,14 @@ module spatial_operators_mod
       allocate(recMatrixR(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(recMatrixB(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(recMatrixT(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      
+      allocate(polyMatrixL(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      allocate(polyMatrixR(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      allocate(polyMatrixB(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      allocate(polyMatrixT(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      
+      allocate(Apoly   (maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
+      allocate(invApoly(maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
       allocate(A   (maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
       allocate(invA(maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
@@ -248,6 +264,46 @@ module spatial_operators_mod
             call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRecTerms(i,j,iPatch),xR*recdx,yR*recdy,recMatrixR(:,1:nRecTerms(i,j,iPatch),i,j,iPatch))
             call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRecTerms(i,j,iPatch),xB*recdx,yB*recdy,recMatrixB(:,1:nRecTerms(i,j,iPatch),i,j,iPatch))
             call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRecTerms(i,j,iPatch),xT*recdx,yT*recdy,recMatrixT(:,1:nRecTerms(i,j,iPatch),i,j,iPatch))
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+      
+      !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat) COLLAPSE(3)
+      do iPatch = ifs,ife
+        do j = jds,jde
+          do i = ids,ide
+            nRC = nRecCells(i,j,iPatch)
+            nxp = maxval(iRecCell(1:nRC,i,j,iPatch)) - minval(iRecCell(1:nRC,i,j,iPatch)) + 1
+            nyp = maxval(jRecCell(1:nRC,i,j,iPatch)) - minval(jRecCell(1:nRC,i,j,iPatch)) + 1
+            
+            iCOS = 0
+            do jR = 1,nyp
+              do iR = 1,nxp
+                iCOS = iCOS + 1
+                call calc_rectangle_poly_integration(nxp,nyp,xRel(1,iCOS,i,j,iPatch),xRel(2,iCOS,i,j,iPatch),&
+                                                             yRel(1,iCOS,i,j,iPatch),yRel(4,iCOS,i,j,iPatch),Apoly(iCOS,1:nRC,i,j,iPatch))
+              enddo
+            enddo
+            
+            call BRINV(nRC,Apoly(1:nRC,1:nRC,i,j,iPatch),invApoly(1:nRC,1:nRC,i,j,iPatch),invstat)
+            if(invstat==0)then
+              print*,'Inverse Apoly dost not exist'
+              print*,'i,j,iPatch,nRC,nxp,nyp are'
+              print*,i,j,iPatch,nRC,nxp,nyp
+              stop 'Check BRINV for Special treamtment on boundary cells'
+            endif
+            
+            ! Calculate reconstruction matrix on edge
+            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL*recdx,yL*recdy,polyMatrixL(:,1:nRC,i,j,iPatch))
+            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR*recdx,yR*recdy,polyMatrixR(:,1:nRC,i,j,iPatch))
+            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB*recdx,yB*recdy,polyMatrixB(:,1:nRC,i,j,iPatch))
+            call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT*recdx,yT*recdy,polyMatrixT(:,1:nRC,i,j,iPatch))
+            
+            polyMatrixL(:,1:nRC,i,j,iPatch) = matmul( polyMatrixL(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
+            polyMatrixR(:,1:nRC,i,j,iPatch) = matmul( polyMatrixR(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
+            polyMatrixB(:,1:nRC,i,j,iPatch) = matmul( polyMatrixB(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
+            polyMatrixT(:,1:nRC,i,j,iPatch) = matmul( polyMatrixT(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
           enddo
         enddo
       enddo
