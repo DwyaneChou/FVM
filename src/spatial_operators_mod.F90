@@ -33,6 +33,9 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixB
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixT
   
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixDx
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixDy
+  
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixL
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixR
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixB
@@ -76,6 +79,7 @@ module spatial_operators_mod
     subroutine init_spatial_operator
       integer(i_kind) :: i,j,iPatch
       integer(i_kind) :: iCOS ! indices of Cells On Stencils
+      integer(i_kind) :: iPOC ! indices of points on cell
       integer(i_kind) :: iRec,jRec
       integer(i_kind) :: iQP,jQP
       integer(i_kind) :: iR,jR
@@ -124,6 +128,9 @@ module spatial_operators_mod
       allocate(recMatrixR(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(recMatrixB(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(recMatrixT(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+
+      allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      allocate(recMatrixDy(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       
       allocate(polyMatrixL(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(polyMatrixR(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -167,8 +174,8 @@ module spatial_operators_mod
       allocate(yB(nPointsOnEdge))
       allocate(yT(nPointsOnEdge))
       
-      allocate(xg(maxGhostPointsOnCell))
-      allocate(yg(maxGhostPointsOnCell))
+      allocate(xg(nPointsOnCell))
+      allocate(yg(nPointsOnCell))
       
       dV = dx * dy
     
@@ -242,7 +249,7 @@ module spatial_operators_mod
       recdy   = 1. / ( dy * recCoef )
       recdV   = 1. / ( recCoef**2 )
       
-      !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec) COLLAPSE(3)
+      !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -260,15 +267,36 @@ module spatial_operators_mod
             enddo
             
             ! Calculate reconstruction matrix on edge
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRecTerms(i,j,iPatch),xL*recdx,yL*recdy,recMatrixL(:,1:nRecTerms(i,j,iPatch),i,j,iPatch))
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRecTerms(i,j,iPatch),xR*recdx,yR*recdy,recMatrixR(:,1:nRecTerms(i,j,iPatch),i,j,iPatch))
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRecTerms(i,j,iPatch),xB*recdx,yB*recdy,recMatrixB(:,1:nRecTerms(i,j,iPatch),i,j,iPatch))
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRecTerms(i,j,iPatch),xT*recdx,yT*recdy,recMatrixT(:,1:nRecTerms(i,j,iPatch),i,j,iPatch))
+            nRC = nRecTerms(i,j,iPatch)
+            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRC,xL*recdx,yL*recdy,recMatrixL(:,1:nRC,i,j,iPatch))
+            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRC,xR*recdx,yR*recdy,recMatrixR(:,1:nRC,i,j,iPatch))
+            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRC,xB*recdx,yB*recdy,recMatrixB(:,1:nRC,i,j,iPatch))
+            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRC,xT*recdx,yT*recdy,recMatrixT(:,1:nRC,i,j,iPatch))
           enddo
         enddo
       enddo
       !$OMP END PARALLEL DO
       
+      !$OMP PARALLEL DO PRIVATE(j,i,iPOC,xg,yg,nRC) COLLAPSE(4)
+      do iPatch = ifs,ife
+        do j = jds,jde
+          do i = ids,ide
+            do iPOC = 1,nQuadPointsOncell
+              !xg(iPOC) = ( x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch) ) * recdx
+              !yg(iPOC) = ( y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch) ) * recdy
+              xg(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
+              yg(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
+              nRC = nRecTerms(i,j,iPatch)
+              call calc_polynomial_deriv_matrix(locPolyDegree(i,j,iPatch),nQuadPointsOnCell,nRC,&
+                                                xg(1:nQuadPointsOnCell),yg(1:nQuadPointsOnCell),&
+                                                recMatrixDx(:,1:nRC,i,j,iPatch)                ,&
+                                                recMatrixDy(:,1:nRC,i,j,iPatch))
+            enddo
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+            
       !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
