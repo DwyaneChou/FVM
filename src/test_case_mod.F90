@@ -32,10 +32,10 @@ module test_case_mod
       call case6(stat(0))
     endif
     
-    ! Check fields
+    ! Check fields and calculate zs on cell
     do iPatch = ifs,ife
-      do j = jds,jde
-        do i = ids,ide
+      do j = jms,jme
+        do i = ims,ime
           phi(i,j,iPatch) = stat(0)%q(1,i,j,iPatch) / sqrtGC(i,j,iPatch)
           u  (i,j,iPatch) = stat(0)%q(2,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
           v  (i,j,iPatch) = stat(0)%q(3,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)

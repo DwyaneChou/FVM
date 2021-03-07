@@ -49,7 +49,11 @@ module spatial_operators_mod
   
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrix
   
-  real   (r_kind) :: dV
+  !real(r_kind) :: recCoef
+  !real(r_kind) :: recdx
+  !real(r_kind) :: recdy
+  !real(r_kind) :: recdV
+  real(r_kind) :: dV
   
   real   (r_kind), dimension(:,:,:,:  ), allocatable :: qC
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: qL
@@ -75,6 +79,12 @@ module spatial_operators_mod
   
   real(r_kind), dimension(:,:,:,:), allocatable :: src   ! source term
   
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! sqrtG * zs * gravity
+  real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! sqrtG * zs * gravity on Cell
+  
+  real(r_kind), dimension(:,:,:,:), allocatable :: dphitdx    ! d phi_t / dx
+  real(r_kind), dimension(:,:,:,:), allocatable :: dphitdy    ! d phi_t / dy
+  
     contains
     subroutine init_spatial_operator
       integer(i_kind) :: i,j,iPatch
@@ -87,11 +97,6 @@ module spatial_operators_mod
       integer(i_kind) :: nxp,nyp
       integer(i_kind) :: invstat
       integer(i_kind) :: nRC
-    
-      real(r_kind) :: recCoef
-      real(r_kind) :: recdx
-      real(r_kind) :: recdy
-      real(r_kind) :: recdV
       
       integer :: pg
   
@@ -163,6 +168,12 @@ module spatial_operators_mod
       allocate(GeP(nVar,nPointsOnEdge,ids:ide  ,jds:jde+1,ifs:ife))
       
       allocate(src(nVar,ids:ide,jds:jde,ifs:ife))
+      
+      allocate(ghs (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+      allocate(ghsC(              ims:ime,jms:jme,ifs:ife))
+      
+      allocate(dphitdx(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
+      allocate(dphitdy(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
       
       allocate(xL(nPointsOnEdge))
       allocate(xR(nPointsOnEdge))
@@ -386,21 +397,88 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
+      ghs = sqrtG * zs * gravity
+      
+      do iPatch = ifs,ife
+        do j = jms,jme
+          do i = ims,ime
+            ghsC(i,j,iPatch) = Gaussian_quadrature_2d(ghs(cqs:cqe,i,j,iPatch))
+          enddo
+        enddo
+      enddo
+      
     end subroutine init_spatial_operator
     
     subroutine spatial_operator(stat,tend)
       type(stat_field), target, intent(inout) :: stat
       type(tend_field), target, intent(inout) :: tend
       
-      integer(i_kind) :: iVar,i,j,iPatch,iPOC
+      integer(i_kind) :: iVar,i,j,iPatch,iPOC,iEOC
+      
+      real(r_kind) :: avg
       
       call fill_halo(stat%q)
       
+      qC = stat%q
       
+      call reconstruction(qC(1,:,:,:  ),&
+                          qL(1,:,:,:,:),&
+                          qR(1,:,:,:,:),&
+                          qB(1,:,:,:,:),&
+                          qT(1,:,:,:,:),&
+                          dphitdx      ,&
+                          dphitdy)
+      
+      !print*,maxval(qC(1,:,:,:  )),minval(qC(1,:,:,:  ))
+      !print*,maxval(qL(1,:,:,:,:)),minval(qL(1,:,:,:,:))
+      !print*,maxval(qR(1,:,:,:,:)),minval(qR(1,:,:,:,:))
+      !print*,maxval(qB(1,:,:,:,:)),minval(qB(1,:,:,:,:))
+      !print*,maxval(qT(1,:,:,:,:)),minval(qT(1,:,:,:,:))
+      
+      do iPatch = ifs,ife
+        do j = jds,jde
+          do i = ids,ide
+            do iPOC = 1,nPointsOnEdge
+              qB(1,iPOC,i,j,iPatch) = qB(1,iPOC,i,j,iPatch) - ghs(cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
+              qR(1,iPOC,i,j,iPatch) = qR(1,iPOC,i,j,iPatch) - ghs(cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
+              qT(1,iPOC,i,j,iPatch) = qT(1,iPOC,i,j,iPatch) - ghs(cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
+              qL(1,iPOC,i,j,iPatch) = qL(1,iPOC,i,j,iPatch) - ghs(cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            enddo
+          enddo
+        enddo
+      enddo
+      
+      do iVar = 2,nVar
+        call reconstruction(qC(iVar,:,:,:  ),&
+                            qL(iVar,:,:,:,:),&
+                            qR(iVar,:,:,:,:),&
+                            qB(iVar,:,:,:,:),&
+                            qT(iVar,:,:,:,:))
+      
+        !print*,maxval(qC(iVar,:,:,:  )),minval(qC(iVar,:,:,:  ))
+        !print*,maxval(qL(iVar,:,:,:,:)),minval(qL(iVar,:,:,:,:))
+        !print*,maxval(qR(iVar,:,:,:,:)),minval(qR(iVar,:,:,:,:))
+        !print*,maxval(qB(iVar,:,:,:,:)),minval(qB(iVar,:,:,:,:))
+        !print*,maxval(qT(iVar,:,:,:,:)),minval(qT(iVar,:,:,:,:))
+        !print*,''
+      enddo
+      
+      !do iPatch = ifs,ife
+      !  do j = jds,jde
+      !    do i = ids,ide
+      !      print*,qC(3,  i,j,iPatch)
+      !      print*,Gaussian_quadrature_1d(qL(3,:,i,j,iPatch))
+      !      print*,Gaussian_quadrature_1d(qR(3,:,i,j,iPatch))
+      !      print*,Gaussian_quadrature_1d(qB(3,:,i,j,iPatch))
+      !      print*,Gaussian_quadrature_1d(qT(3,:,i,j,iPatch))
+      !      print*,''
+      !    enddo
+      !  enddo
+      !enddo
       
       !call check_halo(stat%q)
       
-      !stop 'spatial_operator'
+      stop 'spatial_operator'
       
     end subroutine spatial_operator
     
@@ -486,7 +564,7 @@ module spatial_operators_mod
       real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: dqQy ! y derivative on quadrature points
       
       real(r_kind), dimension(maxRecCells            ) :: u
-      real(r_kind), dimension(maxRecCells,maxRecTerms) :: A
+      real(r_kind), dimension(maxRecCells,maxRecTerms) :: coordMtx
       real(r_kind), dimension(            maxRecTerms) :: polyCoef
       
       integer(i_kind) :: iVar,i,j,iPatch,iCOS
@@ -494,6 +572,7 @@ module spatial_operators_mod
       integer(i_kind) :: ic
       integer(i_kind) :: m,n
       
+      !$OMP PARALLEL DO PRIVATE(j,i,m,n,iCOS,iRec,jRec,u,coordMtx,ic,polyCoef) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -503,12 +582,13 @@ module spatial_operators_mod
               iRec = iRecCell(iCOS,i,j,iPatch)
               jRec = jRecCell(iCOS,i,j,iPatch)
               
-              u(iCOS    ) = q(iRec,jRec,iPatch)
-              A(iCOS,1:n) = polyCoordCoef(iCOS,1:n,i,j,iPatch)
+              u       (iCOS    ) = q(iRec,jRec,iPatch)
+              coordMtx(iCOS,1:n) = polyCoordCoef(iCOS,1:n,i,j,iPatch)
+              !print*,coordMtx(iCOS,1:n)
             enddo
             ic = iCenCell(i,j,iPatch)
             
-            polyCoef(1:n) = WLS_ENO(A(1:m,1:n),u(1:m),dx,m,n,ic)
+            polyCoef(1:n) = WLS_ENO(coordMtx(1:m,1:n),u(1:m),dx,m,n,ic)
             
             qL(:,i,j,iPatch) = matmul(recMatrixL(:,1:n,i,j,iPatch),polyCoef(1:n))
             qR(:,i,j,iPatch) = matmul(recMatrixR(:,1:n,i,j,iPatch),polyCoef(1:n))
@@ -520,6 +600,7 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
+      !$OMP END PARALLEL DO
       
     end subroutine reconstruction
     

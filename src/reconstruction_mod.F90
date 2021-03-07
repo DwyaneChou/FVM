@@ -25,7 +25,7 @@
       
       real   (r_kind) :: recCoef
       real   (r_kind) :: recdx
-      real   (r_kind) :: recdeta
+      real   (r_kind) :: recdy
       real   (r_kind) :: recdV
       
     contains
@@ -143,14 +143,20 @@
         real(r_kind), dimension(m  ) :: W ! weights on each cells
         real(r_kind), dimension(m  ) :: beta
         
+        real(r_kind), dimension(m  ) :: u_bar
+        real(r_kind)                 :: u_avg
+        
         !  For LAPACK only
         real   (r_kind), dimension(m+n) :: work
         integer(i_kind) :: INFO
         
         integer(i_kind) :: i,j,k
         
+        u_avg = sum( u ) / m
+        u_bar = u / u_avg
+        
         do j = 1,m
-          beta(j) = ( u(j) - u(ic) )**2 + epsilon * h*h
+          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h*h
         enddo
         beta(ic) = minval(beta,abs(beta)>1.e-15)
         
