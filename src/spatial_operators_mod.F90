@@ -392,7 +392,7 @@ module spatial_operators_mod
       type(stat_field), target, intent(inout) :: stat
       type(tend_field), target, intent(inout) :: tend
       
-      integer(i_kind) :: iVar,i,j,iPatch
+      integer(i_kind) :: iVar,i,j,iPatch,iPOC
       
       call fill_halo(stat%q)
       
@@ -476,47 +476,196 @@ module spatial_operators_mod
       
     end subroutine fill_halo
     
-    function calc_F(q,sqrtG,matrixG)
+    subroutine reconstruction(q,qL,qR,qB,qT,dqQx,dqQy)
+      real(r_kind), dimension(                  ims:ime,jms:jme,ifs:ife), intent(in )          :: q
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qL
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qR
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qB
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qT
+      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: dqQx ! x derivative on quadrature points
+      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: dqQy ! y derivative on quadrature points
+      
+      real(r_kind), dimension(maxRecCells            ) :: u
+      real(r_kind), dimension(maxRecCells,maxRecTerms) :: A
+      real(r_kind), dimension(            maxRecTerms) :: polyCoef
+      
+      integer(i_kind) :: iVar,i,j,iPatch,iCOS
+      integer(i_kind) :: iRec,jRec
+      integer(i_kind) :: ic
+      integer(i_kind) :: m,n
+      
+      do iPatch = ifs,ife
+        do j = jds,jde
+          do i = ids,ide
+            m = nRecCells(i,j,iPatch)
+            n = nRecTerms(i,j,iPatch)
+            do iCOS = 1,m
+              iRec = iRecCell(iCOS,i,j,iPatch)
+              jRec = jRecCell(iCOS,i,j,iPatch)
+              
+              u(iCOS    ) = q(iRec,jRec,iPatch)
+              A(iCOS,1:n) = polyCoordCoef(iCOS,1:n,i,j,iPatch)
+            enddo
+            ic = iCenCell(i,j,iPatch)
+            
+            polyCoef(1:n) = WLS_ENO(A(1:m,1:n),u(1:m),dx,m,n,ic)
+            
+            qL(:,i,j,iPatch) = matmul(recMatrixL(:,1:n,i,j,iPatch),polyCoef(1:n))
+            qR(:,i,j,iPatch) = matmul(recMatrixR(:,1:n,i,j,iPatch),polyCoef(1:n))
+            qB(:,i,j,iPatch) = matmul(recMatrixB(:,1:n,i,j,iPatch),polyCoef(1:n))
+            qT(:,i,j,iPatch) = matmul(recMatrixT(:,1:n,i,j,iPatch),polyCoef(1:n))
+            
+            if(present(dqQx)) dqQx(:,i,j,iPatch) = matmul(recMatrixDx(:,1:n,i,j,iPatch),polyCoef(1:n))
+            if(present(dqQy)) dqQy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:n,i,j,iPatch),polyCoef(1:n))
+          enddo
+        enddo
+      enddo
+      
+    end subroutine reconstruction
+    
+    function calc_F(sqrtG,matrixIG,q)
       real(r_kind), dimension(nVar) :: calc_F
-      real(r_kind), dimension(nVar), intent(in) :: q
       real(r_kind)                 , intent(in) :: sqrtG
-      real(r_kind), dimension(2,2) , intent(in) :: matrixG
+      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
+      real(r_kind), dimension(nVar), intent(in) :: q
       
       real(r_kind) :: phi,u,v
-      real(r_kind) :: G11,G21
+      real(r_kind) :: IG11,IG21
       
-      G11 = matrixG(1,1)
-      G21 = matrixG(2,1)
+      IG11 = matrixIG(1,1)
+      IG21 = matrixIG(2,1)
       
       phi = q(1) / sqrtG
       u   = q(2) / q(1)
       v   = q(3) / q(1)
       
       calc_F(1) = q(2)
-      calc_F(2) = q(2) * u + 0.5 * G11 * sqrtG * phi**2
-      calc_F(3) = q(2) * v + 0.5 * G21 * sqrtG * phi**2
+      calc_F(2) = q(2) * u + 0.5 * IG11 * sqrtG * phi**2
+      calc_F(3) = q(2) * v + 0.5 * IG21 * sqrtG * phi**2
     end function calc_F
     
-    function calc_G(q,sqrtG,matrixG)
+    function calc_G(sqrtG,matrixIG,q)
       real(r_kind), dimension(nVar) :: calc_G
-      real(r_kind), dimension(nVar), intent(in) :: q
       real(r_kind)                 , intent(in) :: sqrtG
-      real(r_kind), dimension(2,2) , intent(in) :: matrixG
+      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
+      real(r_kind), dimension(nVar), intent(in) :: q
       
       real(r_kind) :: phi,u,v
-      real(r_kind) :: G12,G22
+      real(r_kind) :: IG12,IG22
       
-      G12 = matrixG(1,2)
-      G22 = matrixG(2,2)
+      IG12 = matrixIG(1,2)
+      IG22 = matrixIG(2,2)
       
       phi = q(1) / sqrtG
       u   = q(2) / q(1)
       v   = q(3) / q(1)
       
       calc_G(1) = q(3)
-      calc_G(2) = q(3) * u + 0.5 * G12 * sqrtG * phi**2
-      calc_G(3) = q(3) * v + 0.5 * G22 * sqrtG * phi**2
+      calc_G(2) = q(3) * u + 0.5 * IG12 * sqrtG * phi**2
+      calc_G(3) = q(3) * v + 0.5 * IG22 * sqrtG * phi**2
     end function calc_G
+    
+    function calc_eigenvalue_x(sqrtG,matrixIG,q)
+      real(r_kind) :: calc_eigenvalue_x
+      real(r_kind), dimension(nVar), intent(in) :: q
+      real(r_kind)                 , intent(in) :: sqrtG
+      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
+      
+      real(r_kind) :: IG11
+      
+      real(r_kind) :: phi
+      real(r_kind) :: u
+      
+      phi = q(1) / sqrtG
+      u   = q(2) / q(1)
+      
+      IG11 = matrixIG(1,1)
+      
+      calc_eigenvalue_x = max( abs( u + sqrt(IG11*phi) ), abs( u - sqrt(IG11*phi) ) )
+      
+    end function calc_eigenvalue_x
+    
+    function calc_eigenvalue_y(sqrtG,matrixIG,q)
+      real(r_kind) :: calc_eigenvalue_y
+      real(r_kind), dimension(nVar), intent(in) :: q
+      real(r_kind)                 , intent(in) :: sqrtG
+      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
+      
+      real(r_kind) :: IG22
+      
+      real(r_kind) :: phi
+      real(r_kind) :: v
+      
+      phi = q(1) / sqrtG
+      v   = q(3) / q(1)
+      
+      IG22 = matrixIG(2,2)
+      
+      calc_eigenvalue_y = max( abs( v + sqrt(IG22*phi) ), abs( v - sqrt(IG22*phi) ) )
+      
+    end function calc_eigenvalue_y
+    
+    function calc_src(sqrtG,matrixG,matrixIG,q,dphitdx,dphitdy,x,y,Coriolis,delta)
+      real(r_kind), dimension(nVar) :: calc_src
+      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: sqrtG
+      real(r_kind), dimension(2, 2,nQuadPointsOnCell), intent(in) :: matrixG
+      real(r_kind), dimension(2, 2,nQuadPointsOnCell), intent(in) :: matrixIG
+      real(r_kind), dimension(nVar,nQuadPointsOnCell), intent(in) :: q
+      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: dphitdx
+      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: dphitdy
+      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: x
+      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: y
+      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: Coriolis
+      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: delta
+      
+      real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_M
+      real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_C
+      real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_B
+      
+      real(r_kind), dimension(nQuadPointsOnCell) :: phi
+      real(r_kind), dimension(nQuadPointsOnCell) :: u
+      real(r_kind), dimension(nQuadPointsOnCell) :: v
+      real(r_kind), dimension(nQuadPointsOnCell) :: phiu
+      real(r_kind), dimension(nQuadPointsOnCell) :: phiv
+      real(r_kind), dimension(nQuadPointsOnCell) :: G11
+      real(r_kind), dimension(nQuadPointsOnCell) :: G12
+      real(r_kind), dimension(nQuadPointsOnCell) :: G21
+      real(r_kind), dimension(nQuadPointsOnCell) :: G22
+      real(r_kind), dimension(nQuadPointsOnCell) :: IG11
+      real(r_kind), dimension(nQuadPointsOnCell) :: IG12
+      real(r_kind), dimension(nQuadPointsOnCell) :: IG21
+      real(r_kind), dimension(nQuadPointsOnCell) :: IG22
+      
+      phi  = q(1,:) / sqrtG
+      u    = q(2,:) / q(1,:)
+      v    = q(3,:) / q(1,:)
+      phiu = phi * u
+      phiv = phi * v
+      
+      G11   = matrixG(1,1,nQuadPointsOnCell)
+      G12   = matrixG(1,2,nQuadPointsOnCell)
+      G21   = matrixG(2,1,nQuadPointsOnCell)
+      G22   = matrixG(2,2,nQuadPointsOnCell)
+      
+      IG11  = matrixIG(1,1,nQuadPointsOnCell)
+      IG12  = matrixIG(1,2,nQuadPointsOnCell)
+      IG21  = matrixIG(2,1,nQuadPointsOnCell)
+      IG22  = matrixIG(2,2,nQuadPointsOnCell)
+      
+      psi_M(1,:) = 0
+      psi_M(2,:) = psi_M(2,:) * 2. * sqrtG * (-x * y**2 * phiu * u + y * ( 1. + y**2 ) * phiu * v )
+      psi_M(3,:) = psi_M(3,:) * 2. * sqrtG * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
+      
+      psi_C(1,:) = 0
+      psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
+      psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
+      
+      psi_B(1,:) = 0
+      psi_B(2,:) = - sqrtG * phi * ( IG11 * dphitdx + IG12 * dphitdy )
+      psi_B(3,:) = - sqrtG * phi * ( IG21 * dphitdx + IG22 * dphitdy )
+      
+      calc_src = Gaussian_quadrature_2d(psi_M + psi_C + psi_B)
+    end function calc_src
     
     subroutine check_halo(q)
       real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(in) :: q

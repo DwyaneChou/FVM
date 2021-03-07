@@ -18,6 +18,7 @@ MODULE mesh_mod
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIA ! horizontal metric Tensor, which transform
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: Coriolis ! Coriolis parameter
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: delta    ! sqrt( 1 + x**2 + y**2 )
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: sinlon  ! sin(longitude)
   real(r_kind), dimension(:,:,:,:    ), allocatable :: coslon  ! cos(longitude)
@@ -78,6 +79,7 @@ MODULE mesh_mod
     allocate( matrixIA (2, 2, nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( Coriolis (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( delta    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( sinlon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( coslon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
@@ -358,6 +360,16 @@ MODULE mesh_mod
             call calc_Jacobian(sqrtG   (      iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
             
             Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
+          enddo
+        enddo
+      enddo
+    enddo
+    
+    do iPatch = ifs,ife
+      do j = jds,jde
+        do i = ids,ide
+          do iPOC = 1,nPointsOnCell
+            delta(iPOC,i,j,iPatch) = sqrt( 1. + x(iPOC,i,j,iPatch)**2 + y(iPOC,i,j,iPatch)**2 )
           enddo
         enddo
       enddo
