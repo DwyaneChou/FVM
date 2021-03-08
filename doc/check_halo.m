@@ -1,7 +1,7 @@
 clc
 clear
 
-data = importdata('check_halo.txt');
+data = importdata('..\run\check_halo.txt');
 
 nx = size(data,2);
 ny = nx;
@@ -21,6 +21,6 @@ for iVar = 1:nVar
 end
 
 iVar = 3;
-iPatch = 4;
+iPatch = 1;
 plt = pcolor(squeeze(var(iVar,:,:,iPatch)));
 set(plt,'edgeColor','none')

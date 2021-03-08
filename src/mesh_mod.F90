@@ -17,6 +17,26 @@ MODULE mesh_mod
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixA  ! horizontal metric Tensor, which transform 
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIA ! horizontal metric Tensor, which transform
   
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGL   ! jacobian of Transformation, sqrt(G) on cell left edge
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGR   ! jacobian of Transformation, sqrt(G) on cell right edge
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGB   ! jacobian of Transformation, sqrt(G) on cell bottom edge
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGT   ! jacobian of Transformation, sqrt(G) on cell top edge
+  
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIGL   ! matrixIG on cell left edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIGR   ! matrixIG on cell right edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIGB   ! matrixIG on cell bottom edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIGT   ! matrixIG on cell top edge
+  
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAL   ! matrixA on cell left edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAR   ! matrixA on cell right edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAB   ! matrixA on cell bottom edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAT   ! matrixA on cell top edge
+  
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAL   ! matrixIA on cell left edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAR   ! matrixIA on cell right edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAB   ! matrixIA on cell bottom edge
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAT   ! matrixIA on cell top edge
+  
   real(r_kind), dimension(:,:,:,:    ), allocatable :: Coriolis ! Coriolis parameter
   real(r_kind), dimension(:,:,:,:    ), allocatable :: delta    ! sqrt( 1 + x**2 + y**2 )
   
@@ -78,6 +98,26 @@ MODULE mesh_mod
     allocate( matrixA  (2, 2, nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( matrixIA (2, 2, nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
+    allocate( sqrtGL   (      nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( sqrtGR   (      nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( sqrtGB   (      nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( sqrtGT   (      nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    
+    allocate( matrixIGL(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIGR(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIGB(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIGT(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    
+    allocate( matrixAL (2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixAR (2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixAB (2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixAT (2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    
+    allocate( matrixIAL(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIAR(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIAB(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIAT(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+  
     allocate( Coriolis (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( delta    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
@@ -361,6 +401,29 @@ MODULE mesh_mod
             
             Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
           enddo
+          
+          do iPOC = 1,nPointsOnEdge
+            sqrtGB(iPOC,i,j,iPatch) = sqrtG(cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch) 
+            sqrtGR(iPOC,i,j,iPatch) = sqrtG(cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch) 
+            sqrtGT(iPOC,i,j,iPatch) = sqrtG(cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch) 
+            sqrtGL(iPOC,i,j,iPatch) = sqrtG(cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch) 
+            
+            matrixIGB(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIGR(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIGT(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIGL(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            
+            matrixAB(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixAR(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixAT(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixAL(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            
+            matrixIAB(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIAR(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIAT(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIAL(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
+          enddo
+          
         enddo
       enddo
     enddo
