@@ -85,6 +85,9 @@ module spatial_operators_mod
   real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! sqrtG * zs * gravity
   real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! sqrtG * zs * gravity on Cell
   
+  real(r_kind), dimension(:,:,:,:), allocatable :: phit    ! phi + phis
+  real(r_kind), dimension(:,:,:  ), allocatable :: phitC   ! phi + phis on cell
+  
   real(r_kind), dimension(:,:,:,:), allocatable :: dphitdx    ! d phi_t / dx
   real(r_kind), dimension(:,:,:,:), allocatable :: dphitdy    ! d phi_t / dy
   
@@ -177,6 +180,9 @@ module spatial_operators_mod
       
       allocate(ghs (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
       allocate(ghsC(              ims:ime,jms:jme,ifs:ife))
+      
+      allocate(phit (nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
+      allocate(phitC(                  ims:ime,jms:jme,ifs:ife))
       
       allocate(dphitdx(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
       allocate(dphitdy(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
@@ -406,7 +412,7 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      ghs = sqrtG * zs * gravity
+      ghs = zs * gravity
       
       do iPatch = ifs,ife
         do j = jms,jme
@@ -432,37 +438,7 @@ module spatial_operators_mod
       
       qC = stat%q
       
-      call reconstruction(qC(1,:,:,:  ),&
-                          qL(1,:,:,:,:),&
-                          qR(1,:,:,:,:),&
-                          qB(1,:,:,:,:),&
-                          qT(1,:,:,:,:),&
-                          qQ(1,:,:,:,:),&
-                          dphitdx      ,&
-                          dphitdy)
-      
-      !print*,maxval(qC(1,:,:,:  )),minval(qC(1,:,:,:  ))
-      !print*,maxval(qL(1,:,:,:,:)),minval(qL(1,:,:,:,:))
-      !print*,maxval(qR(1,:,:,:,:)),minval(qR(1,:,:,:,:))
-      !print*,maxval(qB(1,:,:,:,:)),minval(qB(1,:,:,:,:))
-      !print*,maxval(qT(1,:,:,:,:)),minval(qT(1,:,:,:,:))
-      !print*,maxval(qQ(1,:,:,:,:)),minval(qQ(1,:,:,:,:))
-      
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,ide
-            do iPOC = 1,nPointsOnEdge
-              qB(1,iPOC,i,j,iPatch) = qB(1,iPOC,i,j,iPatch) - ghs(cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
-              qR(1,iPOC,i,j,iPatch) = qR(1,iPOC,i,j,iPatch) - ghs(cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
-              qT(1,iPOC,i,j,iPatch) = qT(1,iPOC,i,j,iPatch) - ghs(cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
-              qL(1,iPOC,i,j,iPatch) = qL(1,iPOC,i,j,iPatch) - ghs(cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            enddo
-            qQ(1,:,i,j,iPatch) = qQ(1,:,i,j,iPatch) - ghs(cqs:cqe,i,j,iPatch)
-          enddo
-        enddo
-      enddo
-      
-      do iVar = 2,nVar
+      do iVar = 1,nVar
         call reconstruction(qC(iVar,:,:,:  ),&
                             qL(iVar,:,:,:,:),&
                             qR(iVar,:,:,:,:),&
@@ -479,6 +455,19 @@ module spatial_operators_mod
         !print*,''
       enddo
       
+      phit = qQ(1,:,:,:,:) / sqrtG(cqs:cqe,:,:,:) + ghs(cqs:cqe,:,:,:)
+      do iPatch = ifs,ife
+        do j = jms,jme
+          do i = ims,ime
+            phitC(i,j,iPatch) = Gaussian_quadrature_2d(phit(:,i,j,iPatch))
+          enddo
+        enddo
+      enddo
+      
+      call reconstruction(phitC       ,&
+                          dqdx=dphitdx,&
+                          dqdy=dphitdy)
+            
       !do iPatch = ifs,ife
       !  do j = jds,jde
       !    do i = ids,ide
@@ -492,9 +481,9 @@ module spatial_operators_mod
       !  enddo
       !enddo
       
-      ! Fill halo for F G and q
-      call fill_bdy_flux(qL,qR,qB,qT)
-      ! Fill halo for F G and q
+      ! Fill halo for F G and q       !!!!!!!!!!!!!!!!!!!!!!!! unfinished !!!!!!!!!!!!!!!!!!!!!!!!!!!
+      call fill_bdy_flux(qL,qR,qB,qT) !!!!!!!!!!!!!!!!!!!!!!!! unfinished !!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! Fill halo for F G and q       !!!!!!!!!!!!!!!!!!!!!!!! unfinished !!!!!!!!!!!!!!!!!!!!!!!!!!!
       
       do iPatch = ifs,ife
         do j = jds,jde
@@ -563,19 +552,21 @@ module spatial_operators_mod
         do j = jds,jde
           do i = ids,ide
             do iVar = 1,nVar
-              tend%q(iVar,i,j,iPatch) = -( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch) * dV / areaCell(i,j,iPatch)
+              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
+              
               print*,iVar,i,j,iPatch
-              !print*,Fe(iVar,i+1,j,iPatch),Fe(iVar,i,j,iPatch)
+              print*,stat%q(iVar,i,j,iPatch),tend%q(iVar,i,j,iPatch), tend%q(iVar,i,j,iPatch) / stat%q(iVar,i,j,iPatch)
               print*,-( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
               print*,-( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
-              print*,src(iVar,i,j,iPatch) * dV / areaCell(i,j,iPatch)
+              print*,src(iVar,i,j,iPatch)
               print*,''
+              
             enddo
           enddo
         enddo
       enddo
       
-      call check_halo(tend%q)
+      call check_tend(tend%q)
       
       stop 'spatial_operator'
       
@@ -653,15 +644,15 @@ module spatial_operators_mod
       
     end subroutine fill_halo
     
-    subroutine reconstruction(q,qL,qR,qB,qT,qQ,dqQx,dqQy)
+    subroutine reconstruction(q,qL,qR,qB,qT,qQ,dqdx,dqdy)
       real(r_kind), dimension(                  ims:ime,jms:jme,ifs:ife), intent(in )          :: q
-      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qL
-      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qR
-      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qB
-      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out)          :: qT
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out),optional :: qL
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out),optional :: qR
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out),optional :: qB
+      real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(out),optional :: qT
       real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: qQ
-      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: dqQx ! x derivative on quadrature points
-      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: dqQy ! y derivative on quadrature points
+      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: dqdx ! x derivative on quadrature points
+      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(out),optional :: dqdy ! y derivative on quadrature points
       
       real(r_kind), dimension(maxRecCells            ) :: u
       real(r_kind), dimension(maxRecCells,maxRecTerms) :: coordMtx
@@ -690,14 +681,15 @@ module spatial_operators_mod
             
             polyCoef(1:n) = WLS_ENO(coordMtx(1:m,1:n),u(1:m),dx,m,n,ic)
             
-            qL(:,i,j,iPatch) = matmul(recMatrixL(:,1:n,i,j,iPatch),polyCoef(1:n))
-            qR(:,i,j,iPatch) = matmul(recMatrixR(:,1:n,i,j,iPatch),polyCoef(1:n))
-            qB(:,i,j,iPatch) = matmul(recMatrixB(:,1:n,i,j,iPatch),polyCoef(1:n))
-            qT(:,i,j,iPatch) = matmul(recMatrixT(:,1:n,i,j,iPatch),polyCoef(1:n))
-            
+            if(present(qL  )) qL  (:,i,j,iPatch) = matmul(recMatrixL (:,1:n,i,j,iPatch),polyCoef(1:n))
+            if(present(qR  )) qR  (:,i,j,iPatch) = matmul(recMatrixR (:,1:n,i,j,iPatch),polyCoef(1:n))
+            if(present(qB  )) qB  (:,i,j,iPatch) = matmul(recMatrixB (:,1:n,i,j,iPatch),polyCoef(1:n))
+            if(present(qT  )) qT  (:,i,j,iPatch) = matmul(recMatrixT (:,1:n,i,j,iPatch),polyCoef(1:n))
+                                                                     
             if(present(qQ  )) qQ  (:,i,j,iPatch) = matmul(recMatrixQ (:,1:n,i,j,iPatch),polyCoef(1:n))
-            if(present(dqQx)) dqQx(:,i,j,iPatch) = matmul(recMatrixDx(:,1:n,i,j,iPatch),polyCoef(1:n))
-            if(present(dqQy)) dqQy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:n,i,j,iPatch),polyCoef(1:n))
+            
+            if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,1:n,i,j,iPatch),polyCoef(1:n))
+            if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:n,i,j,iPatch),polyCoef(1:n))
           enddo
         enddo
       enddo
@@ -848,6 +840,12 @@ module spatial_operators_mod
       psi_B(2,:) = - sqrtG * phi * ( IG11 * dphitdx + IG12 * dphitdy )
       psi_B(3,:) = - sqrtG * phi * ( IG21 * dphitdx + IG22 * dphitdy )
       
+      !iVar = 2
+      !print*,Gaussian_quadrature_2d( psi_M(iVar,:) )
+      !print*,Gaussian_quadrature_2d( psi_C(iVar,:) )
+      !print*,Gaussian_quadrature_2d( psi_B(iVar,:) )
+      !print*,''
+      
       do iVar = 1,nVar
         calc_src(iVar) = Gaussian_quadrature_2d( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
       enddo
@@ -923,6 +921,25 @@ module spatial_operators_mod
       close(123)
     
     end subroutine check_halo
+    
+    subroutine check_tend(q)
+      real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(in) :: q
+      
+      integer(i_kind) :: iVar,i,j,iPatch
+      
+      open(123,file='check_tend.txt')
+      
+      do iVar = 1,nVar
+        do iPatch = ifs,ife
+          do j = jds,jde
+            write(123,'(30f35.5)')(q(iVar,i,j,iPatch),i=ids,ide)
+          enddo
+        enddo
+      enddo
+      
+      close(123)
+      
+    end subroutine check_tend
     
 end module spatial_operators_mod
 
