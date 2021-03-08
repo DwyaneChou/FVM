@@ -854,14 +854,16 @@ module spatial_operators_mod
     end function calc_src
     
     subroutine fill_bdy_flux(qL,qR,qB,qT)
-      real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(inout) :: qL
-      real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(inout) :: qR
-      real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(inout) :: qB
-      real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(inout) :: qT
+      real(r_kind), dimension(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife),intent(inout) :: qL
+      real(r_kind), dimension(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife),intent(inout) :: qR
+      real(r_kind), dimension(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife),intent(inout) :: qB
+      real(r_kind), dimension(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife),intent(inout) :: qT
       
       real   (r_kind) :: uc,vc
       real   (r_kind) :: us,vs
       integer(i_kind) :: iPOC,i,j,iPatch
+      integer(i_kind) :: i1,j1,iPatch1
+      integer(i_kind) :: i2,j2,iPatch2
       
       do i = 1,nx
         do iPOC = 1,nPointsOnEdge
