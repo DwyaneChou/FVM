@@ -554,12 +554,12 @@ module spatial_operators_mod
             do iVar = 1,nVar
               tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
               
-              print*,iVar,i,j,iPatch
-              print*,stat%q(iVar,i,j,iPatch),tend%q(iVar,i,j,iPatch), tend%q(iVar,i,j,iPatch) / stat%q(iVar,i,j,iPatch)
-              print*,-( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
-              print*,-( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
-              print*,src(iVar,i,j,iPatch)
-              print*,''
+              !print*,iVar,i,j,iPatch
+              !print*,stat%q(iVar,i,j,iPatch),tend%q(iVar,i,j,iPatch), tend%q(iVar,i,j,iPatch) / stat%q(iVar,i,j,iPatch)
+              !print*,-( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
+              !print*,-( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
+              !print*,src(iVar,i,j,iPatch)
+              !print*,''
               
             enddo
           enddo
@@ -857,27 +857,102 @@ module spatial_operators_mod
       real(r_kind), dimension(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife),intent(inout) :: qB
       real(r_kind), dimension(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife),intent(inout) :: qT
       
-      real   (r_kind) :: uc,vc
-      real   (r_kind) :: us,vs
-      integer(i_kind) :: iPOC,i,j,iPatch
-      integer(i_kind) :: i1,j1,iPatch1
-      integer(i_kind) :: i2,j2,iPatch2
+      integer(i_kind) :: iVar,iPOE,i,j,iPatch
+      integer(i_kind) :: dir
       
+      do iVar = 1,nVar
+        ! Panel 1
+        call restore_bdy_field(qR(iVar,:,ids-1,jds:jde,1),qR(iVar,:,ide,jds:jde,4), 1) ! Left
+        call restore_bdy_field(qL(iVar,:,ide+1,jds:jde,1),qL(iVar,:,ids,jds:jde,2), 1) ! Right
+        call restore_bdy_field(qT(iVar,:,ids:ide,jds-1,1),qT(iVar,:,ids:ide,jde,6), 1) ! below
+        call restore_bdy_field(qB(iVar,:,ids:ide,jde+1,1),qB(iVar,:,ids:ide,jds,5), 1) ! over
+        ! Panel 2
+        call restore_bdy_field(qR(iVar,:,ids-1,jds:jde,2),qR(iVar,:,ide,jds:jde,1), 1) ! Left
+        call restore_bdy_field(qL(iVar,:,ide+1,jds:jde,2),qL(iVar,:,ids,jds:jde,3), 1) ! Right
+        call restore_bdy_field(qT(iVar,:,ids:ide,jds-1,2),qR(iVar,:,ide,jds:jde,6),-1) ! below
+        call restore_bdy_field(qB(iVar,:,ids:ide,jde+1,2),qR(iVar,:,ide,jds:jde,5), 1) ! over
+        ! Panel 3
+        call restore_bdy_field(qR(iVar,:,ids-1,jds:jde,3),qR(iVar,:,ide,jds:jde,2), 1) ! Left
+        call restore_bdy_field(qL(iVar,:,ide+1,jds:jde,3),qL(iVar,:,ids,jds:jde,4), 1) ! Right
+        call restore_bdy_field(qT(iVar,:,ids:ide,jds-1,3),qB(iVar,:,ids:ide,jds,6),-1) ! below
+        call restore_bdy_field(qB(iVar,:,ids:ide,jde+1,3),qT(iVar,:,ids:ide,jde,5),-1) ! over
+        ! Panel 4
+        call restore_bdy_field(qR(iVar,:,ids-1,jds:jde,4),qR(iVar,:,ide,jds:jde,3), 1) ! Left
+        call restore_bdy_field(qL(iVar,:,ide+1,jds:jde,4),qL(iVar,:,ids,jds:jde,1), 1) ! Right
+        call restore_bdy_field(qT(iVar,:,ids:ide,jds-1,4),qL(iVar,:,ids,jds:jde,6), 1) ! below
+        call restore_bdy_field(qB(iVar,:,ids:ide,jde+1,4),qL(iVar,:,ids,jds:jde,5),-1) ! over
+        ! Panel 5
+        call restore_bdy_field(qR(iVar,:,ids-1,jds:jde,5),qT(iVar,:,ids:ide,jde,4),-1) ! Left
+        call restore_bdy_field(qL(iVar,:,ide+1,jds:jde,5),qT(iVar,:,ids:ide,jde,2), 1) ! Right
+        call restore_bdy_field(qT(iVar,:,ids:ide,jds-1,5),qT(iVar,:,ids:ide,jde,1), 1) ! below
+        call restore_bdy_field(qB(iVar,:,ids:ide,jde+1,5),qT(iVar,:,ids:ide,jde,3),-1) ! over
+        ! Panel 6
+        call restore_bdy_field(qR(iVar,:,ids-1,jds:jde,6),qB(iVar,:,ids:ide,jds,4), 1) ! Left
+        call restore_bdy_field(qL(iVar,:,ide+1,jds:jde,6),qB(iVar,:,ids:ide,jds,2),-1) ! Right
+        call restore_bdy_field(qT(iVar,:,ids:ide,jds-1,6),qB(iVar,:,ids:ide,jds,3),-1) ! below
+        call restore_bdy_field(qB(iVar,:,ids:ide,jde+1,6),qB(iVar,:,ids:ide,jds,1), 1) ! over
+      enddo
+      
+      !do i = 1,nx
+      !  do iPOE = 1,nPointsOnEdge
+      !    ! Boundary between patch 1,4
+      !    ! 1=>4
+      !    uc = qL(2,iPOE,ids,i,1)
+      !    vc = qL(3,iPOE,ids,i,1)
+      !    call contravProjPlane2Sphere(us, vs, uc, vc, matrixAL (:,:,iPOE,ids,i,1))
+      !    call contravProjSphere2Plane(uc, vc, us, vs, matrixIAL(:,:,iPOE,ide,i,4))
+      !    qR(1,iPOE,ide,i,4) = qL(1,iPOE,ids,i,1) / sqrtGL(iPOE,ids,i,1) * sqrtGR(iPOE,ide,i,1)
+      !    qR(2,iPOE,ide,i,4) = uc
+      !    qR(3,iPOE,ide,i,4) = vc
+      !  enddo
+      !enddo
+      
+    end subroutine fill_bdy_flux
+    
+    function convert_bdy_flux(q)
+      real(r_kind) :: convert_bdy_flux
+      real(r_kind), dimension(nVar,nPointsOnEdge,nx) :: q
+      
+      
+      
+    end function convert_bdy_flux
+    
+    subroutine restore_bdy_field(q1,q2,dir)
+      real   (r_kind), dimension(nPointsOnEdge,nx), intent(inout) :: q1
+      real   (r_kind), dimension(nPointsOnEdge,nx), intent(in   ) :: q2
+      integer(i_kind)                             , intent(in   ) :: dir
+      
+      real   (r_kind), dimension(nPointsOnEdge*nx) :: qp
+      
+      integer(i_kind) :: iPOE,i,j
+      
+      if( dir == 1 )then
+        j = 0
+        do i = 1,nx
+          do iPOE = 1,nPointsOnEdge
+            j = j + 1
+            qp(j) = q2(iPOE,i)
+          enddo
+        enddo
+      elseif( dir == -1 )then
+        j = 0
+        do i = nx,1,-1
+          do iPOE = nPointsOnEdge,1,-1
+            j = j + 1
+            qp(j) = q2(iPOE,i)
+          enddo
+        enddo
+      endif
+      
+      j = 0
       do i = 1,nx
-        do iPOC = 1,nPointsOnEdge
-          ! Boundary between patch 1,4
-          ! 1=>4
-          uc = qL(2,iPOC,ids,i,1)
-          vc = qL(3,iPOC,ids,i,1)
-          call contravProjPlane2Sphere(us, vs, uc, vc, matrixAL (:,:,iPOC,ids,i,1))
-          call contravProjSphere2Plane(uc, vc, us, vs, matrixIAL(:,:,iPOC,ide,i,4))
-          qR(1,iPOC,ide,i,4) = qL(1,iPOC,ids,i,1) / sqrtGL(iPOC,ids,i,1) * sqrtGR(iPOC,ide,i,1)
-          qR(2,iPOC,ide,i,4) = uc
-          qR(3,iPOC,ide,i,4) = vc
+        do iPOE = 1,nPointsOnEdge
+          j = j + 1
+          q1(iPOE,i) = qp(j)
         enddo
       enddo
       
-    end subroutine fill_bdy_flux
+    end subroutine restore_bdy_field
     
     subroutine check_halo(q)
       real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(in) :: q

@@ -20,7 +20,13 @@ for iVar = 1:nVar
     end
 end
 
-iVar = 1;
-iPatch = 5;
+figure
+iVar = 3;
+iPatch = 4;
+ids = 2;
+ide = 29;
+jds = 2;
+jde = 29;
+% plt = pcolor(squeeze(var(iVar,ids:ide,jds:jde,iPatch)));
 plt = pcolor(squeeze(var(iVar,:,:,iPatch)));
 set(plt,'edgeColor','none')
