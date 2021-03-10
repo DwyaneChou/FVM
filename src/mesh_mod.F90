@@ -37,6 +37,24 @@ MODULE mesh_mod
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAB   ! matrixIA on cell bottom edge
   real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAT   ! matrixIA on cell top edge
   
+  ! For cube boundary !
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGL_adj   ! jacobian of Transformation, sqrt(G) on cell left edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGR_adj   ! jacobian of Transformation, sqrt(G) on cell right edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGB_adj   ! jacobian of Transformation, sqrt(G) on cell bottom edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: sqrtGT_adj   ! jacobian of Transformation, sqrt(G) on cell top edge, fix with adjacent panel
+  
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAL_adj   ! matrixA on cell left edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAR_adj   ! matrixA on cell right edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAB_adj   ! matrixA on cell bottom edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixAT_adj   ! matrixA on cell top edge, fix with adjacent panel
+  
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAL_adj   ! matrixIA on cell left edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAR_adj   ! matrixIA on cell right edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAB_adj   ! matrixIA on cell bottom edge, fix with adjacent panel
+  real(r_kind), dimension(:,:,:,:,:,:), allocatable :: matrixIAT_adj   ! matrixIA on cell top edge, fix with adjacent panel
+  
+  ! For cube boundary !
+  
   real(r_kind), dimension(:,:,:,:    ), allocatable :: Coriolis ! Coriolis parameter
   real(r_kind), dimension(:,:,:,:    ), allocatable :: delta    ! sqrt( 1 + x**2 + y**2 )
   
@@ -117,6 +135,23 @@ MODULE mesh_mod
     allocate( matrixIAR(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
     allocate( matrixIAB(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
     allocate( matrixIAT(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    
+    ! For cube boundary !
+    allocate( sqrtGL_adj(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( sqrtGR_adj(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( sqrtGB_adj(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( sqrtGT_adj(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    
+    allocate( matrixAL_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixAR_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixAB_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixAT_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    
+    allocate( matrixIAL_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIAR_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIAB_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( matrixIAT_adj(2, 2, nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    ! For cube boundary !
   
     allocate( Coriolis (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( delta    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
@@ -182,17 +217,17 @@ MODULE mesh_mod
           y(ccs+3,i,j,iPatch) = y(cc,i,j,iPatch) + 0.5 * dy
           
           ! Bottom Boundary Points
-          x(cbs+0*nPointsOnEdge:cbs+1*nPointsOnEdge-1,i,j,iPatch) = x(ccs+1,i,j,iPatch) + quad_pos_1d * dx
-          y(cbs+0*nPointsOnEdge:cbs+1*nPointsOnEdge-1,i,j,iPatch) = y(ccs+1,i,j,iPatch)
+          x(cbs+0*nPointsOnEdge:cbs+1*nPointsOnEdge-1,i,j,iPatch) = x(ccs+0,i,j,iPatch) + quad_pos_1d * dx
+          y(cbs+0*nPointsOnEdge:cbs+1*nPointsOnEdge-1,i,j,iPatch) = y(ccs+0,i,j,iPatch)
           ! Right Boundary Points
-          x(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = x(ccs+2,i,j,iPatch)
-          y(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = y(ccs+2,i,j,iPatch) + quad_pos_1d * dy
+          x(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = x(ccs+1,i,j,iPatch)
+          y(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = y(ccs+1,i,j,iPatch) + quad_pos_1d * dy
           ! Top Boundary Points
-          x(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = x(ccs+4,i,j,iPatch) + quad_pos_1d * dx
-          y(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = y(ccs+4,i,j,iPatch)
+          x(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = x(ccs+2,i,j,iPatch) + quad_pos_1d * dx
+          y(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = y(ccs+2,i,j,iPatch)
           ! Left Boundary Points
-          x(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = x(ccs+1,i,j,iPatch)
-          y(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = y(ccs+1,i,j,iPatch) + quad_pos_1d * dy
+          x(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = x(ccs+0,i,j,iPatch)
+          y(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = y(ccs+0,i,j,iPatch) + quad_pos_1d * dy
           
           ! Gaussian quadrature points
           countQP = 0

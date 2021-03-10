@@ -22,11 +22,13 @@ end
 
 figure
 iVar = 3;
-iPatch = 4;
-ids = 2;
-ide = 29;
-jds = 2;
-jde = 29;
-% plt = pcolor(squeeze(var(iVar,ids:ide,jds:jde,iPatch)));
-plt = pcolor(squeeze(var(iVar,:,:,iPatch)));
+iPatch = 6;
+ids = 3;
+ide = 28;
+jds = 3;
+jde = 28;
+% var_plt = squeeze(var(iVar,ids:ide,jds:jde,iPatch))';
+var_plt = squeeze(var(iVar,:,:,iPatch))'/10^10;
+plt = pcolor(var_plt);
 set(plt,'edgeColor','none')
+% shading interp

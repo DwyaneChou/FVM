@@ -422,6 +422,121 @@ module spatial_operators_mod
         enddo
       enddo
       
+      ! Calculate metric tensor for cube boundary condition
+      sqrtGL_adj    = sqrtGL
+      sqrtGR_adj    = sqrtGR
+      sqrtGB_adj    = sqrtGB
+      sqrtGT_adj    = sqrtGT
+      
+      matrixAL_adj  = matrixAL
+      matrixAR_adj  = matrixAR
+      matrixAB_adj  = matrixAB
+      matrixAT_adj  = matrixAT
+      
+      matrixIAL_adj = matrixIAL
+      matrixIAR_adj = matrixIAR
+      matrixIAB_adj = matrixIAB
+      matrixIAT_adj = matrixIAT
+      
+      ! Panel 1
+      call restore_bdy_field(sqrtGR_adj(:,ids-1,jds:jde,1),sqrtGR(:,ide,jds:jde,4), 1) ! Left
+      call restore_bdy_field(sqrtGL_adj(:,ide+1,jds:jde,1),sqrtGL(:,ids,jds:jde,2), 1) ! Right
+      call restore_bdy_field(sqrtGT_adj(:,ids:ide,jds-1,1),sqrtGT(:,ids:ide,jde,6), 1) ! below
+      call restore_bdy_field(sqrtGB_adj(:,ids:ide,jde+1,1),sqrtGB(:,ids:ide,jds,5), 1) ! over
+      ! Panel 2
+      call restore_bdy_field(sqrtGR_adj(:,ids-1,jds:jde,2),sqrtGR(:,ide,jds:jde,1), 1) ! Left
+      call restore_bdy_field(sqrtGL_adj(:,ide+1,jds:jde,2),sqrtGL(:,ids,jds:jde,3), 1) ! Right
+      call restore_bdy_field(sqrtGT_adj(:,ids:ide,jds-1,2),sqrtGR(:,ide,jds:jde,6),-1) ! below
+      call restore_bdy_field(sqrtGB_adj(:,ids:ide,jde+1,2),sqrtGR(:,ide,jds:jde,5), 1) ! over
+      ! Panel 3
+      call restore_bdy_field(sqrtGR_adj(:,ids-1,jds:jde,3),sqrtGR(:,ide,jds:jde,2), 1) ! Left
+      call restore_bdy_field(sqrtGL_adj(:,ide+1,jds:jde,3),sqrtGL(:,ids,jds:jde,4), 1) ! Right
+      call restore_bdy_field(sqrtGT_adj(:,ids:ide,jds-1,3),sqrtGB(:,ids:ide,jds,6),-1) ! below
+      call restore_bdy_field(sqrtGB_adj(:,ids:ide,jde+1,3),sqrtGT(:,ids:ide,jde,5),-1) ! over
+      ! Panel 4
+      call restore_bdy_field(sqrtGR_adj(:,ids-1,jds:jde,4),sqrtGR(:,ide,jds:jde,3), 1) ! Left
+      call restore_bdy_field(sqrtGL_adj(:,ide+1,jds:jde,4),sqrtGL(:,ids,jds:jde,1), 1) ! Right
+      call restore_bdy_field(sqrtGT_adj(:,ids:ide,jds-1,4),sqrtGL(:,ids,jds:jde,6), 1) ! below
+      call restore_bdy_field(sqrtGB_adj(:,ids:ide,jde+1,4),sqrtGL(:,ids,jds:jde,5),-1) ! over
+      ! Panel 5
+      call restore_bdy_field(sqrtGR_adj(:,ids-1,jds:jde,5),sqrtGT(:,ids:ide,jde,4),-1) ! Left
+      call restore_bdy_field(sqrtGL_adj(:,ide+1,jds:jde,5),sqrtGT(:,ids:ide,jde,2), 1) ! Right
+      call restore_bdy_field(sqrtGT_adj(:,ids:ide,jds-1,5),sqrtGT(:,ids:ide,jde,1), 1) ! below
+      call restore_bdy_field(sqrtGB_adj(:,ids:ide,jde+1,5),sqrtGT(:,ids:ide,jde,3),-1) ! over
+      ! Panel 6
+      call restore_bdy_field(sqrtGR_adj(:,ids-1,jds:jde,6),sqrtGB(:,ids:ide,jds,4), 1) ! Left
+      call restore_bdy_field(sqrtGL_adj(:,ide+1,jds:jde,6),sqrtGB(:,ids:ide,jds,2),-1) ! Right
+      call restore_bdy_field(sqrtGT_adj(:,ids:ide,jds-1,6),sqrtGB(:,ids:ide,jds,3),-1) ! below
+      call restore_bdy_field(sqrtGB_adj(:,ids:ide,jde+1,6),sqrtGB(:,ids:ide,jds,1), 1) ! over
+      
+      do jQP = 1,2
+        do iQP = 1,2
+          ! MatrixA
+          ! Panel 1
+          call restore_bdy_field(matrixAR_adj(iQP,jQP,:,ids-1,jds:jde,1),matrixAR(iQP,jQP,:,ide,jds:jde,4), 1) ! Left
+          call restore_bdy_field(matrixAL_adj(iQP,jQP,:,ide+1,jds:jde,1),matrixAL(iQP,jQP,:,ids,jds:jde,2), 1) ! Right
+          call restore_bdy_field(matrixAT_adj(iQP,jQP,:,ids:ide,jds-1,1),matrixAT(iQP,jQP,:,ids:ide,jde,6), 1) ! below
+          call restore_bdy_field(matrixAB_adj(iQP,jQP,:,ids:ide,jde+1,1),matrixAB(iQP,jQP,:,ids:ide,jds,5), 1) ! over
+          ! Panel 2
+          call restore_bdy_field(matrixAR_adj(iQP,jQP,:,ids-1,jds:jde,2),matrixAR(iQP,jQP,:,ide,jds:jde,1), 1) ! Left
+          call restore_bdy_field(matrixAL_adj(iQP,jQP,:,ide+1,jds:jde,2),matrixAL(iQP,jQP,:,ids,jds:jde,3), 1) ! Right
+          call restore_bdy_field(matrixAT_adj(iQP,jQP,:,ids:ide,jds-1,2),matrixAR(iQP,jQP,:,ide,jds:jde,6),-1) ! below
+          call restore_bdy_field(matrixAB_adj(iQP,jQP,:,ids:ide,jde+1,2),matrixAR(iQP,jQP,:,ide,jds:jde,5), 1) ! over
+          ! Panel 3
+          call restore_bdy_field(matrixAR_adj(iQP,jQP,:,ids-1,jds:jde,3),matrixAR(iQP,jQP,:,ide,jds:jde,2), 1) ! Left
+          call restore_bdy_field(matrixAL_adj(iQP,jQP,:,ide+1,jds:jde,3),matrixAL(iQP,jQP,:,ids,jds:jde,4), 1) ! Right
+          call restore_bdy_field(matrixAT_adj(iQP,jQP,:,ids:ide,jds-1,3),matrixAB(iQP,jQP,:,ids:ide,jds,6),-1) ! below
+          call restore_bdy_field(matrixAB_adj(iQP,jQP,:,ids:ide,jde+1,3),matrixAT(iQP,jQP,:,ids:ide,jde,5),-1) ! over
+          ! Panel 4
+          call restore_bdy_field(matrixAR_adj(iQP,jQP,:,ids-1,jds:jde,4),matrixAR(iQP,jQP,:,ide,jds:jde,3), 1) ! Left
+          call restore_bdy_field(matrixAL_adj(iQP,jQP,:,ide+1,jds:jde,4),matrixAL(iQP,jQP,:,ids,jds:jde,1), 1) ! Right
+          call restore_bdy_field(matrixAT_adj(iQP,jQP,:,ids:ide,jds-1,4),matrixAL(iQP,jQP,:,ids,jds:jde,6), 1) ! below
+          call restore_bdy_field(matrixAB_adj(iQP,jQP,:,ids:ide,jde+1,4),matrixAL(iQP,jQP,:,ids,jds:jde,5),-1) ! over
+          ! Panel 5
+          call restore_bdy_field(matrixAR_adj(iQP,jQP,:,ids-1,jds:jde,5),matrixAT(iQP,jQP,:,ids:ide,jde,4),-1) ! Left
+          call restore_bdy_field(matrixAL_adj(iQP,jQP,:,ide+1,jds:jde,5),matrixAT(iQP,jQP,:,ids:ide,jde,2), 1) ! Right
+          call restore_bdy_field(matrixAT_adj(iQP,jQP,:,ids:ide,jds-1,5),matrixAT(iQP,jQP,:,ids:ide,jde,1), 1) ! below
+          call restore_bdy_field(matrixAB_adj(iQP,jQP,:,ids:ide,jde+1,5),matrixAT(iQP,jQP,:,ids:ide,jde,3),-1) ! over
+          ! Panel 6
+          call restore_bdy_field(matrixAR_adj(iQP,jQP,:,ids-1,jds:jde,6),matrixAB(iQP,jQP,:,ids:ide,jds,4), 1) ! Left
+          call restore_bdy_field(matrixAL_adj(iQP,jQP,:,ide+1,jds:jde,6),matrixAB(iQP,jQP,:,ids:ide,jds,2),-1) ! Right
+          call restore_bdy_field(matrixAT_adj(iQP,jQP,:,ids:ide,jds-1,6),matrixAB(iQP,jQP,:,ids:ide,jds,3),-1) ! below
+          call restore_bdy_field(matrixAB_adj(iQP,jQP,:,ids:ide,jde+1,6),matrixAB(iQP,jQP,:,ids:ide,jds,1), 1) ! over
+          
+          ! MatrixIA
+          ! Panel 1
+          call restore_bdy_field(matrixIAR_adj(iQP,jQP,:,ids-1,jds:jde,1),matrixIAR(iQP,jQP,:,ide,jds:jde,4), 1) ! Left
+          call restore_bdy_field(matrixIAL_adj(iQP,jQP,:,ide+1,jds:jde,1),matrixIAL(iQP,jQP,:,ids,jds:jde,2), 1) ! Right
+          call restore_bdy_field(matrixIAT_adj(iQP,jQP,:,ids:ide,jds-1,1),matrixIAT(iQP,jQP,:,ids:ide,jde,6), 1) ! below
+          call restore_bdy_field(matrixIAB_adj(iQP,jQP,:,ids:ide,jde+1,1),matrixIAB(iQP,jQP,:,ids:ide,jds,5), 1) ! over
+          ! Panel 2
+          call restore_bdy_field(matrixIAR_adj(iQP,jQP,:,ids-1,jds:jde,2),matrixIAR(iQP,jQP,:,ide,jds:jde,1), 1) ! Left
+          call restore_bdy_field(matrixIAL_adj(iQP,jQP,:,ide+1,jds:jde,2),matrixIAL(iQP,jQP,:,ids,jds:jde,3), 1) ! Right
+          call restore_bdy_field(matrixIAT_adj(iQP,jQP,:,ids:ide,jds-1,2),matrixIAR(iQP,jQP,:,ide,jds:jde,6),-1) ! below
+          call restore_bdy_field(matrixIAB_adj(iQP,jQP,:,ids:ide,jde+1,2),matrixIAR(iQP,jQP,:,ide,jds:jde,5), 1) ! over
+          ! Panel 3
+          call restore_bdy_field(matrixIAR_adj(iQP,jQP,:,ids-1,jds:jde,3),matrixIAR(iQP,jQP,:,ide,jds:jde,2), 1) ! Left
+          call restore_bdy_field(matrixIAL_adj(iQP,jQP,:,ide+1,jds:jde,3),matrixIAL(iQP,jQP,:,ids,jds:jde,4), 1) ! Right
+          call restore_bdy_field(matrixIAT_adj(iQP,jQP,:,ids:ide,jds-1,3),matrixIAB(iQP,jQP,:,ids:ide,jds,6),-1) ! below
+          call restore_bdy_field(matrixIAB_adj(iQP,jQP,:,ids:ide,jde+1,3),matrixIAT(iQP,jQP,:,ids:ide,jde,5),-1) ! over
+          ! Panel 4
+          call restore_bdy_field(matrixIAR_adj(iQP,jQP,:,ids-1,jds:jde,4),matrixIAR(iQP,jQP,:,ide,jds:jde,3), 1) ! Left
+          call restore_bdy_field(matrixIAL_adj(iQP,jQP,:,ide+1,jds:jde,4),matrixIAL(iQP,jQP,:,ids,jds:jde,1), 1) ! Right
+          call restore_bdy_field(matrixIAT_adj(iQP,jQP,:,ids:ide,jds-1,4),matrixIAL(iQP,jQP,:,ids,jds:jde,6), 1) ! below
+          call restore_bdy_field(matrixIAB_adj(iQP,jQP,:,ids:ide,jde+1,4),matrixIAL(iQP,jQP,:,ids,jds:jde,5),-1) ! over
+          ! Panel 5
+          call restore_bdy_field(matrixIAR_adj(iQP,jQP,:,ids-1,jds:jde,5),matrixIAT(iQP,jQP,:,ids:ide,jde,4),-1) ! Left
+          call restore_bdy_field(matrixIAL_adj(iQP,jQP,:,ide+1,jds:jde,5),matrixIAT(iQP,jQP,:,ids:ide,jde,2), 1) ! Right
+          call restore_bdy_field(matrixIAT_adj(iQP,jQP,:,ids:ide,jds-1,5),matrixIAT(iQP,jQP,:,ids:ide,jde,1), 1) ! below
+          call restore_bdy_field(matrixIAB_adj(iQP,jQP,:,ids:ide,jde+1,5),matrixIAT(iQP,jQP,:,ids:ide,jde,3),-1) ! over
+          ! Panel 6
+          call restore_bdy_field(matrixIAR_adj(iQP,jQP,:,ids-1,jds:jde,6),matrixIAB(iQP,jQP,:,ids:ide,jds,4), 1) ! Left
+          call restore_bdy_field(matrixIAL_adj(iQP,jQP,:,ide+1,jds:jde,6),matrixIAB(iQP,jQP,:,ids:ide,jds,2),-1) ! Right
+          call restore_bdy_field(matrixIAT_adj(iQP,jQP,:,ids:ide,jds-1,6),matrixIAB(iQP,jQP,:,ids:ide,jds,3),-1) ! below
+          call restore_bdy_field(matrixIAB_adj(iQP,jQP,:,ids:ide,jde+1,6),matrixIAB(iQP,jQP,:,ids:ide,jds,1), 1) ! over
+        enddo
+      enddo
+      
     end subroutine init_spatial_operator
     
     subroutine spatial_operator(stat,tend)
@@ -445,7 +560,13 @@ module spatial_operators_mod
                             qB(iVar,:,:,:,:),&
                             qT(iVar,:,:,:,:),&
                             qQ(iVar,:,:,:,:))
-      
+        
+        !call reconstruction(qC(iVar,:,:,:  ),&
+        !                    qL(iVar,:,:,:,:),&
+        !                    qR(iVar,:,:,:,:),&
+        !                    qB(iVar,:,:,:,:),&
+        !                    qT(iVar,:,:,:,:))
+        
         !print*,maxval(qC(iVar,:,:,:  )),minval(qC(iVar,:,:,:  ))
         !print*,maxval(qL(iVar,:,:,:,:)),minval(qL(iVar,:,:,:,:))
         !print*,maxval(qR(iVar,:,:,:,:)),minval(qR(iVar,:,:,:,:))
@@ -455,11 +576,32 @@ module spatial_operators_mod
         !print*,''
       enddo
       
-      phit = qQ(1,:,:,:,:) / sqrtG(cqs:cqe,:,:,:) + ghs(cqs:cqe,:,:,:)
+      !!phit = qQ(1,:,:,:,:) / sqrtG(cqs:cqe,:,:,:) + ghs(cqs:cqe,:,:,:)
+      do iPatch = ifs,ife
+        do j = jds,jde
+          do i = ids,ide
+        !do j = jms,jme
+        !  do i = ims,ime
+            phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
+            !if(maxval(ghs(cqs:cqe,i,j,iPatch))/=0)then
+            !  print*,i,j,iPatch
+            !  print*,phit(:,i,j,iPatch)
+            !  print*,qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch)
+            !  print*,ghs(cqs:cqe,i,j,iPatch)
+            !  print*,''
+            !endif
+          enddo
+        enddo
+      enddo
+      
       do iPatch = ifs,ife
         do j = jms,jme
           do i = ims,ime
-            phitC(i,j,iPatch) = Gaussian_quadrature_2d(phit(:,i,j,iPatch))
+            if(inDomain(i,j,iPatch))then
+              phitC(i,j,iPatch) = qC(1,i,j,iPatch) / sqrtGC(i,j,iPatch) + ghsC(i,j,iPatch)
+            else
+              phitC(i,j,iPatch) = Gaussian_quadrature_2d(phit(:,i,j,iPatch))
+            endif
           enddo
         enddo
       enddo
@@ -467,7 +609,7 @@ module spatial_operators_mod
       call reconstruction(phitC       ,&
                           dqdx=dphitdx,&
                           dqdy=dphitdy)
-            
+      
       !do iPatch = ifs,ife
       !  do j = jds,jde
       !    do i = ids,ide
@@ -481,16 +623,20 @@ module spatial_operators_mod
       !  enddo
       !enddo
       
-      ! Fill halo for F G and q       !!!!!!!!!!!!!!!!!!!!!!!! unfinished !!!!!!!!!!!!!!!!!!!!!!!!!!!
-      call fill_bdy_flux(qL,qR,qB,qT) !!!!!!!!!!!!!!!!!!!!!!!! unfinished !!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! Fill halo for F G and q       !!!!!!!!!!!!!!!!!!!!!!!! unfinished !!!!!!!!!!!!!!!!!!!!!!!!!!!
+      call fill_bdy_flux(qL,qR,qB,qT)
       
       do iPatch = ifs,ife
         do j = jds,jde
-          do i = ids,ide
+          do i = ids-1,ide+1
             do iPOC = 1,nPointsOnEdge
               FL(:,iPOC,i,j,iPatch) = calc_F(sqrtGL(iPOC,i,j,iPatch),matrixIGL(:,:,iPOC,i,j,iPatch),qL(:,iPOC,i,j,iPatch))
               FR(:,iPOC,i,j,iPatch) = calc_F(sqrtGR(iPOC,i,j,iPatch),matrixIGR(:,:,iPOC,i,j,iPatch),qR(:,iPOC,i,j,iPatch))
+            enddo
+          enddo
+        enddo
+        do j = jds-1,jde+1
+          do i = ids,ide
+            do iPOC = 1,nPointsOnEdge
               GB(:,iPOC,i,j,iPatch) = calc_G(sqrtGB(iPOC,i,j,iPatch),matrixIGB(:,:,iPOC,i,j,iPatch),qB(:,iPOC,i,j,iPatch))
               GT(:,iPOC,i,j,iPatch) = calc_G(sqrtGT(iPOC,i,j,iPatch),matrixIGT(:,:,iPOC,i,j,iPatch),qT(:,iPOC,i,j,iPatch))
             enddo
@@ -552,7 +698,10 @@ module spatial_operators_mod
         do j = jds,jde
           do i = ids,ide
             do iVar = 1,nVar
-              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
+              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
+              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
+              tend%q(iVar,i,j,iPatch) = - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
+              !tend%q(iVar,i,j,iPatch) = src(iVar,i,j,iPatch)
               
               !print*,iVar,i,j,iPatch
               !print*,stat%q(iVar,i,j,iPatch),tend%q(iVar,i,j,iPatch), tend%q(iVar,i,j,iPatch) / stat%q(iVar,i,j,iPatch)
@@ -566,6 +715,7 @@ module spatial_operators_mod
         enddo
       enddo
       
+      call check_halo(stat%q)
       call check_tend(tend%q)
       
       stop 'spatial_operator'
@@ -833,8 +983,8 @@ module spatial_operators_mod
       psi_M(3,:) = 2. * sqrtG / (delta**2) * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
       
       psi_C(1,:) = 0
-      psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
-      psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
+      psi_C(2,:) = Coriolis * ( -G12 * phiu + G11 * phiv )
+      psi_C(3,:) = Coriolis * ( -G22 * phiu + G12 * phiv )
       
       psi_B(1,:) = 0
       psi_B(2,:) = - sqrtG * phi * ( IG11 * dphitdx + IG12 * dphitdy )
@@ -893,29 +1043,43 @@ module spatial_operators_mod
         call restore_bdy_field(qB(iVar,:,ids:ide,jde+1,6),qB(iVar,:,ids:ide,jds,1), 1) ! over
       enddo
       
-      !do i = 1,nx
-      !  do iPOE = 1,nPointsOnEdge
-      !    ! Boundary between patch 1,4
-      !    ! 1=>4
-      !    uc = qL(2,iPOE,ids,i,1)
-      !    vc = qL(3,iPOE,ids,i,1)
-      !    call contravProjPlane2Sphere(us, vs, uc, vc, matrixAL (:,:,iPOE,ids,i,1))
-      !    call contravProjSphere2Plane(uc, vc, us, vs, matrixIAL(:,:,iPOE,ide,i,4))
-      !    qR(1,iPOE,ide,i,4) = qL(1,iPOE,ids,i,1) / sqrtGL(iPOE,ids,i,1) * sqrtGR(iPOE,ide,i,1)
-      !    qR(2,iPOE,ide,i,4) = uc
-      !    qR(3,iPOE,ide,i,4) = vc
-      !  enddo
-      !enddo
+      do iPatch = ifs,ife
+        call convert_bdy_flux(sqrtGR(:,ids-1,jds:jde,iPatch),sqrtGR_adj(:,ids-1,jds:jde,iPatch),matrixAR(:,:,:,ids-1,jds:jde,iPatch),matrixAR_adj(:,:,:,ids-1,jds:jde,iPatch),matrixIAR(:,:,:,ids-1,jds:jde,iPatch),matrixIAR_adj(:,:,:,ids-1,jds:jde,iPatch),qR(:,:,ids-1,jds:jde,iPatch))
+        call convert_bdy_flux(sqrtGL(:,ide+1,jds:jde,iPatch),sqrtGL_adj(:,ide+1,jds:jde,iPatch),matrixAL(:,:,:,ide+1,jds:jde,iPatch),matrixAL_adj(:,:,:,ide+1,jds:jde,iPatch),matrixIAL(:,:,:,ide+1,jds:jde,iPatch),matrixIAL_adj(:,:,:,ide+1,jds:jde,iPatch),qL(:,:,ide+1,jds:jde,iPatch))
+        call convert_bdy_flux(sqrtGT(:,ids:ide,jds-1,iPatch),sqrtGT_adj(:,ids:ide,jds-1,iPatch),matrixAT(:,:,:,ids:ide,jds-1,iPatch),matrixAT_adj(:,:,:,ids:ide,jds-1,iPatch),matrixIAT(:,:,:,ids:ide,jds-1,iPatch),matrixIAT_adj(:,:,:,ids:ide,jds-1,iPatch),qT(:,:,ids:ide,jds-1,iPatch))
+        call convert_bdy_flux(sqrtGB(:,ids:ide,jde+1,iPatch),sqrtGB_adj(:,ids:ide,jde+1,iPatch),matrixAB(:,:,:,ids:ide,jde+1,iPatch),matrixAB_adj(:,:,:,ids:ide,jde+1,iPatch),matrixIAB(:,:,:,ids:ide,jde+1,iPatch),matrixIAB_adj(:,:,:,ids:ide,jde+1,iPatch),qB(:,:,ids:ide,jde+1,iPatch))
+      enddo
       
     end subroutine fill_bdy_flux
     
-    function convert_bdy_flux(q)
-      real(r_kind) :: convert_bdy_flux
-      real(r_kind), dimension(nVar,nPointsOnEdge,nx) :: q
+    subroutine convert_bdy_flux(sqrtG,sqrtG_adj,matrixA,matrixA_adj,matrixIA,matrixIA_adj,q)
+      real(r_kind), dimension(     nPointsOnEdge,nx), intent(in   ) :: sqrtG
+      real(r_kind), dimension(     nPointsOnEdge,nx), intent(in   ) :: sqrtG_adj
+      real(r_kind), dimension(2,2, nPointsOnEdge,nx), intent(in   ) :: matrixA
+      real(r_kind), dimension(2,2, nPointsOnEdge,nx), intent(in   ) :: matrixA_adj
+      real(r_kind), dimension(2,2, nPointsOnEdge,nx), intent(in   ) :: matrixIA
+      real(r_kind), dimension(2,2, nPointsOnEdge,nx), intent(in   ) :: matrixIA_adj
+      real(r_kind), dimension(nVar,nPointsOnEdge,nx), intent(inout) :: q
       
+      real(r_kind) :: phi
+      real(r_kind) :: uc,vc,us,vs
       
+      integer(i_kind) :: i,j,iPatch,iPOE
       
-    end function convert_bdy_flux
+      do i = 1,nx
+        do iPOE = 1,nPointsOnEdge
+          phi = q(1,iPOE,i) / sqrtG_adj(iPOE,i)
+          uc  = q(2,iPOE,i) / q(1,iPOE,i)
+          vc  = q(3,iPOE,i) / q(1,iPOE,i)
+          call contravProjPlane2Sphere(us, vs, uc, vc, matrixA_adj(:,:,iPOE,i))
+          call contravProjSphere2Plane(uc, vc, us, vs, matrixIA   (:,:,iPOE,i))
+          q(1,iPOE,i) = sqrtG(iPOE,i) * phi
+          q(2,iPOE,i) = q(1,iPOE,i) * uc
+          q(3,iPOE,i) = q(1,iPOE,i) * vc
+        enddo
+      enddo
+      
+    end subroutine convert_bdy_flux
     
     subroutine restore_bdy_field(q1,q2,dir)
       real   (r_kind), dimension(nPointsOnEdge,nx), intent(inout) :: q1

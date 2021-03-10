@@ -153,7 +153,7 @@
         integer(i_kind) :: i,j,k
         
         u_avg = sum( u ) / m
-        u_bar = u / u_avg
+        if(u_avg/=0) u_bar = u / u_avg
         
         do j = 1,m
           beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h*h
