@@ -20,6 +20,7 @@
       real(r_kind)    :: total_mass ,total_energy
       
       integer(i_kind) :: output_idx, total_output_num
+      integer(i_kind) :: output_step
       
       integer(i_kind) :: timeStart,timeEnd
       
@@ -42,6 +43,8 @@
       print*,'Temporal integration scheme is '//trim(adjustl(integral_scheme))
       print*,''
       
+      output_step = nint(history_interval/dt)
+      
       output_idx       = 1
       total_output_num = nsteps * dt / history_interval
       call history_init      (stat(old))
@@ -57,7 +60,7 @@
         if(trim(adjustl(integral_scheme))=='RK4'    )call RK4    (stat(new),stat(old))
         
         ! Write output
-        if( mod(it*dt,float(history_interval))==0 .and. (it*dt>=history_interval) )then
+        if( mod(it,output_step)==0 .and. (it>=output_step) )then
           output_idx = output_idx + 1
           
           call history_write_stat(stat(new),output_idx)

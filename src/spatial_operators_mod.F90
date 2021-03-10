@@ -598,9 +598,9 @@ module spatial_operators_mod
         do j = jms,jme
           do i = ims,ime
             if(inDomain(i,j,iPatch))then
-              phitC(i,j,iPatch) = qC(1,i,j,iPatch) / sqrtGC(i,j,iPatch) + ghsC(i,j,iPatch)
-            else
               phitC(i,j,iPatch) = Gaussian_quadrature_2d(phit(:,i,j,iPatch))
+            else
+              phitC(i,j,iPatch) = qC(1,i,j,iPatch) / sqrtGC(i,j,iPatch) + ghsC(i,j,iPatch)
             endif
           enddo
         enddo
@@ -681,7 +681,7 @@ module spatial_operators_mod
           do i = ids,ide
             src(:,i,j,iPatch) = calc_src(sqrtG(cqs:cqe,i,j,iPatch),matrixG(:,:,cqs:cqe,i,j,iPatch),matrixIG(:,:,cqs:cqe,i,j,iPatch),qQ(:,:,i,j,iPatch),&
                                          dphitdx(:,i,j,iPatch),dphitdy(:,i,j,iPatch)                                                                  ,&
-                                         x(cqs:cqe,i,j,iPatch),y(cqs:cqe,i,j,iPatch),Coriolis(cqs:cqe,i,j,iPatch),delta(cqs:cqe,i,j,iPatch))
+                                         x(cqs:cqe,i,j,iPatch),y(cqs:cqe,i,j,iPatch),Coriolis(cqs:cqe,i,j,iPatch),delta(cqs:cqe,i,j,iPatch),iPatch)
           enddo
         enddo
       enddo
@@ -700,8 +700,8 @@ module spatial_operators_mod
             do iVar = 1,nVar
               !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
               !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
-              tend%q(iVar,i,j,iPatch) = - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
-              !tend%q(iVar,i,j,iPatch) = src(iVar,i,j,iPatch)
+              !tend%q(iVar,i,j,iPatch) = - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
+              tend%q(iVar,i,j,iPatch) = src(iVar,i,j,iPatch)
               
               !print*,iVar,i,j,iPatch
               !print*,stat%q(iVar,i,j,iPatch),tend%q(iVar,i,j,iPatch), tend%q(iVar,i,j,iPatch) / stat%q(iVar,i,j,iPatch)
@@ -864,8 +864,8 @@ module spatial_operators_mod
       v   = q(3) / q(1)
       
       calc_F(1) = q(2)
-      calc_F(2) = q(2) * u + 0.5 * IG11 * sqrtG * phi**2
-      calc_F(3) = q(2) * v + 0.5 * IG21 * sqrtG * phi**2
+      calc_F(2) = q(2) * u! + 0.5 * IG11 * sqrtG * phi**2
+      calc_F(3) = q(2) * v! + 0.5 * IG21 * sqrtG * phi**2
     end function calc_F
     
     function calc_G(sqrtG,matrixIG,q)
@@ -885,8 +885,8 @@ module spatial_operators_mod
       v   = q(3) / q(1)
       
       calc_G(1) = q(3)
-      calc_G(2) = q(3) * u + 0.5 * IG12 * sqrtG * phi**2
-      calc_G(3) = q(3) * v + 0.5 * IG22 * sqrtG * phi**2
+      calc_G(2) = q(3) * u! + 0.5 * IG12 * sqrtG * phi**2
+      calc_G(3) = q(3) * v! + 0.5 * IG22 * sqrtG * phi**2
     end function calc_G
     
     function calc_eigenvalue_x(sqrtG,matrixIG,q)
@@ -929,7 +929,7 @@ module spatial_operators_mod
       
     end function calc_eigenvalue_y
     
-    function calc_src(sqrtG,matrixG,matrixIG,q,dphitdx,dphitdy,x,y,Coriolis,delta)
+    function calc_src(sqrtG,matrixG,matrixIG,q,dphitdx,dphitdy,x,y,Coriolis,delta,iPatch)
       real(r_kind), dimension(nVar) :: calc_src
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: sqrtG
       real(r_kind), dimension(2, 2,nQuadPointsOnCell), intent(in) :: matrixG
@@ -941,6 +941,7 @@ module spatial_operators_mod
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: y
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: Coriolis
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: delta
+      integer(i_kind) :: iPatch
       
       real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_M
       real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_C
@@ -960,6 +961,9 @@ module spatial_operators_mod
       real(r_kind), dimension(nQuadPointsOnCell) :: IG21
       real(r_kind), dimension(nQuadPointsOnCell) :: IG22
       
+      real(r_kind), dimension(nQuadPointsOnCell) :: xx
+      real(r_kind), dimension(nQuadPointsOnCell) :: yy
+      
       integer :: iVar
       
       phi  = q(1,:) / sqrtG
@@ -978,13 +982,38 @@ module spatial_operators_mod
       IG21 = matrixIG(2,1,nQuadPointsOnCell)
       IG22 = matrixIG(2,2,nQuadPointsOnCell)
       
-      psi_M(1,:) = 0
-      psi_M(2,:) = 2. * sqrtG / (delta**2) * (-x * y**2 * phiu * u + y * ( 1. + y**2 ) * phiu * v )
-      psi_M(3,:) = 2. * sqrtG / (delta**2) * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
+      xx = tan(x)
+      yy = tan(y)
+      
+      !psi_M(1,:) = 0
+      !psi_M(2,:) = 2. * sqrtG / (delta**2) * (-xx * yy**2 * phiu * u + yy * ( 1. + yy**2 ) * phiu * v )
+      !psi_M(3,:) = 2. * sqrtG / (delta**2) * ( xx * ( 1. + xx**2 ) * phiu * v - xx**2 * yy * phiv * v )
       
       psi_C(1,:) = 0
-      psi_C(2,:) = Coriolis * ( -G12 * phiu + G11 * phiv )
-      psi_C(3,:) = Coriolis * ( -G22 * phiu + G12 * phiv )
+      psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
+      psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
+      !psi_C(2,:) = sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
+      !psi_C(3,:) = sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
+      
+      !if(iPatch==6)then
+      !  psi_C(2,:) = -sqrtG * 2. * Omega / (delta**2) * ( -xx*yy*phiu + (1.+yy*yy)*phiv )
+      !  psi_C(3,:) = -sqrtG * 2. * Omega / (delta**2) * ( -(1.+xx*xx)*phiu + xx*yy*phiv )
+      !elseif(iPatch==5)then
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * ( -xx*yy*phiu + (1.+yy*yy)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * ( -(1.+xx*xx)*phiu + xx*yy*phiv )
+      !else
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * yy * ( -xx*yy*phiu + (1.+yy*yy)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * yy * ( -(1.+xx*xx)*phiu + xx*yy*phiv )
+      !endif
+      
+      !print*,iPatch
+      !print*,psi_C(2,:)
+      !print*,sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
+      !print*,Coriolis * (  G12 * phiu + G22 * phiv )
+      !!print*,psi_C(3,:)
+      !!print*,sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
+      !!print*,Coriolis * ( -G11 * phiu - G12 * phiv )
+      !print*,''
       
       psi_B(1,:) = 0
       psi_B(2,:) = - sqrtG * phi * ( IG11 * dphitdx + IG12 * dphitdy )
@@ -997,7 +1026,10 @@ module spatial_operators_mod
       !print*,''
       
       do iVar = 1,nVar
-        calc_src(iVar) = Gaussian_quadrature_2d( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
+        !calc_src(iVar) = Gaussian_quadrature_2d( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
+        !calc_src(iVar) = Gaussian_quadrature_2d( psi_M(iVar,:) )
+        calc_src(iVar) = Gaussian_quadrature_2d( psi_C(iVar,:) )
+        !calc_src(iVar) = Gaussian_quadrature_2d( psi_B(iVar,:) )
       enddo
     end function calc_src
     

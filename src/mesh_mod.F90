@@ -96,7 +96,7 @@ MODULE mesh_mod
     integer(i_kind) :: i, j, iPatch , iVar
     integer(i_kind) :: iQP,jQP,countQP
     integer(i_kind) :: iTOC,iVertex1,iVertex2
-    integer(i_kind) :: iPOC
+    integer(i_kind) :: iPOC,iPOE
     integer(i_kind) :: ig, jg, pg, ng
     
     real(r_kind) :: verticesCoord(3,2)
@@ -223,8 +223,8 @@ MODULE mesh_mod
           x(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = x(ccs+1,i,j,iPatch)
           y(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch) = y(ccs+1,i,j,iPatch) + quad_pos_1d * dy
           ! Top Boundary Points
-          x(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = x(ccs+2,i,j,iPatch) + quad_pos_1d * dx
-          y(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = y(ccs+2,i,j,iPatch)
+          x(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = x(ccs+3,i,j,iPatch) + quad_pos_1d * dx
+          y(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch) = y(ccs+3,i,j,iPatch)
           ! Left Boundary Points
           x(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = x(ccs+0,i,j,iPatch)
           y(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = y(ccs+0,i,j,iPatch) + quad_pos_1d * dy
@@ -437,26 +437,26 @@ MODULE mesh_mod
             Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
           enddo
           
-          do iPOC = 1,nPointsOnEdge
-            sqrtGB(iPOC,i,j,iPatch) = sqrtG(cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch) 
-            sqrtGR(iPOC,i,j,iPatch) = sqrtG(cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch) 
-            sqrtGT(iPOC,i,j,iPatch) = sqrtG(cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch) 
-            sqrtGL(iPOC,i,j,iPatch) = sqrtG(cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch) 
+          do iPOE = 1,nPointsOnEdge
+            sqrtGB(iPOE,i,j,iPatch) = sqrtG(cbs+0*nPointsOnEdge+iPOE-1,i,j,iPatch) 
+            sqrtGR(iPOE,i,j,iPatch) = sqrtG(cbs+1*nPointsOnEdge+iPOE-1,i,j,iPatch) 
+            sqrtGT(iPOE,i,j,iPatch) = sqrtG(cbs+2*nPointsOnEdge+iPOE-1,i,j,iPatch) 
+            sqrtGL(iPOE,i,j,iPatch) = sqrtG(cbs+3*nPointsOnEdge+iPOE-1,i,j,iPatch) 
             
-            matrixIGB(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixIGR(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixIGT(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixIGL(:,:,iPOC,i,j,iPatch) = matrixIG(:,:,cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIGB(:,:,iPOE,i,j,iPatch) = matrixIG(:,:,cbs+0*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixIGR(:,:,iPOE,i,j,iPatch) = matrixIG(:,:,cbs+1*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixIGT(:,:,iPOE,i,j,iPatch) = matrixIG(:,:,cbs+2*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixIGL(:,:,iPOE,i,j,iPatch) = matrixIG(:,:,cbs+3*nPointsOnEdge+iPOE-1,i,j,iPatch)
             
-            matrixAB(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixAR(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixAT(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixAL(:,:,iPOC,i,j,iPatch) = matrixA(:,:,cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixAB(:,:,iPOE,i,j,iPatch) = matrixA(:,:,cbs+0*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixAR(:,:,iPOE,i,j,iPatch) = matrixA(:,:,cbs+1*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixAT(:,:,iPOE,i,j,iPatch) = matrixA(:,:,cbs+2*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixAL(:,:,iPOE,i,j,iPatch) = matrixA(:,:,cbs+3*nPointsOnEdge+iPOE-1,i,j,iPatch)
             
-            matrixIAB(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+0*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixIAR(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+1*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixIAT(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+2*nPointsOnEdge+iPOC-1,i,j,iPatch)
-            matrixIAL(:,:,iPOC,i,j,iPatch) = matrixIA(:,:,cbs+3*nPointsOnEdge+iPOC-1,i,j,iPatch)
+            matrixIAB(:,:,iPOE,i,j,iPatch) = matrixIA(:,:,cbs+0*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixIAR(:,:,iPOE,i,j,iPatch) = matrixIA(:,:,cbs+1*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixIAT(:,:,iPOE,i,j,iPatch) = matrixIA(:,:,cbs+2*nPointsOnEdge+iPOE-1,i,j,iPatch)
+            matrixIAL(:,:,iPOE,i,j,iPatch) = matrixIA(:,:,cbs+3*nPointsOnEdge+iPOE-1,i,j,iPatch)
           enddo
           
         enddo
@@ -467,7 +467,7 @@ MODULE mesh_mod
       do j = jds,jde
         do i = ids,ide
           do iPOC = 1,nPointsOnCell
-            delta(iPOC,i,j,iPatch) = sqrt( 1. + x(iPOC,i,j,iPatch)**2 + y(iPOC,i,j,iPatch)**2 )
+            delta(iPOC,i,j,iPatch) = sqrt( 1. + tan(x(iPOC,i,j,iPatch))**2 + tan(y(iPOC,i,j,iPatch))**2 )
           enddo
         enddo
       enddo

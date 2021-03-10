@@ -3,8 +3,8 @@ run_days         = 0
 run_hours        = 0
 run_minutes      = 0
 run_seconds      = 360
-dt               = 60
-history_interval = 60
+dt               = 0.01
+history_interval = 0.02
 integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
 

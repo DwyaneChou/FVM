@@ -4,12 +4,12 @@ module parameters_mod
   
   ! Namelist parameters
   ! time_settings
-  integer(i_kind)       :: run_days
-  integer(i_kind)       :: run_hours
-  integer(i_kind)       :: run_minutes
-  integer(i_kind)       :: run_seconds
-  real(r_kind)          :: dt               ! time step
-  integer(i_kind)       :: history_interval ! output interval in seconds
+  integer(i_kind) :: run_days
+  integer(i_kind) :: run_hours
+  integer(i_kind) :: run_minutes
+  integer(i_kind) :: run_seconds
+  real(r_kind)    :: dt               ! time step
+  real(i_kind)    :: history_interval ! output interval in seconds
   
   character*200 :: integral_scheme
   
