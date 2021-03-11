@@ -41,30 +41,6 @@ else ()
   endif ()
 endif ()
 
-if (MCV_ORDER MATCHES 3)
-  #add_compile_definitions("-DMCV3")
-  add_definitions("-DMCV3")
-elseif (MCV_ORDER MATCHES 4)
-  #add_compile_definitions("-DMCV4")
-  add_definitions("-DMCV4")
-endif ()
-
-#set(source_files
-#  src/fvm.F90
-#  src/constants_mod.F90
-#  src/parameters_mod.F90
-#  src/mesh_mod.F90
-#  src/stat_mod.F90
-#  src/tend_mod.F90
-#  src/projection_mod.F90
-#  src/ghost_mod.F90
-#  src/test_case_mod.F90
-#  src/spatial_operators_mod.F90
-#  src/time_scheme_mod.F90
-#  src/diag_mod.F90
-#  src/output_mod.F90
-#)
-
 set(source_files
   src/fvm.F90
   src/constants_mod.F90

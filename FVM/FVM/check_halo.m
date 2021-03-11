@@ -1,7 +1,7 @@
 clc
 clear
 
-data = importdata('..\run\check_tend.txt');
+data = importdata('..\run\check_halo.txt');
 
 nx = size(data,2);
 ny = nx;
@@ -20,15 +20,9 @@ for iVar = 1:nVar
     end
 end
 
-figure
-iVar = 2;
-iPatch = 1;
-ids = 3;
-ide = 28;
-jds = 3;
-jde = 28;
-% var_plt = squeeze(var(iVar,ids:ide,jds:jde,iPatch))';
+iVar = 3;
+iPatch = 5;
 var_plt = squeeze(var(iVar,:,:,iPatch))';
 plt = pcolor(var_plt);
-set(plt,'edgeColor','none')
-% shading interp
+% set(plt,'edgeColor','none')
+shading interp

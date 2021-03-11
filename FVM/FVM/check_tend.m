@@ -1,7 +1,7 @@
 clc
 clear
 
-data = importdata('..\run\check_tend.txt');
+data = importdata('check_tend.txt');
 
 nx = size(data,2);
 ny = nx;
