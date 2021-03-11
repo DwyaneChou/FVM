@@ -174,12 +174,12 @@ MODULE mesh_mod
     allocate( secy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( cscy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
-    allocate( ghost_x (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( ghost_y (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( ghost_i (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( ghost_j (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( ghost_p (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( ghost_n (nTriQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_x (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_y (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_i (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_j (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_p (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghost_n (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( zs       (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( zsc      (                     ims:ime, jms:jme, ifs:ife) )
@@ -194,7 +194,7 @@ MODULE mesh_mod
     
     nGhostPointsOnCell = 0
     
-    !$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
+    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
     do iPatch = ifs,ife
       do j = jms,jme
         do i = ims,ime
@@ -229,16 +229,6 @@ MODULE mesh_mod
           x(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = x(ccs+0,i,j,iPatch)
           y(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = y(ccs+0,i,j,iPatch) + quad_pos_1d * dy
           
-          ! Gaussian quadrature points
-          countQP = 0
-          do jQP = 1,nQuadOrder
-            do iQP = 1,nQuadOrder
-              x(cqs+countQP,i,j,iPatch) = x(ccs,i,j,iPatch) + dx * quad_pos_1d(iQP)
-              y(cqs+countQP,i,j,iPatch) = y(ccs,i,j,iPatch) + dy * quad_pos_1d(jQP)
-              countQP = countQP + 1
-            enddo
-          enddo
-          
           ! Triangle quadrature points
           countQP = 0
           verticesCoord(3,:) = (/x(cc,i,j,iPatch), y(cc,i,j,iPatch)/)
@@ -249,15 +239,15 @@ MODULE mesh_mod
             if(iTOC==nEdgesOnCell)iVertex2 = ccs
             verticesCoord(1,:) = (/x(iVertex1,i,j,iPatch), y(iVertex1,i,j,iPatch)/)
             verticesCoord(2,:) = (/x(iVertex2,i,j,iPatch), y(iVertex2,i,j,iPatch)/)
-            do iQP = 1,nTriQuadOrder
-              x(cts+countQP,i,j,iPatch) = dot_product( verticesCoord(:,1), triQuad_pos(iQP,:) )
-              y(cts+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
+            do iQP = 1,nQuadOrder
+              x(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,1), triQuad_pos(iQP,:) )
+              y(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
               countQP = countQP + 1
             enddo
           enddo
           
           ! Calculate parameters on each points on this cell
-          do iPOC = cc,cte
+          do iPOC = cc,cqe
             call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
                                        x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
             
@@ -288,20 +278,20 @@ MODULE mesh_mod
             
             Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
           enddo
-          sqrtGC(i,j,iPatch) = Gaussian_quadrature_2d(sqrtG(cqs:cqe,i,j,iPatch))
+          sqrtGC(i,j,iPatch) = cell_quadrature(sqrtG(cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
-    !$OMP END PARALLEL DO
+    !!$OMP END PARALLEL DO
     
     ! Calculate ghost position
-    !$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
+    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
     do iPatch = ifs,ife
       ! Bottom
       do j = jms,jds-1
         do i = ims,ime
           countQP = 0
-          do iQP = cts,cte
+          do iQP = cqs,cqe
             countQP = countQP + 1
             call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
@@ -326,7 +316,7 @@ MODULE mesh_mod
       do j = jde+1,jme
         do i = ims,ime
           countQP = 0
-          do iQP = cts,cte
+          do iQP = cqs,cqe
             countQP = countQP + 1
             call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
@@ -351,7 +341,7 @@ MODULE mesh_mod
       do j = jds,jde
         do i = ims,ids-1
           countQP = 0
-          do iQP = cts,cte
+          do iQP = cqs,cqe
             countQP = countQP + 1
             call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
@@ -376,7 +366,7 @@ MODULE mesh_mod
       do j = jds,jde
         do i = ide+1,ime
           countQP = 0
-          do iQP = cts,cte
+          do iQP = cqs,cqe
             countQP = countQP + 1
             call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
                           lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
@@ -398,7 +388,10 @@ MODULE mesh_mod
       enddo
       
     enddo
-    !$OMP END PARALLEL DO
+    !!$OMP END PARALLEL DO
+    
+    print*,''
+    print*,'Actual max ghost points',maxval(nGhostPointsOnCell)
     
     ! Calculate mesh parameters on ghost points on halo cells
     do iPatch = ifs,ife
@@ -436,7 +429,13 @@ MODULE mesh_mod
             
             Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
           enddo
-          
+        enddo
+      enddo
+    enddo
+    
+    do iPatch = ifs,ife
+      do j = jms,jme
+        do i = ims,ime
           do iPOE = 1,nPointsOnEdge
             sqrtGB(iPOE,i,j,iPatch) = sqrtG(cbs+0*nPointsOnEdge+iPOE-1,i,j,iPatch) 
             sqrtGR(iPOE,i,j,iPatch) = sqrtG(cbs+1*nPointsOnEdge+iPOE-1,i,j,iPatch) 
@@ -458,23 +457,19 @@ MODULE mesh_mod
             matrixIAT(:,:,iPOE,i,j,iPatch) = matrixIA(:,:,cbs+2*nPointsOnEdge+iPOE-1,i,j,iPatch)
             matrixIAL(:,:,iPOE,i,j,iPatch) = matrixIA(:,:,cbs+3*nPointsOnEdge+iPOE-1,i,j,iPatch)
           enddo
-          
         enddo
       enddo
     enddo
     
     do iPatch = ifs,ife
-      do j = jds,jde
-        do i = ids,ide
+      do j = jms,jme
+        do i = ims,ime
           do iPOC = 1,nPointsOnCell
-            delta(iPOC,i,j,iPatch) = sqrt( 1. + tan(x(iPOC,i,j,iPatch))**2 + tan(y(iPOC,i,j,iPatch))**2 )
+            delta(iPOC,i,j,iPatch) = sqrt( 1. + tanx(iPOC,i,j,iPatch)**2 + tany(iPOC,i,j,iPatch)**2 )
           enddo
         enddo
       enddo
     enddo
-    
-    print*,''
-    print*,'Actual max ghost points',maxval(nGhostPointsOnCell)
     
     ! Calculate areaCell
     allocate( areaCell_temp (Nx,Ny) )

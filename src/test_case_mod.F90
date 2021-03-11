@@ -40,7 +40,7 @@ module test_case_mod
           u  (i,j,iPatch) = stat(0)%q(2,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
           v  (i,j,iPatch) = stat(0)%q(3,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
           call contravProjPlane2Sphere(u(i,j,iPatch), v(i,j,iPatch), u(i,j,iPatch), v(i,j,iPatch), matrixA(:,:,cc,i,j,iPatch))
-          zsc(i,j,iPatch) = Gaussian_quadrature_2d(zs(cqs:cqe,i,j,iPatch))
+          zsc(i,j,iPatch) = cell_quadrature(zs(cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
@@ -106,9 +106,9 @@ module test_case_mod
     do iPatch = ifs, ife
       do j = jms, jme
         do i = ims, ime
-          stat%q(1,i,j,iPatch) = Gaussian_quadrature_2d(phi(cqs:cqe,i,j,iPatch))
-          stat%q(2,i,j,iPatch) = Gaussian_quadrature_2d(u  (cqs:cqe,i,j,iPatch))
-          stat%q(3,i,j,iPatch) = Gaussian_quadrature_2d(v  (cqs:cqe,i,j,iPatch))
+          stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(u  (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(v  (cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
@@ -191,9 +191,9 @@ module test_case_mod
     do iPatch = ifs, ife
       do j = jms, jme
         do i = ims, ime
-          stat%q(1,i,j,iPatch) = Gaussian_quadrature_2d(phi(cqs:cqe,i,j,iPatch))
-          stat%q(2,i,j,iPatch) = Gaussian_quadrature_2d(u  (cqs:cqe,i,j,iPatch))
-          stat%q(3,i,j,iPatch) = Gaussian_quadrature_2d(v  (cqs:cqe,i,j,iPatch))
+          stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(u  (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(v  (cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
@@ -287,9 +287,9 @@ module test_case_mod
     do iPatch = ifs, ife
       do j = jms, jme
         do i = ims, ime
-          stat%q(1,i,j,iPatch) = Gaussian_quadrature_2d(phi(cqs:cqe,i,j,iPatch))
-          stat%q(2,i,j,iPatch) = Gaussian_quadrature_2d(u  (cqs:cqe,i,j,iPatch))
-          stat%q(3,i,j,iPatch) = Gaussian_quadrature_2d(v  (cqs:cqe,i,j,iPatch))
+          stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(u  (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(v  (cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo

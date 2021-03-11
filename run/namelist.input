@@ -17,8 +17,7 @@ dx                   = 3,  ! Unit: degree
 dy                   = 3,  ! Unit: degree
 xhalo                = 4,  ! The ghost cell size
 yhalo                = 4,  ! The ghost cell size
-nPointsOnEdge        = 3,
-nTriQuadOrder        = 3,  ! Do not change for now
+nPointsOnEdge        = 3,  ! Do not change for now
 /
 
 &dynamic_opt

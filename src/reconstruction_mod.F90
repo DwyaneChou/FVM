@@ -39,8 +39,8 @@
         allocate(quad_wts_1d(nPointsOnEdge    ))
         allocate(quad_wts_2d(nQuadPointsOnCell))
         
-        allocate(triQuad_pos(nTriQuadOrder,3))
-        allocate(triQuad_wts(nTriQuadOrder  ))
+        allocate(triQuad_pos(nQuadOrder,3))
+        allocate(triQuad_wts(nQuadOrder  ))
         
         allocate(quad_wts_tmp_1d(nPointsOnEdge,1            ))
         allocate(quad_wts_tmp_2d(nPointsOnEdge,nPointsOnEdge))
@@ -97,21 +97,22 @@
         
       end function Gaussian_quadrature_2d
       
-      function triangle_quadrature(q)
-        real(r_kind) :: triangle_quadrature
-        real(r_kind) :: q(nTriQuadPointsOnCell)
+      ! Integration field on cell by 4 triangle quadrature
+      function cell_quadrature(q)
+        real(r_kind) :: cell_quadrature
+        real(r_kind) :: q(nQuadPointsOnCell)
         
         integer(i_kind) :: iT
         integer(i_kind) :: is,ie
         
-        triangle_quadrature = 0
+        cell_quadrature = 0
         do iT = 1,nEdgesOnCell
-          is = 1 + ( it - 1 ) * nTriQuadOrder
-          ie = it * nTriQuadOrder
-          triangle_quadrature = triangle_quadrature + dot_product( triQuad_wts,q(is:ie) )
+          is = 1 + ( it - 1 ) * nQuadOrder
+          ie = it * nQuadOrder
+          cell_quadrature = cell_quadrature + dot_product( triQuad_wts,q(is:ie) )
         enddo
-        triangle_quadrature = triangle_quadrature / nEdgesOnCell
-      end function triangle_quadrature
+        cell_quadrature = cell_quadrature / real(nEdgesOnCell,r_kind)
+      end function cell_quadrature
     
       function WLS_ENO(A,u,h,m,n,ic,x0)
         ! WLS_ENO

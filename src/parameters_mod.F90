@@ -25,9 +25,7 @@ module parameters_mod
   
   integer(i_kind) :: nPointsOnEdge
   integer(i_kind) :: nQuadOrder
-  integer(i_kind) :: nTriQuadOrder
   integer(i_kind) :: nQuadPointsOnCell
-  integer(i_kind) :: nTriQuadPointsOnCell
   integer(i_kind) :: nEdgesOnCell
   integer(i_kind) :: nPointsOnCell
   integer(i_kind) :: maxGhostPointsOnCell
@@ -57,8 +55,6 @@ module parameters_mod
   integer(i_kind) :: cbe      ! boundary points indices end
   integer(i_kind) :: cqs      ! Gaussian quadrature points indices start
   integer(i_kind) :: cqe      ! Gaussian quadrature points indices end
-  integer(i_kind) :: cts      ! Triangle quadrature points indices start
-  integer(i_kind) :: cte      ! Triangle quadrature points indices end
   integer(i_kind) :: cgs      ! ghost points indices start
   integer(i_kind) :: cge      ! ghost points indices end
   
@@ -99,8 +95,7 @@ module parameters_mod
                            dy                  ,&
                            xhalo               ,&
                            yhalo               ,&
-                           nPointsOnEdge       ,&
-                           nTriQuadOrder
+                           nPointsOnEdge
   namelist /dynamic_opt/   reconstruct_scheme,&
                            stencil_width
   
@@ -126,7 +121,6 @@ module parameters_mod
     xhalo         = 1
     yhalo         = 1
     nPointsOnEdge = 3
-    nTriQuadOrder = 3
     
     run_days         = 1
     run_hours        = 0
@@ -193,11 +187,10 @@ module parameters_mod
     
     nQuadOrder           = nPointsOnEdge
     nEdgesOnCell         = 4
-    nQuadPointsOnCell    = nPointsOnEdge**2
-    nTriQuadPointsOnCell = nTriQuadOrder * nEdgesOnCell
-    maxGhostPointsOnCell = 2 * nTriQuadPointsOnCell
-    ! nPointsOnCell = center point + boundary points + gaussian quadrature points + triangle quadrature points + corner points + max ghost points
-    nPointsOnCell        = 1 + nEdgesOnCell * nPointsOnEdge + nQuadPointsOnCell + nTriQuadPointsOnCell + nEdgesOnCell + maxGhostPointsOnCell
+    nQuadPointsOnCell    = nQuadOrder * nEdgesOnCell
+    maxGhostPointsOnCell = 2 * nQuadPointsOnCell
+    ! nPointsOnCell = center point + corner points + boundary points + triangle quadrature points + max ghost points
+    nPointsOnCell        = 1 + nEdgesOnCell + nEdgesOnCell * nPointsOnEdge + nQuadPointsOnCell + maxGhostPointsOnCell
     
     cc  = 1
     ccs = cc + 1
@@ -206,9 +199,7 @@ module parameters_mod
     cbe = cbs + nEdgesOnCell * nPointsOnEdge - 1
     cqs = cbe + 1
     cqe = cqs + nQuadPointsOnCell- 1
-    cts = cqe + 1
-    cte = cts + nTriQuadPointsOnCell - 1
-    cgs = cte + 1
+    cgs = cqe + 1
     cge = cgs + maxGhostPointsOnCell - 1
     
     allocate( nGhostPointsOnCell(ims:ime,jms:jme,ifs:ife) )

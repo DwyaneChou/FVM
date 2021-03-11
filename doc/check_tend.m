@@ -21,14 +21,14 @@ for iVar = 1:nVar
 end
 
 figure
-iVar = 3;
-iPatch = 5;
+iVar = 2;
+iPatch = 1;
 ids = 3;
 ide = 28;
 jds = 3;
 jde = 28;
 % var_plt = squeeze(var(iVar,ids:ide,jds:jde,iPatch))';
-var_plt = squeeze(var(iVar,:,:,iPatch));
+var_plt = squeeze(var(iVar,:,:,iPatch))';
 plt = pcolor(var_plt);
-set(plt,'edgeColor','none')
-% shading interp
+% set(plt,'edgeColor','none')
+shading interp
