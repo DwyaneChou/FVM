@@ -21,7 +21,7 @@ for iVar = 1:nVar
 end
 
 iVar = 3;
-iPatch = 5;
+iPatch = 2;
 var_plt = squeeze(var(iVar,:,:,iPatch))';
 plt = pcolor(var_plt);
 % set(plt,'edgeColor','none')
