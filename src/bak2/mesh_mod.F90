@@ -89,6 +89,8 @@ MODULE mesh_mod
   real(r_kind), dimension(:,:,:      ), allocatable :: zsc   ! surface height on cell
   
   real(r_kind), dimension(:,:,:    ), allocatable :: areaCell
+  
+  logical, dimension(:,:,:), allocatable :: inDomain
       
   contains
   
@@ -186,6 +188,11 @@ MODULE mesh_mod
     
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
     
+    allocate(inDomain  (ims:ime,jms:jme,ifs:ife))
+      
+    inDomain(ims:ime,jms:jme,ifs:ife) = .false. 
+    inDomain(ids:ide,jds:jde,ifs:ife) = .true.
+    
     ! Init arrays
     ghost_i = 0
     ghost_j = 0
@@ -194,7 +201,7 @@ MODULE mesh_mod
     
     nGhostPointsOnCell = 0
     
-    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
+    !$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
     do iPatch = ifs,ife
       do j = jms,jme
         do i = ims,ime
@@ -282,10 +289,10 @@ MODULE mesh_mod
         enddo
       enddo
     enddo
-    !!$OMP END PARALLEL DO
+    !$OMP END PARALLEL DO
     
     ! Calculate ghost position
-    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
+    !$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
     do iPatch = ifs,ife
       ! Bottom
       do j = jms,jds-1
@@ -388,7 +395,7 @@ MODULE mesh_mod
       enddo
       
     enddo
-    !!$OMP END PARALLEL DO
+    !$OMP END PARALLEL DO
     
     print*,''
     print*,'Actual max ghost points',maxval(nGhostPointsOnCell)

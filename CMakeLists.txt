@@ -5,7 +5,7 @@ project(fvm LANGUAGES Fortran)
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel)
   set(CPU_ARCH HASWELL)
   #set(CPU_ARCH BROADWELL)
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -r8 -parallel -qopenmp -mkl -x${CPU_ARCH} -ax${CPU_ARCH} -arch ${CPU_ARCH} -mcpu=${CPU_ARCH} -m64")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -r8 -qopenmp -mkl -x${CPU_ARCH} -ax${CPU_ARCH} -arch ${CPU_ARCH} -mcpu=${CPU_ARCH} -m64")
   if (CMAKE_BUILD_TYPE MATCHES DEBUG)
     set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -traceback -check all")
   endif ()
@@ -41,22 +41,30 @@ else ()
   endif ()
 endif ()
 
+#set(source_files
+#  src/fvm.F90
+#  src/constants_mod.F90
+#  src/parameters_mod.F90
+#  src/projection_mod.F90
+#  src/mesh_mod.F90
+#  src/stat_mod.F90
+#  src/tend_mod.F90
+#  src/math_mod.F90
+#  src/reconstruction_mod.F90
+#  src/qr_solver_mod.F90
+#  src/test_case_mod.F90
+#  src/io_mod.F90
+#  src/spatial_operators_mod.F90
+#  src/temporal_mod.F90
+#  src/diag_mod.F90
+#)
+
 set(source_files
   src/fvm.F90
   src/constants_mod.F90
   src/parameters_mod.F90
-  src/projection_mod.F90
-  src/mesh_mod.F90
-  src/stat_mod.F90
-  src/tend_mod.F90
-  src/math_mod.F90
   src/reconstruction_mod.F90
-  src/qr_solver_mod.F90
-  src/test_case_mod.F90
-  src/io_mod.F90
   src/spatial_operators_mod.F90
-  src/temporal_mod.F90
-  src/diag_mod.F90
 )
 
 add_library(fvm ${source_files})

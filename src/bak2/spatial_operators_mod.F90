@@ -13,8 +13,6 @@ module spatial_operators_mod
   
   public init_spatial_operator,spatial_operator
   
-  logical, dimension(:,:,:), allocatable :: inDomain
-  
   integer(i_kind), dimension(:,:,:), allocatable :: iCenCell ! center cell index on reconstruction stencil
   
   integer(i_kind), dimension(:,:,:,:), allocatable :: iRecCell ! x index of reconstruction cells
@@ -119,8 +117,6 @@ module spatial_operators_mod
       
       real(r_kind), dimension(:), allocatable :: xg
       real(r_kind), dimension(:), allocatable :: yg
-    
-      allocate(inDomain  (ims:ime,jms:jme,ifs:ife))
       
       allocate(iCenCell  (ims:ime,jms:jme,ifs:ife))
       

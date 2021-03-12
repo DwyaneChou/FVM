@@ -202,7 +202,7 @@ module parameters_mod
     cgs = cqe + 1
     cge = cgs + maxGhostPointsOnCell - 1
     
-    allocate( nGhostPointsOnCell(ims:ime,jms:jme,ifs:ife) )
+    allocate( nGhostPointsOnCell(ids:ide,jds:jde,ifs:ife) )
     nGhostPointsOnCell = 0
     
     recBdy = ( stencil_width - 1 ) / 2

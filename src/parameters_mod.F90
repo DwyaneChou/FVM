@@ -48,27 +48,11 @@ module parameters_mod
   integer(i_kind) :: jms      ! The starting index in the y-direction  (Physical cell/element domain)
   integer(i_kind) :: jme      ! The ending index in the y-direction  (Physical cell/element domain)
   
-  integer(i_kind) :: cc       ! center point index on cell
-  integer(i_kind) :: ccs      ! corner points indices start
-  integer(i_kind) :: cce      ! corner points indices end
-  integer(i_kind) :: cbs      ! boundary points indices start
-  integer(i_kind) :: cbe      ! boundary points indices end
-  integer(i_kind) :: cqs      ! Gaussian quadrature points indices start
-  integer(i_kind) :: cqe      ! Gaussian quadrature points indices end
-  integer(i_kind) :: cgs      ! ghost points indices start
-  integer(i_kind) :: cge      ! ghost points indices end
-  
   integer(i_kind) :: ifs      ! The starting index of patch(face)
   integer(i_kind) :: ife      ! The ending index of patch(face)
                       
   integer(i_kind) :: Nx       ! Element numbers in the x-direction
   integer(i_kind) :: Ny       ! Element numbers in the y-direction
-  
-  integer(i_kind) :: Nx_halo  ! Element numbers in the x-direction with halo
-  integer(i_kind) :: Ny_halo  ! Element numbers in the y-directionwith halo
-  
-  integer(i_kind) :: nIntegralSubSteps ! number of integral substeps in temporal integration scheme
-  integer(i_kind) :: nsteps            ! total integral steps
   
   integer(i_kind), parameter :: Nf = 6           ! Number of cube faces
   
@@ -76,10 +60,6 @@ module parameters_mod
   real(r_kind)    :: x_max =  45.   !  end location of x-direction
   real(r_kind)    :: y_min = -45.   !  start location of y-direction
   real(r_kind)    :: y_max =  45.   !  end location of y-direction
-  
-  ! Model run time control variables
-  integer(i8    ) :: total_run_time   ! total run time for this model in seconds, this variable is determined by run_days, run_hours ...
-  integer(i_kind) :: total_run_steps  ! total run steps for this model in seconds, this variable is determined by total_run_time and dt
   
   namelist /time_settings/ dt               ,&
                            run_days         ,&
@@ -132,12 +112,6 @@ module parameters_mod
     ! Read namelist
     call readNamelist
     
-    ! Calculate total run time in seconds
-    total_run_time = run_days * 86400 + run_hours * 3600 + run_minutes * 60 + run_seconds
-    
-    ! Calculate total run steps
-    total_run_steps = ceiling(total_run_time/dt)
-    
     ! Check if dx and dy are avaliable to achieve the integral element number
     if( (x_max - x_min)/dx - int((x_max - x_min)/dx) /= 0. )then
       stop '90 divide dx must be integer(i_kind), choose another dx'
@@ -174,17 +148,6 @@ module parameters_mod
     y_min = y_min * D2R
     y_max = y_max * D2R
     
-    ! Setting the number of substeps in temporal integration scheme
-    if(trim(adjustl(integral_scheme)) == 'RK3_TVD')then
-      nIntegralSubSteps = 3
-    elseif(trim(adjustl(integral_scheme)) == 'RK4')then
-      nIntegralSubSteps = 4
-    else
-      stop 'Unknown integral scheme, please select from RK3_TVD or RK4 ...'
-    endif
-    
-    nsteps = total_run_time / dt
-    
     nQuadOrder           = nPointsOnEdge
     nEdgesOnCell         = 4
     nQuadPointsOnCell    = nQuadOrder * nEdgesOnCell
@@ -192,17 +155,7 @@ module parameters_mod
     ! nPointsOnCell = center point + corner points + boundary points + triangle quadrature points + max ghost points
     nPointsOnCell        = 1 + nEdgesOnCell + nEdgesOnCell * nPointsOnEdge + nQuadPointsOnCell + maxGhostPointsOnCell
     
-    cc  = 1
-    ccs = cc + 1
-    cce = ccs + nEdgesOnCell - 1
-    cbs = cce + 1
-    cbe = cbs + nEdgesOnCell * nPointsOnEdge - 1
-    cqs = cbe + 1
-    cqe = cqs + nQuadPointsOnCell- 1
-    cgs = cqe + 1
-    cge = cgs + maxGhostPointsOnCell - 1
-    
-    allocate( nGhostPointsOnCell(ims:ime,jms:jme,ifs:ife) )
+    allocate( nGhostPointsOnCell(ids:ide,jds:jde,ifs:ife) )
     nGhostPointsOnCell = 0
     
     recBdy = ( stencil_width - 1 ) / 2
