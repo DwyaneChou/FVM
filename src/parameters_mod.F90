@@ -2,6 +2,8 @@ module parameters_mod
   use constants_mod
   implicit none
   
+  integer(i_kind) :: nVar = 3 ! Just for Intel fortran 2019, this compiler cannot get correct nVar with parameter property
+  
   ! Namelist parameters
   ! time_settings
   integer(i_kind) :: run_days
@@ -23,10 +25,10 @@ module parameters_mod
   integer(i_kind) :: xhalo  !  halo number of x-diretion
   integer(i_kind) :: yhalo  !  halo number of y-diretion
   
+  integer(i_kind) :: nEdgesOnCell
   integer(i_kind) :: nPointsOnEdge
   integer(i_kind) :: nQuadOrder
   integer(i_kind) :: nQuadPointsOnCell
-  integer(i_kind) :: nEdgesOnCell
   integer(i_kind) :: nPointsOnCell
   integer(i_kind) :: maxGhostPointsOnCell
   

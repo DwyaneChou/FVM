@@ -267,7 +267,7 @@ module spatial_operators_mod
       recdy   = 1. / ( dy * recCoef )
       recdV   = 1. / ( recCoef**2 )
       
-      !!$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC,nRT) COLLAPSE(3)
+      !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC,nRT) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -294,9 +294,9 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
-      !!$OMP END PARALLEL DO
+      !$OMP END PARALLEL DO
       
-      !!$OMP PARALLEL DO PRIVATE(j,i,iPOC,xg,yg,nRC,nRT) COLLAPSE(3)
+      !$OMP PARALLEL DO PRIVATE(j,i,iPOC,xg,yg,nRC,nRT) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -318,9 +318,9 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
-      !!$OMP END PARALLEL DO
+      !$OMP END PARALLEL DO
             
-      !!$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat) COLLAPSE(3)
+      !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -358,9 +358,9 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
-      !!$OMP END PARALLEL DO
+      !$OMP END PARALLEL DO
       
-      !!$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat,xg,yg,pg) COLLAPSE(3)
+      !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat,xg,yg,pg) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -407,7 +407,7 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
-      !!$OMP END PARALLEL DO
+      !$OMP END PARALLEL DO
       
       ghs = zs * gravity
       
@@ -702,8 +702,8 @@ module spatial_operators_mod
     end subroutine spatial_operator
     
     subroutine fill_halo(q,qQ)
-      real(r_kind), dimension(             nVar,ims:ime,jms:jme,ifs:ife), intent(inout)          :: q
-      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(inout),optional :: qQ
+      real(r_kind), dimension(             nVar,ims:ime,jms:jme,ifs:ife), intent(inout) :: q
+      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(inout) :: qQ
       
       real(r_kind), dimension(nVar,maxGhostPointsOnCell,ims:ime,jms:jme,ifs:ife) :: qg
       real(r_kind), dimension(nVar,nQuadPointsOnCell   ,ims:ime,jms:jme,ifs:ife) :: tgq ! value on triangle gaussian quadrature points
@@ -998,8 +998,6 @@ module spatial_operators_mod
       psi_B(1,:) = 0
       psi_B(2,:) = - sqrtG * phi * ( IG11 * dphitdx + IG12 * dphitdy )
       psi_B(3,:) = - sqrtG * phi * ( IG21 * dphitdx + IG22 * dphitdy )
-      !psi_B(2,:) = dphitdx
-      !psi_B(3,:) = dphitdy
       
       !iVar = 2
       !print*,cell_quadrature( psi_M(iVar,:) )

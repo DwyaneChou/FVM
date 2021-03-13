@@ -68,6 +68,12 @@
           call calc_total_energy(total_energy,stat(old))
           print*,'output index/total, MCR, ECR :',output_idx-1,'/',total_output_num,' ',(total_mass-total_mass0)/total_mass0, (total_energy-total_energy0)/total_energy0
         endif
+      
+        if(any(isnan(stat(new)%q(1:nVar,ids:ide,jds:jde,ifs:ife))))then
+          print*,'Nan appears at iVar i j iPatch: ',maxloc(stat(new)%q(1:nVar,ids:ide,jds:jde,ifs:ife),isnan(stat(new)%q(1:nVar,ids:ide,jds:jde,ifs:ife)))
+          print*,'after ',it,' steps'
+          stop 'Model blow up, maybe smaller dt would help'
+        endif
         
         call copyStat(stat(old), stat(new))
       enddo

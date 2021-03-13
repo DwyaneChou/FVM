@@ -63,6 +63,8 @@ module test_case_mod
     real(r_kind),dimension(:,:,:,:), allocatable :: phi
     real(r_kind),dimension(:,:,:,:), allocatable :: u
     real(r_kind),dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: uc
+    real(r_kind),dimension(:,:,:,:), allocatable :: vc
     
     real(r_kind)    :: u0
     real(r_kind)    :: gh0 = 29400.
@@ -73,6 +75,8 @@ module test_case_mod
     allocate(phi (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     allocate(u   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     allocate(v   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(uc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(vc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     
     u0 = 2. * pi * radius / (12. * 86400.)
     
@@ -93,22 +97,22 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
-            call contravProjSphere2Plane(u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
+            call contravProjSphere2Plane(uc(iPOC,i,j,iPatch), vc(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
           enddo
         enddo
       enddo
     enddo
     
     phi = sqrtG * phi
-    u   = phi * u
-    v   = phi * v
+    uc  = phi * uc
+    vc  = phi * vc
     
     do iPatch = ifs, ife
       do j = jms, jme
         do i = ims, ime
           stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
-          stat%q(2,i,j,iPatch) = cell_quadrature(u  (cqs:cqe,i,j,iPatch))
-          stat%q(3,i,j,iPatch) = cell_quadrature(v  (cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(uc (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(vc (cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
@@ -116,6 +120,8 @@ module test_case_mod
     deallocate(phi )
     deallocate(u   )
     deallocate(v   )
+    deallocate(uc  )
+    deallocate(vc  )
     
     zs = 0
     
@@ -128,6 +134,8 @@ module test_case_mod
     real(r_kind),dimension(:,:,:,:), allocatable :: phi
     real(r_kind),dimension(:,:,:,:), allocatable :: u
     real(r_kind),dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: uc
+    real(r_kind),dimension(:,:,:,:), allocatable :: vc
     
     real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: ghs
     real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: longitude
@@ -148,6 +156,8 @@ module test_case_mod
     allocate(phi (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     allocate(u   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     allocate(v   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(uc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(vc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     
     rr       = pi/9.
     labmda_c = 1.5*pi
@@ -178,22 +188,22 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
-            call contravProjSphere2Plane(u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
+            call contravProjSphere2Plane(uc(iPOC,i,j,iPatch), vc(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
           enddo
         enddo
       enddo
     enddo
     
     phi = sqrtG * phi
-    u   = phi * u
-    v   = phi * v
+    uc  = phi * uc
+    vc  = phi * vc
     
     do iPatch = ifs, ife
       do j = jms, jme
         do i = ims, ime
           stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
-          stat%q(2,i,j,iPatch) = cell_quadrature(u  (cqs:cqe,i,j,iPatch))
-          stat%q(3,i,j,iPatch) = cell_quadrature(v  (cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(uc (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(vc (cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
@@ -201,6 +211,8 @@ module test_case_mod
     deallocate(phi )
     deallocate(u   )
     deallocate(v   )
+    deallocate(uc  )
+    deallocate(vc  )
     
     zs = ghs / gravity
     
@@ -213,6 +225,8 @@ module test_case_mod
     real(r_kind),dimension(:,:,:,:), allocatable :: phi
     real(r_kind),dimension(:,:,:,:), allocatable :: u
     real(r_kind),dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: uc
+    real(r_kind),dimension(:,:,:,:), allocatable :: vc
     
     real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: u1,u2,u3                ! working array
     real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: AA1,Ac,A21,A22,A23,Ah   ! working array
@@ -231,6 +245,8 @@ module test_case_mod
     allocate(phi (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     allocate(u   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     allocate(v   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(uc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(vc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     
     !sinlat    = sin(lat)
     !coslat    = cos(lat)
@@ -274,22 +290,22 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
-            call contravProjSphere2Plane(u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
+            call contravProjSphere2Plane(uc(iPOC,i,j,iPatch), vc(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
           enddo
         enddo
       enddo
     enddo
     
     phi = sqrtG * phi
-    u   = phi * u
-    v   = phi * v
+    uc  = phi * uc
+    vc  = phi * vc
     
     do iPatch = ifs, ife
       do j = jms, jme
         do i = ims, ime
           stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
-          stat%q(2,i,j,iPatch) = cell_quadrature(u  (cqs:cqe,i,j,iPatch))
-          stat%q(3,i,j,iPatch) = cell_quadrature(v  (cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(uc (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(vc (cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
@@ -297,6 +313,8 @@ module test_case_mod
     deallocate(phi )
     deallocate(u   )
     deallocate(v   )
+    deallocate(uc  )
+    deallocate(vc  )
     
     zs = 0
   end subroutine case6
