@@ -573,18 +573,18 @@ module spatial_operators_mod
         !print*,''
       enddo
       
-      do iPatch = ifs,ife
-        do j = jms,jme
-          do i = ims,ime
-            phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
-            phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
-          enddo
-        enddo
-      enddo
-      
-      call reconstruction(phitC       ,&
-                          dqdx=dphitdx,&
-                          dqdy=dphitdy)
+      !do iPatch = ifs,ife
+      !  do j = jms,jme
+      !    do i = ims,ime
+      !      phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
+      !      phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
+      !    enddo
+      !  enddo
+      !enddo
+      !
+      !call reconstruction(phitC       ,&
+      !                    dqdx=dphitdx,&
+      !                    dqdy=dphitdy)
       
       !do iPatch = ifs,ife
       !  do j = jds,jde
@@ -652,6 +652,7 @@ module spatial_operators_mod
         enddo
       enddo
       
+      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -662,6 +663,7 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
+      !$OMP END PARALLEL DO
       
       !print*,maxval(Fe),minval(Fe)
       !print*,maxval(Ge),minval(Ge)
@@ -671,12 +673,13 @@ module spatial_operators_mod
       !print*,maxval(GB),minval(GB)
       !print*,maxval(GT),minval(GT)
       
+      !$OMP PARALLEL DO PRIVATE(i,j,iVar) COLLAPSE(4)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
             do iVar = 1,nVar
-              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
-              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
+              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
+              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
               !tend%q(iVar,i,j,iPatch) = - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
               !tend%q(iVar,i,j,iPatch) = src(iVar,i,j,iPatch)
               
@@ -691,13 +694,14 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
+      !$OMP END PARALLEL DO
       
-      !print*,maxval(tend%q/stat%q),minval(tend%q/stat%q)
-      !
-      !call check_halo(stat%q)
-      !call check_tend(tend%q)
-      !
-      !stop 'spatial_operator'
+      print*,maxval(tend%q/stat%q),minval(tend%q/stat%q)
+      
+      call check_halo(stat%q)
+      call check_tend(tend%q)
+      
+      stop 'spatial_operator'
       
     end subroutine spatial_operator
     
@@ -850,8 +854,8 @@ module spatial_operators_mod
       v   = q(3) / q(1)
       
       calc_F(1) = q(2)
-      calc_F(2) = q(2) * u! + 0.5 * IG11 * sqrtG * phi**2
-      calc_F(3) = q(2) * v! + 0.5 * IG21 * sqrtG * phi**2
+      calc_F(2) = q(2) * u + 0.5 * IG11 * sqrtG * phi**2
+      calc_F(3) = q(2) * v + 0.5 * IG21 * sqrtG * phi**2
     end function calc_F
     
     function calc_G(sqrtG,matrixIG,q)
@@ -871,8 +875,8 @@ module spatial_operators_mod
       v   = q(3) / q(1)
       
       calc_G(1) = q(3)
-      calc_G(2) = q(3) * u! + 0.5 * IG12 * sqrtG * phi**2
-      calc_G(3) = q(3) * v! + 0.5 * IG22 * sqrtG * phi**2
+      calc_G(2) = q(3) * u + 0.5 * IG12 * sqrtG * phi**2
+      calc_G(3) = q(3) * v + 0.5 * IG22 * sqrtG * phi**2
     end function calc_G
     
     function calc_eigenvalue_x(sqrtG,matrixIG,q)
@@ -970,21 +974,27 @@ module spatial_operators_mod
       psi_M(3,:) = 2. * sqrtG / (delta**2) * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
       
       psi_C(1,:) = 0
+      ! Coriolis scheme 1
       !psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
       !psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
+      psi_C(2,:) = phiu
+      psi_C(3,:) = phiv
+      
+      !! Coriolis scheme 2
       !psi_C(2,:) = sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
       !psi_C(3,:) = sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
       
-      if(iPatch==6)then
-        psi_C(2,:) = -sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
-        psi_C(3,:) = -sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
-      elseif(iPatch==5)then
-        psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
-        psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
-      else
-        psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -x*y*phiu + (1.+y*y)*phiv )
-        psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -(1.+x*x)*phiu + x*y*phiv )
-      endif
+      !! Coriolis scheme 3
+      !if(iPatch==6)then
+      !  psi_C(2,:) = -sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = -sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
+      !elseif(iPatch==5)then
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
+      !else
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -(1.+x*x)*phiu + x*y*phiv )
+      !endif
       
       !print*,iPatch
       !print*,psi_C(2,:)
@@ -1006,7 +1016,8 @@ module spatial_operators_mod
       !print*,''
       
       do iVar = 1,nVar
-        calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
+        calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) )
         !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) )
         !calc_src(iVar) = cell_quadrature( psi_C(iVar,:) )
         !calc_src(iVar) = cell_quadrature( psi_B(iVar,:) )

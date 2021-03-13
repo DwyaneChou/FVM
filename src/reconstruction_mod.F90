@@ -166,11 +166,13 @@
         
         do j = 1,m
           WA(j,:) = W(j) * A(j,:)
-          Wu(j  ) = W(j) * u(j  )
+          !Wu(j  ) = W(j) * u(j  )
+          Wu(j  ) = W(j) * u_bar(j  )
         enddo
         
         ! Solver by Tsinghua
         call qr_solver(M,N,WA,Wu,WLS_ENO)
+        
         !if(present(x0))then
         !  call qr_solver(M,N,WA,Wu,WLS_ENO,x0)
         !else
@@ -180,6 +182,9 @@
         !! Solver by LAPACK DGELS
         !call DGELS( 'N', M, N, 1, WA, M, Wu, M, WORK, M+N, INFO )
         !WLS_ENO = Wu
+        
+        WLS_ENO = WLS_ENO * u_avg
+        
       end function WLS_ENO
       
       subroutine WENO_limiter(Qrec,Q,dir)
