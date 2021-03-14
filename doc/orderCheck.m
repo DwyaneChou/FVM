@@ -4,59 +4,45 @@ clear
 time_start = 1;
 time_end   = 121;
 
-history_path = 'E:\Study\Models\FD_WENO_Cubed_Sphere\run';
+history_path = '..\run';
 
-% res_nc{1} = [history_path,'\','mcv_output.nc'];
+% res_nc{1} = [history_path,'\','output.nc'];
 
-% res_nc{1} = [history_path,'\','mcv_output_2p0.nc'];
-% res_nc{2} = [history_path,'\','mcv_output_1p0.nc'];
-% res_nc{3} = [history_path,'\','mcv_output_0p5.nc'];
-% res_nc{2} = [history_path,'\','mcv_output.nc'];
+res_nc{1} = [history_path,'\','output_6p0.nc'];
+res_nc{2} = [history_path,'\','output_3p0.nc'];
 
-% res_nc{1} = [history_path,'\','mcv_output_9p0.nc'];
-% res_nc{2} = [history_path,'\','mcv_output_4p5.nc'];
-% res_nc{3} = [history_path,'\','mcv_output_2p25.nc'];
-% res_nc{4} = [history_path,'\','mcv_output_1p125.nc'];
-% res_nc{5} = [history_path,'\','mcv_output_0p5625.nc'];
-
-res_nc{1} = [history_path,'\','mcv_output_6p0.nc'];
-res_nc{2} = [history_path,'\','mcv_output_3p0.nc'];
-% res_nc{3} = [history_path,'\','mcv_output_1p5.nc'];
-% res_nc{4} = [history_path,'\','mcv_output_0p75.nc'];
-% res_nc{3} = [history_path,'\','mcv_output.nc'];
+% res_nc{1} = [history_path,'\','output_9p0.nc'];
+% res_nc{2} = [history_path,'\','output_4p5.nc'];
+% res_nc{3} = [history_path,'\','output_2p25.nc'];
+% res_nc{4} = [history_path,'\','output_1p125.nc'];
+% res_nc{5} = [history_path,'\','output_0p5625.nc'];
 
 res_num = size(res_nc,2);
 
 for ires = 1:res_num
-    ics   = ncreadatt(res_nc{ires},'/','ics');
-    ice   = ncreadatt(res_nc{ires},'/','ice');
-    jcs   = ncreadatt(res_nc{ires},'/','jcs');
-    jce   = ncreadatt(res_nc{ires},'/','jce');
+    ids   = ncreadatt(res_nc{ires},'/','ids');
+    ide   = ncreadatt(res_nc{ires},'/','ide');
+    jds   = ncreadatt(res_nc{ires},'/','jds');
+    jde   = ncreadatt(res_nc{ires},'/','jde');
     ifs   = ncreadatt(res_nc{ires},'/','ifs');
     ife   = ncreadatt(res_nc{ires},'/','ife');
     xhalo = ncreadatt(res_nc{ires},'/','xhalo');
     yhalo = ncreadatt(res_nc{ires},'/','yhalo');
     
-    DOF(ires) = ncreadatt(res_nc{ires},'/','MCV_ORDER');
     dx (ires) = ncreadatt(res_nc{ires},'/','dx' );
     dy (ires) = ncreadatt(res_nc{ires},'/','dy' );
     
-    its = 1 + xhalo;
-    ite = ice;
-    jts = 1 + yhalo;
-    jte = jce;
-    
     areaCell = ncread(res_nc{ires},'areaCell');
-    u_end    = ncread(res_nc{ires},'u'      ,[1,1,1,time_end  ],[Inf,Inf,Inf,1]);
-    v_end    = ncread(res_nc{ires},'v'      ,[1,1,1,time_end  ],[Inf,Inf,Inf,1]);
+%     u_end    = ncread(res_nc{ires},'u'      ,[1,1,1,time_end  ],[Inf,Inf,Inf,1]);
+%     v_end    = ncread(res_nc{ires},'v'      ,[1,1,1,time_end  ],[Inf,Inf,Inf,1]);
     phi_end  = ncread(res_nc{ires},'phi'    ,[1,1,1,time_end  ],[Inf,Inf,Inf,1]);
-    u_start  = ncread(res_nc{ires},'u'      ,[1,1,1,time_start],[Inf,Inf,Inf,1]);
-    v_start  = ncread(res_nc{ires},'v'      ,[1,1,1,time_start],[Inf,Inf,Inf,1]);
+%     u_start  = ncread(res_nc{ires},'u'      ,[1,1,1,time_start],[Inf,Inf,Inf,1]);
+%     v_start  = ncread(res_nc{ires},'v'      ,[1,1,1,time_start],[Inf,Inf,Inf,1]);
     phi_start= ncread(res_nc{ires},'phi'    ,[1,1,1,time_start],[Inf,Inf,Inf,1]);
     
-    L1_phi  (ires) = L1  (phi_end(its:ite,jts:jte,:),phi_start(its:ite,jts:jte,:),areaCell(its:ite,jts:jte,:));
-    L2_phi  (ires) = L2  (phi_end(its:ite,jts:jte,:),phi_start(its:ite,jts:jte,:),areaCell(its:ite,jts:jte,:));
-    LInf_phi(ires) = LInf(phi_end(its:ite,jts:jte,:),phi_start(its:ite,jts:jte,:),areaCell(its:ite,jts:jte,:));
+    L1_phi  (ires) = L1  (phi_end(ids:ide,jds:jde,:),phi_start(ids:ide,jds:jde,:),areaCell(ids:ide,jds:jde,:));
+    L2_phi  (ires) = L2  (phi_end(ids:ide,jds:jde,:),phi_start(ids:ide,jds:jde,:),areaCell(ids:ide,jds:jde,:));
+    LInf_phi(ires) = LInf(phi_end(ids:ide,jds:jde,:),phi_start(ids:ide,jds:jde,:),areaCell(ids:ide,jds:jde,:));
 end
 
 for ires = 2:res_num
