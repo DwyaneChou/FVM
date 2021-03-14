@@ -21,8 +21,8 @@ for iVar = 1:nVar
 end
 
 figure
-iVar = 2;
-iPatch = 5;
+iVar = 1;
+iPatch = 1;
 var_plt = squeeze(var(iVar,:,:,iPatch))';
 plt = pcolor(var_plt);
 colormap(jet)

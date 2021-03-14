@@ -42,6 +42,8 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixB
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixT
   
+  real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixQ
+  
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: Apoly
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: invApoly
   
@@ -118,6 +120,9 @@ module spatial_operators_mod
       real(r_kind), dimension(:), allocatable :: xg
       real(r_kind), dimension(:), allocatable :: yg
       
+      real(r_kind), dimension(:), allocatable :: xq
+      real(r_kind), dimension(:), allocatable :: yq
+      
       allocate(iCenCell  (ims:ime,jms:jme,ifs:ife))
       
       allocate(iRecCell  (maxRecCells,ims:ime,jms:jme,ifs:ife))
@@ -146,6 +151,8 @@ module spatial_operators_mod
       allocate(polyMatrixR(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(polyMatrixB(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(polyMatrixT(nPointsOnEdge,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      
+      allocate(polyMatrixQ(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       
       allocate(Apoly   (maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
       allocate(invApoly(maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
@@ -196,6 +203,9 @@ module spatial_operators_mod
       
       allocate(xg(nPointsOnCell))
       allocate(yg(nPointsOnCell))
+      
+      allocate(xq(nQuadPointsOncell))
+      allocate(yq(nQuadPointsOncell))
       
       dV = dx * dy
     
@@ -296,25 +306,23 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      !$OMP PARALLEL DO PRIVATE(j,i,iPOC,xg,yg,nRC,nRT) COLLAPSE(3)
+      !$OMP PARALLEL DO PRIVATE(j,i,iPOC,xq,yq,nRC,nRT) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
             nRC = nRecCells(i,j,iPatch)
             nRT = nRecTerms(i,j,iPatch)
             do iPOC = 1,nQuadPointsOncell
-              !xg(iPOC) = ( x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch) ) * recdx
-              !yg(iPOC) = ( y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch) ) * recdy
-              xg(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
-              yg(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
+              !xq(iPOC) = ( x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch) ) * recdx
+              !yq(iPOC) = ( y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch) ) * recdy
+              xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
+              yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
             enddo
             
             call calc_polynomial_deriv_matrix(locPolyDegree(i,j,iPatch),nQuadPointsOnCell,nRT,&
-                                              xg(1:nQuadPointsOnCell),yg(1:nQuadPointsOnCell),&
-                                              recMatrixDx(:,1:nRT,i,j,iPatch)                ,&
-                                              recMatrixDy(:,1:nRT,i,j,iPatch))
+                                              xq,yq,recMatrixDx(:,1:nRT,i,j,iPatch),recMatrixDy(:,1:nRT,i,j,iPatch))
             
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nQuadPointsOnCell,nRT,xg(1:nQuadPointsOnCell)*recdx,yg(1:nQuadPointsOnCell)*recdy,recMatrixQ(:,1:nRT,i,j,iPatch))
+            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nQuadPointsOnCell,nRT,xq*recdx,yq*recdy,recMatrixQ(:,1:nRT,i,j,iPatch))
           enddo
         enddo
       enddo
@@ -351,10 +359,14 @@ module spatial_operators_mod
             call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB*recdx,yB*recdy,polyMatrixB(:,1:nRC,i,j,iPatch))
             call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT*recdx,yT*recdy,polyMatrixT(:,1:nRC,i,j,iPatch))
             
+            call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,polyMatrixQ(:,1:nRC,i,j,iPatch))
+            
             polyMatrixL(:,1:nRC,i,j,iPatch) = matmul( polyMatrixL(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
             polyMatrixR(:,1:nRC,i,j,iPatch) = matmul( polyMatrixR(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
             polyMatrixB(:,1:nRC,i,j,iPatch) = matmul( polyMatrixB(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
             polyMatrixT(:,1:nRC,i,j,iPatch) = matmul( polyMatrixT(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
+            
+            polyMatrixQ(:,1:nRC,i,j,iPatch) = matmul( polyMatrixQ(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
           enddo
         enddo
       enddo
@@ -631,6 +643,34 @@ module spatial_operators_mod
             enddo
             do iVar = 1,nVar
               Fe(iVar,i,j,iPatch) = Gaussian_quadrature_1d(FeP(iVar,:,i,j,iPatch))
+              
+              !if(iVar==2.and.i==25.and.j==23.and.iPatch==1)then
+              !  print*,Fe(iVar,i,j,iPatch),max(eigL(:),eigR(:)), ( qL(iVar,:,i,j,iPatch) - qR(iVar,:,i-1,j,iPatch) ),qC(iVar,i,j,iPatch)
+              !  print*,FL(iVar,:,i  ,j,iPatch),qL(iVar,:,i  ,j,iPatch)
+              !  print*,FR(iVar,:,i-1,j,iPatch),qR(iVar,:,i-1,j,iPatch)
+              !  print*,''
+              !  print*,- ( Fe(iVar,25,23,iPatch) - Fe(iVar,24,23,iPatch) ) / dx,dx
+              !  print*,''
+              !endif
+              !
+              !if(iVar==2.and.i==26.and.j==23.and.iPatch==1)then
+              !  print*,Fe(iVar,i,j,iPatch),max(eigL(:),eigR(:)), ( qL(iVar,:,i,j,iPatch) - qR(iVar,:,i-1,j,iPatch) ),qC(iVar,i,j,iPatch)
+              !  print*,FL(iVar,:,i  ,j,iPatch),qL(iVar,:,i  ,j,iPatch)
+              !  print*,FR(iVar,:,i-1,j,iPatch),qR(iVar,:,i-1,j,iPatch)
+              !  print*,''
+              !  print*,- ( Fe(iVar,26,23,iPatch) - Fe(iVar,25,23,iPatch) ) / dx,dx
+              !  print*,''
+              !endif
+              !
+              !if(iVar==2.and.i==27.and.j==23.and.iPatch==1)then
+              !  print*,Fe(iVar,i,j,iPatch),max(eigL(:),eigR(:)), ( qL(iVar,:,i,j,iPatch) - qR(iVar,:,i-1,j,iPatch) ),qC(iVar,i,j,iPatch)
+              !  print*,FL(iVar,:,i  ,j,iPatch),qL(iVar,:,i  ,j,iPatch)
+              !  print*,FR(iVar,:,i-1,j,iPatch),qR(iVar,:,i-1,j,iPatch)
+              !  print*,''
+              !  print*,- ( Fe(iVar,27,23,iPatch) - Fe(iVar,26,23,iPatch) ) / dx,dx
+              !  print*,''
+              !endif
+
             enddo
           enddo
         enddo
@@ -678,8 +718,9 @@ module spatial_operators_mod
         do j = jds,jde
           do i = ids,ide
             do iVar = 1,nVar
-              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
-              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
+              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
+              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
+              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
               !tend%q(iVar,i,j,iPatch) = - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
               !tend%q(iVar,i,j,iPatch) = src(iVar,i,j,iPatch)
               
@@ -690,18 +731,26 @@ module spatial_operators_mod
               !print*,src(iVar,i,j,iPatch)
               !print*,''
               
+              !if(iVar==2.and.i==25.and.j==23.and.iPatch==1)then
+              !  print*,- ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx, - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy, - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy, src(iVar,i,j,iPatch)
+              !endif
+              !
+              !if(iVar==2.and.i==26.and.j==23.and.iPatch==1)then
+              !  print*,- ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx, - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy, - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy, src(iVar,i,j,iPatch)
+              !endif
             enddo
           enddo
         enddo
       enddo
       !$OMP END PARALLEL DO
       
-      print*,maxval(tend%q/stat%q),minval(tend%q/stat%q)
-      
-      call check_halo(stat%q)
-      call check_tend(tend%q)
-      
-      stop 'spatial_operator'
+      !print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
+      !       minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
+      !
+      !call check_halo(stat%q)
+      !call check_tend(tend%q)
+      !
+      !stop 'spatial_operator'
       
     end subroutine spatial_operator
     
@@ -804,32 +853,55 @@ module spatial_operators_mod
       integer(i_kind) :: ic
       integer(i_kind) :: m,n
       
-      !$OMP PARALLEL DO PRIVATE(j,i,m,n,iCOS,iRec,jRec,u,coordMtx,ic,polyCoef) COLLAPSE(3)
+      !!$OMP PARALLEL DO PRIVATE(j,i,m,n,iCOS,iRec,jRec,u,coordMtx,ic,polyCoef) COLLAPSE(3)
+      !do iPatch = ifs,ife
+      !  do j = jds,jde
+      !    do i = ids,ide
+      !      m = nRecCells(i,j,iPatch)
+      !      n = nRecTerms(i,j,iPatch)
+      !      do iCOS = 1,m
+      !        iRec = iRecCell(iCOS,i,j,iPatch)
+      !        jRec = jRecCell(iCOS,i,j,iPatch)
+      !        
+      !        u       (iCOS    ) = q(iRec,jRec,iPatch)
+      !        coordMtx(iCOS,1:n) = polyCoordCoef(iCOS,1:n,i,j,iPatch)
+      !      enddo
+      !      ic = iCenCell(i,j,iPatch)
+      !      
+      !      polyCoef(1:n) = WLS_ENO(coordMtx(1:m,1:n),u(1:m),dx,m,n,ic)
+      !      
+      !      if(present(qL  )) qL  (:,i,j,iPatch) = matmul(recMatrixL (:,1:n,i,j,iPatch),polyCoef(1:n))
+      !      if(present(qR  )) qR  (:,i,j,iPatch) = matmul(recMatrixR (:,1:n,i,j,iPatch),polyCoef(1:n))
+      !      if(present(qB  )) qB  (:,i,j,iPatch) = matmul(recMatrixB (:,1:n,i,j,iPatch),polyCoef(1:n))
+      !      if(present(qT  )) qT  (:,i,j,iPatch) = matmul(recMatrixT (:,1:n,i,j,iPatch),polyCoef(1:n))
+      !                                                               
+      !      if(present(qQ  )) qQ  (:,i,j,iPatch) = matmul(recMatrixQ (:,1:n,i,j,iPatch),polyCoef(1:n))
+      !      
+      !      if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,1:n,i,j,iPatch),polyCoef(1:n))
+      !      if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:n,i,j,iPatch),polyCoef(1:n))
+      !    enddo
+      !  enddo
+      !enddo
+      !!$OMP END PARALLEL DO
+      
+      !$OMP PARALLEL DO PRIVATE(j,i,m,iCOS,iRec,jRec,u) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
             m = nRecCells(i,j,iPatch)
-            n = nRecTerms(i,j,iPatch)
             do iCOS = 1,m
               iRec = iRecCell(iCOS,i,j,iPatch)
               jRec = jRecCell(iCOS,i,j,iPatch)
               
-              u       (iCOS    ) = q(iRec,jRec,iPatch)
-              coordMtx(iCOS,1:n) = polyCoordCoef(iCOS,1:n,i,j,iPatch)
+              u(iCOS) = q(iRec,jRec,iPatch)
             enddo
-            ic = iCenCell(i,j,iPatch)
             
-            polyCoef(1:n) = WLS_ENO(coordMtx(1:m,1:n),u(1:m),dx,m,n,ic)
+            if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,1:m,i,j,iPatch),u(1:m))
+            if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,1:m,i,j,iPatch),u(1:m))
+            if(present(qB  )) qB(:,i,j,iPatch) = matmul(polyMatrixB (:,1:m,i,j,iPatch),u(1:m))
+            if(present(qT  )) qT(:,i,j,iPatch) = matmul(polyMatrixT (:,1:m,i,j,iPatch),u(1:m))
             
-            if(present(qL  )) qL  (:,i,j,iPatch) = matmul(recMatrixL (:,1:n,i,j,iPatch),polyCoef(1:n))
-            if(present(qR  )) qR  (:,i,j,iPatch) = matmul(recMatrixR (:,1:n,i,j,iPatch),polyCoef(1:n))
-            if(present(qB  )) qB  (:,i,j,iPatch) = matmul(recMatrixB (:,1:n,i,j,iPatch),polyCoef(1:n))
-            if(present(qT  )) qT  (:,i,j,iPatch) = matmul(recMatrixT (:,1:n,i,j,iPatch),polyCoef(1:n))
-                                                                     
-            if(present(qQ  )) qQ  (:,i,j,iPatch) = matmul(recMatrixQ (:,1:n,i,j,iPatch),polyCoef(1:n))
-            
-            if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,1:n,i,j,iPatch),polyCoef(1:n))
-            if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:n,i,j,iPatch),polyCoef(1:n))
+            if(present(qQ  )) qQ(:,i,j,iPatch) = matmul(polyMatrixQ (:,1:m,i,j,iPatch),u(1:m))
           enddo
         enddo
       enddo
@@ -975,10 +1047,8 @@ module spatial_operators_mod
       
       psi_C(1,:) = 0
       ! Coriolis scheme 1
-      !psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
-      !psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
-      psi_C(2,:) = phiu
-      psi_C(3,:) = phiv
+      psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
+      psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
       
       !! Coriolis scheme 2
       !psi_C(2,:) = sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
@@ -1164,19 +1234,19 @@ module spatial_operators_mod
 
       do iPatch = ifs,ife
         do j = jms,jme
-          write(123,'(38e35.16)')(phi(i,j,iPatch),i=ims,ime)
+          write(123,'(98e35.16)')(phi(i,j,iPatch),i=ims,ime)
         enddo
       enddo
 
       do iPatch = ifs,ife
         do j = jms,jme
-          write(123,'(38e35.16)')(us(i,j,iPatch),i=ims,ime)
+          write(123,'(98e35.16)')(us(i,j,iPatch),i=ims,ime)
         enddo
       enddo
 
       do iPatch = ifs,ife
         do j = jms,jme
-          write(123,'(38e35.16)')(vs(i,j,iPatch),i=ims,ime)
+          write(123,'(98e35.16)')(vs(i,j,iPatch),i=ims,ime)
         enddo
       enddo
       
@@ -1194,7 +1264,7 @@ module spatial_operators_mod
       do iVar = 1,nVar
         do iPatch = ifs,ife
           do j = jds,jde
-            write(123,'(30e35.16)')(q(iVar,i,j,iPatch),i=ids,ide)
+            write(123,'(90e35.16)')(q(iVar,i,j,iPatch),i=ids,ide)
           enddo
         enddo
       enddo
