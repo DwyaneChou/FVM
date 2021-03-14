@@ -2,44 +2,34 @@
 % clc
 % clear
 
-% var_name = 'v';
-% var_name = 'phit';
-var_name = 'zonal_wind';
+var_name = 'phit';
+% var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
-it       = 361;
+it       = 337;
 
-nc_file = '..\run\mcv_output.nc';
-% nc_file = '..\run\mcv_output_RH_0p5.nc';
+nc_file = '..\run\output.nc';
 
 dx         = ncreadatt(nc_file,'/','dx');
-% ids        = ncreadatt(nc_file,'/','ids');
-% ide        = ncreadatt(nc_file,'/','ide');
-% jds        = ncreadatt(nc_file,'/','jds');
-% jde        = ncreadatt(nc_file,'/','jde');
-its        = ncreadatt(nc_file,'/','its');
-ite        = ncreadatt(nc_file,'/','ite');
-jts        = ncreadatt(nc_file,'/','jts');
-jte        = ncreadatt(nc_file,'/','jte');
-ips        = ncreadatt(nc_file,'/','ips');
-ipe        = ncreadatt(nc_file,'/','ipe');
-jps        = ncreadatt(nc_file,'/','jps');
-jpe        = ncreadatt(nc_file,'/','jpe');
-ics        = ncreadatt(nc_file,'/','ics');
-ice        = ncreadatt(nc_file,'/','ice');
-jcs        = ncreadatt(nc_file,'/','jcs');
-jce        = ncreadatt(nc_file,'/','jce');
+ids        = ncreadatt(nc_file,'/','ids');
+ide        = ncreadatt(nc_file,'/','ide');
+jds        = ncreadatt(nc_file,'/','jds');
+jde        = ncreadatt(nc_file,'/','jde');
+ims        = ncreadatt(nc_file,'/','ims');
+ime        = ncreadatt(nc_file,'/','ime');
+jms        = ncreadatt(nc_file,'/','jms');
+jme        = ncreadatt(nc_file,'/','jme');
+ifs        = ncreadatt(nc_file,'/','ifs');
+ife        = ncreadatt(nc_file,'/','ife');
 Fill_Value = ncreadatt(nc_file,var_name,'_FillValue');
 
-nHalo = its-ics;
-Nx    = ite-its+1;
-Ny    = jte-jts+1;
+nHalo  = ids-ims;
+Nx     = ide-ids+1;
+Ny     = jde-jds+1;
+Npatch = ife - ifs + 1;
 
-is    = its + nHalo;
-js    = jts + nHalo;
-
-lon = ncread(nc_file,'lon'   ,[is,js,1   ],[Nx,Ny,6  ]);
-lat = ncread(nc_file,'lat'   ,[is,js,1   ],[Nx,Ny,6  ]);
-var = ncread(nc_file,var_name,[is,js,1,it],[Nx,Ny,6,1]);
+lon = ncread(nc_file,'lon'   );
+lat = ncread(nc_file,'lat'   );
+var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1]);
 
 lon(lon<0) = 360 + lon((lon<0));
 
@@ -47,7 +37,7 @@ lon1d = reshape(lon,[],1);
 lat1d = reshape(lat,[],1);
 var1d = reshape(var,[],1);
 
-res = dx/2;
+res = dx;
 x   = 0:res:360;
 y   = -90:res:90;
 

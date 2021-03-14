@@ -576,14 +576,18 @@ module spatial_operators_mod
         !                    qB(iVar,:,:,:,:),&
         !                    qT(iVar,:,:,:,:))
         
-        !print*,maxval(qC(iVar,:,:,:  )),minval(qC(iVar,:,:,:  ))
-        !print*,maxval(qL(iVar,:,:,:,:)),minval(qL(iVar,:,:,:,:))
-        !print*,maxval(qR(iVar,:,:,:,:)),minval(qR(iVar,:,:,:,:))
-        !print*,maxval(qB(iVar,:,:,:,:)),minval(qB(iVar,:,:,:,:))
-        !print*,maxval(qT(iVar,:,:,:,:)),minval(qT(iVar,:,:,:,:))
-        !print*,maxval(qQ(iVar,:,:,:,:)),minval(qQ(iVar,:,:,:,:))
+        !print*,maxval(qC(iVar,  ids:ide,jds:jde,ifs:ife)),minval(qC(iVar,  ids:ide,jds:jde,ifs:ife))
+        !print*,maxval(qL(iVar,:,ids:ide,jds:jde,ifs:ife)),minval(qL(iVar,:,ids:ide,jds:jde,ifs:ife))
+        !print*,maxval(qR(iVar,:,ids:ide,jds:jde,ifs:ife)),minval(qR(iVar,:,ids:ide,jds:jde,ifs:ife))
+        !print*,maxval(qB(iVar,:,ids:ide,jds:jde,ifs:ife)),minval(qB(iVar,:,ids:ide,jds:jde,ifs:ife))
+        !print*,maxval(qT(iVar,:,ids:ide,jds:jde,ifs:ife)),minval(qT(iVar,:,ids:ide,jds:jde,ifs:ife))
+        !print*,maxval(qQ(iVar,:,ids:ide,jds:jde,ifs:ife)),minval(qQ(iVar,:,ids:ide,jds:jde,ifs:ife))
+        !
+        !print*,maxloc(qQ(iVar,:,ids:ide,jds:jde,ifs:ife))
+        !print*,minloc(qQ(iVar,:,ids:ide,jds:jde,ifs:ife))
         !print*,''
       enddo
+      !stop
       
       !do iPatch = ifs,ife
       !  do j = jms,jme

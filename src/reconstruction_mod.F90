@@ -73,12 +73,19 @@
         
         allocate(polyCoordCoef(maxRecCells,maxRecTerms,ids:ide,jds:jde,ifs:ife))
         
-        triQuad_pos(1,:) = (/ 2./3., 1./6., 1./6. /)
-        triQuad_pos(2,:) = (/ 1./6., 2./3., 1./6. /)
-        triQuad_pos(3,:) = (/ 1./6., 1./6., 2./3. /)
-        
-        triQuad_wts      = (/ 1./3., 1./3., 1./3. /)
-        
+        if(nQuadOrder==1)then
+          ! Order 1
+          triQuad_pos(1,:) = (/ 1./3., 1./3., 1./3. /)
+          
+          triQuad_wts      = (/ 1 /)
+        elseif(nQuadOrder==3)then
+          ! Order 3
+          triQuad_pos(1,:) = (/ 2./3., 1./6., 1./6. /)
+          triQuad_pos(2,:) = (/ 1./6., 2./3., 1./6. /)
+          triQuad_pos(3,:) = (/ 1./6., 1./6., 2./3. /)
+          
+          triQuad_wts      = (/ 1./3., 1./3., 1./3. /)
+        endif
       end subroutine init_reconstruction
       
       function Gaussian_quadrature_1d(q)

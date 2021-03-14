@@ -21,7 +21,7 @@ for iVar = 1:nVar
 end
 
 figure
-iVar = 3;
+iVar = 2;
 iPatch = 1;
 ids = 3;
 ide = 28;
