@@ -6,9 +6,9 @@ time_end   = 121;
 
 history_path = '..\run';
 
-% res_nc{1} = [history_path,'\','output.nc'];
+res_nc{1} = [history_path,'\','output.nc'];
 
-res_nc{1} = [history_path,'\','output_6p0.nc'];
+% res_nc{1} = [history_path,'\','output_6p0.nc'];
 res_nc{2} = [history_path,'\','output_3p0.nc'];
 
 % res_nc{1} = [history_path,'\','output_9p0.nc'];
