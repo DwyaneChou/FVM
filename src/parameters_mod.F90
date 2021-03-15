@@ -95,8 +95,6 @@ module parameters_mod
   
   namelist /domain/        dx                  ,&
                            dy                  ,&
-                           xhalo               ,&
-                           yhalo               ,&
                            nPointsOnEdge       ,&
                            nQuadOrder
   namelist /dynamic_opt/   reconstruct_scheme,&
@@ -121,8 +119,6 @@ module parameters_mod
     dt            = 300.
     dx            = 2.
     dy            = 2.
-    xhalo         = 1
-    yhalo         = 1
     nPointsOnEdge = 3
     
     run_days         = 1
@@ -153,6 +149,10 @@ module parameters_mod
     ! Calculate element numbers on x/y direction
     Nx = int((x_max - x_min)/dx)
     Ny = int((y_max - y_min)/dy)
+    
+    recBdy = ( stencil_width - 1 ) / 2
+    xhalo  = recBdy
+    yhalo  = recBdy
     
     ! Calculate starting and ending index for physical domain
     ids  = 1
@@ -206,8 +206,6 @@ module parameters_mod
     
     allocate( nGhostPointsOnCell(ids:ide,jds:jde,ifs:ife) )
     nGhostPointsOnCell = 0
-    
-    recBdy = ( stencil_width - 1 ) / 2
     
   end subroutine init_Parameters
   

@@ -247,8 +247,8 @@ MODULE mesh_mod
             verticesCoord(2,:) = (/x(iVertex1,i,j,iPatch), y(iVertex1,i,j,iPatch)/)
             verticesCoord(3,:) = (/x(iVertex2,i,j,iPatch), y(iVertex2,i,j,iPatch)/)
             do iQP = 1,nQuadOrder
-              x(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
-              y(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,3), triQuad_pos(iQP,:) )
+              x(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,1), triQuad_pos(iQP,:) )
+              y(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
               countQP = countQP + 1
             enddo
           enddo

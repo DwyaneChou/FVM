@@ -3,7 +3,7 @@ run_days         = 5
 run_hours        = 0
 run_minutes      = 0
 run_seconds      = 0
-dt               = 600
+dt               = 1200
 history_interval = 3600
 integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
@@ -15,13 +15,11 @@ case_num    = 2, ! Choose from 2, 5 or 6
 &domain
 dx                   = 3,  ! Unit: degree 
 dy                   = 3,  ! Unit: degree
-xhalo                = 2,  ! The ghost cell size
-yhalo                = 2,  ! The ghost cell size
 nPointsOnEdge        = 3,
-nQuadOrder           = 5,
+nQuadOrder           = 4,  ! Choose from 4, 9, 16, 25,..., n^2
 /
 
 &dynamic_opt
 reconstruct_scheme = 'WENO'
-stencil_width      =  5,
+stencil_width      =  7,
 /

@@ -32,47 +32,36 @@
       subroutine init_reconstruction
         integer(i_kind) :: i,j,k
         
-        integer(i_kind) :: n
+        !real(r_kind) xx,yy
+        !real(r_kind) mtx   (2,2)
+        !real(r_kind) invMtx(2,2)
+        !
+        !real(r_kind) st(2,nQuadOrder)
+        !real(r_kind) xv(2)
+        !
+        !real(r_kind) xt(3)
+        !real(r_kind) yt(3)
+        !
+        !integer(i_kind) :: invstat
         
         real(r_kind), dimension(:,:), allocatable :: quad_wts_tmp_1d
         real(r_kind), dimension(:,:), allocatable :: quad_wts_tmp_2d
         
-        real(r_kind), dimension(:,:), allocatable :: quad_wts_tri_tmp_1d
-        real(r_kind), dimension(:,:), allocatable :: quad_wts_tri_tmp_2d
-        
-        real   (r_kind), dimension(:  ), allocatable :: quad_pos_tri_1d
-        real   (r_kind), dimension(:  ), allocatable :: quad_wts_tri_1d
-        real   (r_kind), dimension(:,:), allocatable :: quad_pos_tri_2d
-        real   (r_kind), dimension(:  ), allocatable :: quad_wts_tri_2d
-      
         maxRecCells = stencil_width**2
         maxRecTerms = maxRecCells
         
-        n = nint( sqrt(real(nQuadOrder,r_kind)) )
-        
-        allocate(quad_pos_1d(nPointsOnEdge   ))
-        allocate(quad_wts_1d(nPointsOnEdge   ))
+        allocate(quad_pos_1d(nPointsOnEdge    ))
+        allocate(quad_wts_1d(nPointsOnEdge    ))
         allocate(quad_wts_2d(nPointsOnEdge**2))
         
         allocate(triQuad_pos(nQuadOrder,3))
         allocate(triQuad_wts(nQuadOrder  ))
         
-        allocate(quad_pos_tri_1d(n   ))
-        allocate(quad_wts_tri_1d(n   ))
-        allocate(quad_pos_tri_2d(2,nQuadOrder))
-        allocate(quad_wts_tri_2d(  nQuadOrder))
-        
         allocate(quad_wts_tmp_1d(nPointsOnEdge,1            ))
         allocate(quad_wts_tmp_2d(nPointsOnEdge,nPointsOnEdge))
         
-        allocate(quad_wts_tri_tmp_1d(n,1))
-        allocate(quad_wts_tri_tmp_2d(n,n))
-        
         call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
         
-        call Gaussian_Legendre(n, quad_pos_tri_1d, quad_wts_tri_1d)
-        
-        ! Square quadrature
         quad_pos_1d = ( quad_pos_1d + 1. ) / 2.
         quad_wts_1d = quad_wts_1d / 2.
         
@@ -88,43 +77,6 @@
           enddo
         enddo
         
-        ! Triangle quadrature from square quadratrue
-        if(nQuadOrder==1)then
-          ! Order 1
-          triQuad_pos(1,:) = (/ 1./3., 1./3., 1./3. /)
-          
-          triQuad_wts      = (/ 1 /)
-        else
-          quad_pos_tri_1d = ( quad_pos_tri_1d + 1. ) / 2.
-          quad_wts_tri_1d = quad_wts_tri_1d / 2.
-          
-          quad_wts_tri_tmp_1d(:,1) = quad_wts_tri_1d
-          quad_wts_tri_tmp_2d = matmul(quad_wts_tri_tmp_1d,transpose(quad_wts_tri_tmp_1d))
-          
-          k = 0
-          do j = 1,n
-            do i = 1,n
-              k = k + 1
-              quad_pos_tri_2d(1,k) = quad_pos_tri_1d(i)
-              quad_pos_tri_2d(2,k) = quad_pos_tri_1d(j)
-              
-              quad_wts_tri_2d(  k) = quad_wts_tri_tmp_2d(i,j) * ( 1. - quad_pos_tri_2d(1,k) )
-              
-              triQuad_pos(k,2) = quad_pos_tri_2d(1,k)
-              triQuad_pos(k,3) = ( 1. - quad_pos_tri_2d(1,k) ) * quad_pos_tri_2d(2,k)
-              triQuad_pos(k,1) = 1. - quad_pos_tri_2d(1,k) - ( 1. - quad_pos_tri_2d(1,k) ) * quad_pos_tri_2d(2,k)
-              
-              triQuad_wts(k) = quad_wts_tri_2d(  k) * 2.
-              
-              !print*,k
-              !print*,quad_wts_tri_2d(  k)
-              !print*,triQuad_pos(k,:)
-              !print*,''
-            enddo
-          enddo
-          !stop
-        endif
-        
         allocate(nRecCells   (ids:ide,jds:jde,ifs:ife))
         allocate(nGstRecCells(ids:ide,jds:jde,ifs:ife))
         allocate(nRecTerms   (ids:ide,jds:jde,ifs:ife))
@@ -133,6 +85,90 @@
         
         allocate(polyCoordCoef(maxRecCells,maxRecTerms,ids:ide,jds:jde,ifs:ife))
         
+        if(nQuadOrder==1)then
+          ! Order 1
+          triQuad_pos(1,:) = (/ 1./3., 1./3., 1./3. /)
+          
+          triQuad_wts      = (/ 1 /)
+        elseif(nQuadOrder==3)then
+          ! Order 3
+          triQuad_pos(1,:) = (/ 2./3., 1./6., 1./6. /)
+          triQuad_pos(2,:) = (/ 1./6., 2./3., 1./6. /)
+          triQuad_pos(3,:) = (/ 1./6., 1./6., 2./3. /)
+          
+          triQuad_wts      = (/ 1./3., 1./3., 1./3. /)
+          
+          triQuad_wts = triQuad_wts / sqrt(3.)
+        elseif(nQuadOrder==4)then
+          ! Order 4
+          triQuad_pos(1,:) = (/ 1./3., 1./3., 1./3. /)
+          triQuad_pos(2,:) = (/ 3./5., 1./5., 1./5. /)
+          triQuad_pos(3,:) = (/ 1./5., 3./5., 1./5. /)
+          triQuad_pos(4,:) = (/ 1./5., 1./5., 3./5. /)
+          
+          triQuad_wts(1  ) = -0.5625
+          triQuad_wts(2:4) = 0.520833333333333333333
+        elseif(nQuadOrder==6)then
+          ! Order 6
+          triQuad_pos(1,:) = (/ 0.816847572980459, 0.091576213509771, 0.091576213509771 /)
+          triQuad_pos(2,:) = (/ 0.091576213509771, 0.816847572980459, 0.091576213509771 /)
+          triQuad_pos(3,:) = (/ 0.091576213509771, 0.091576213509771, 0.816847572980459 /)
+          triQuad_pos(4,:) = (/ 0.108103018168070, 0.445948490915965, 0.445948490915965 /)
+          triQuad_pos(5,:) = (/ 0.445948490915965, 0.108103018168070, 0.445948490915965 /)
+          triQuad_pos(6,:) = (/ 0.445948490915965, 0.445948490915965, 0.108103018168070 /)
+          
+          triQuad_wts(1:3) = 0.109951743655322
+          triQuad_wts(4:6) = 0.223381589678011
+        elseif(nQuadOrder==7)then
+          ! Order 7
+          triQuad_pos(1,:) = (/ 0.333333333333333, 0.333333333333333, 0.333333333333333 /)
+          triQuad_pos(2,:) = (/ 0.797426985353087, 0.101286507323456, 0.101286507323456 /)
+          triQuad_pos(3,:) = (/ 0.101286507323456, 0.797426985353087, 0.101286507323456 /)
+          triQuad_pos(4,:) = (/ 0.101286507323456, 0.101286507323456, 0.797426985353087 /)
+          triQuad_pos(5,:) = (/ 0.470142064105115, 0.470142064105115, 0.059715871789770 /)
+          triQuad_pos(6,:) = (/ 0.470142064105115, 0.059715871789770, 0.108103018168070 /)
+          triQuad_pos(7,:) = (/ 0.059715871789770, 0.470142064105115, 0.470142064105115 /)
+          
+          triQuad_wts(1  ) = 0.225
+          triQuad_wts(2:4) = 0.125939180544827
+          triQuad_wts(5:7) = 0.132394152788506
+        else
+          print*,'Unknown nQuadOrder'
+          stop
+        endif
+        
+        !xt(1) = 0
+        !xt(2) = 1
+        !xt(3) = 0.5
+        !yt(1) = 0
+        !yt(2) = 0
+        !yt(3) = sqrt(3.) / 2.
+        !
+        !!xt(1) = 0
+        !!xt(2) = 1
+        !!xt(3) = 0
+        !!yt(1) = 0
+        !!yt(2) = 0
+        !!yt(3) = 1
+        !
+        !mtx(1,1) = xt(2) - xt(1)
+        !mtx(1,2) = xt(3) - xt(1)
+        !mtx(2,1) = yt(2) - yt(1)
+        !mtx(2,2) = yt(3) - yt(1)
+        !
+        !call BRINV(2,mtx,invMtx,invstat)
+        !
+        !print*,invMtx
+        !
+        !do k = 1,nQuadOrder
+        !  xv(1) = dot_product( triQuad_pos(k,:), xt ) - xt(1)
+        !  xv(2) = dot_product( triQuad_pos(k,:), yt ) - yt(1)
+        !  
+        !  st(:,k) = matmul(invMtx,xv)
+        !  print*,st(:,k)
+        !enddo
+        !
+        !stop
       end subroutine init_reconstruction
       
       function Gaussian_quadrature_1d(q)
