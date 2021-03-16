@@ -1,9 +1,9 @@
 &time_settings
-run_days         = 5
+run_days         = 1
 run_hours        = 0
 run_minutes      = 0
 run_seconds      = 0
-dt               = 1200
+dt               = 120
 history_interval = 3600
 integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
@@ -13,13 +13,14 @@ case_num    = 2, ! Choose from 2, 5 or 6
 /
 
 &domain
-dx                   = 3,  ! Unit: degree 
-dy                   = 3,  ! Unit: degree
+dx                   = 0.375,  ! Unit: degree 
+dy                   = 0.375,  ! Unit: degree
 nPointsOnEdge        = 3,
-nQuadOrder           = 4,  ! Choose from 4, 9, 16, 25,..., n^2
 /
 
 &dynamic_opt
-reconstruct_scheme = 'WENO'
-stencil_width      =  7,
+reconstruct_scheme = 'WLS-ENO' ! Choose from 'WLS-ENO', 'Polynomial'
+stencil_width      = 5,
+quad_opt           = 1, ! 1 for square gaussian quadratrue, 2 for triangular quaduature
+nQuadOrder         = 4, ! only for quad_opt=1, Choose from 4, 9, 16, 25,..., n^2
 /

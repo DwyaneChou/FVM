@@ -1,5 +1,5 @@
-clc
-clear
+% clc
+% clear
 
 data = importdata('..\run\check_halo.txt');
 
@@ -22,7 +22,7 @@ end
 
 figure
 iVar = 1;
-iPatch = 1;
+iPatch = 6;
 var_plt = squeeze(var(iVar,:,:,iPatch))';
 plt = pcolor(var_plt);
 colormap(jet)

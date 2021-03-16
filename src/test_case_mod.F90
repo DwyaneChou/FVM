@@ -13,10 +13,14 @@ module test_case_mod
     real(r_kind), dimension(:,:,:), allocatable :: phi
     real(r_kind), dimension(:,:,:), allocatable :: u
     real(r_kind), dimension(:,:,:), allocatable :: v
+    real(r_kind), dimension(:,:,:), allocatable :: uc
+    real(r_kind), dimension(:,:,:), allocatable :: vc
     
     allocate(phi(ims:ime,jms:jme,ifs:ife))
     allocate(u  (ims:ime,jms:jme,ifs:ife))
     allocate(v  (ims:ime,jms:jme,ifs:ife))
+    allocate(uc (ims:ime,jms:jme,ifs:ife))
+    allocate(vc (ims:ime,jms:jme,ifs:ife))
     
     if(case_num == 2)then
       print*,''
@@ -37,9 +41,9 @@ module test_case_mod
       do j = jms,jme
         do i = ims,ime
           phi(i,j,iPatch) = stat(0)%q(1,i,j,iPatch) / sqrtGC(i,j,iPatch)
-          u  (i,j,iPatch) = stat(0)%q(2,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
-          v  (i,j,iPatch) = stat(0)%q(3,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
-          call contravProjPlane2Sphere(u(i,j,iPatch), v(i,j,iPatch), u(i,j,iPatch), v(i,j,iPatch), matrixA(:,:,cc,i,j,iPatch))
+          uc (i,j,iPatch) = stat(0)%q(2,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
+          vc (i,j,iPatch) = stat(0)%q(3,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
+          call contravProjPlane2Sphere(u(i,j,iPatch), v(i,j,iPatch), uc(i,j,iPatch), vc(i,j,iPatch), matrixA(:,:,cc,i,j,iPatch))
           zsc(i,j,iPatch) = cell_quadrature(zs(cqs:cqe,i,j,iPatch))
         enddo
       enddo
@@ -54,6 +58,8 @@ module test_case_mod
     deallocate(phi)
     deallocate(u  )
     deallocate(v  )
+    deallocate(uc )
+    deallocate(vc )
   end subroutine init_testcase
 
   ! Global steady flow

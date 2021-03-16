@@ -1,5 +1,5 @@
-clc
-clear
+% clc
+% clear
 
 data = importdata('..\run\check_tend.txt');
 
@@ -21,8 +21,8 @@ for iVar = 1:nVar
 end
 
 figure
-iVar = 2;
-iPatch = 1;
+iVar = 3;
+iPatch = 5;
 ids = 3;
 ide = 28;
 jds = 3;

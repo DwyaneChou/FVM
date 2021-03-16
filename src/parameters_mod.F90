@@ -27,7 +27,6 @@ module parameters_mod
   
   integer(i_kind) :: nEdgesOnCell
   integer(i_kind) :: nPointsOnEdge
-  integer(i_kind) :: nQuadOrder
   integer(i_kind) :: nQuadPointsOnCell
   integer(i_kind) :: nPointsOnCell
   integer(i_kind) :: maxGhostPointsOnCell
@@ -35,6 +34,8 @@ module parameters_mod
   integer(i_kind),dimension(:,:,:),allocatable :: nGhostPointsOnCell
   
   ! dynamic options
+  integer(i_kind) :: nQuadOrder
+  integer(i_kind) :: quad_opt
   character*200   :: reconstruct_scheme = 'WENO'
   integer(i_kind) :: stencil_width = 5
   integer(i_kind) :: recBdy        = 2
@@ -44,6 +45,11 @@ module parameters_mod
   integer(i_kind) :: ide      ! The ending index in the x-direction  (Physical domain)
   integer(i_kind) :: jds      ! The starting index in the y-direction  (Physical domain)
   integer(i_kind) :: jde      ! The ending index in the y-direction  (Physical domain)
+  
+  integer(i_kind) :: idsm1
+  integer(i_kind) :: idep1
+  integer(i_kind) :: jdsm1
+  integer(i_kind) :: jdep1
   
   integer(i_kind) :: ims      ! The starting index in the x-direction (Physical cell/element domain)
   integer(i_kind) :: ime      ! The ending index in the x-direction  (Physical cell/element domain)
@@ -95,9 +101,10 @@ module parameters_mod
   
   namelist /domain/        dx                  ,&
                            dy                  ,&
-                           nPointsOnEdge       ,&
-                           nQuadOrder
+                           nPointsOnEdge
   namelist /dynamic_opt/   reconstruct_scheme,&
+                           quad_opt          ,&
+                           nQuadOrder        ,&
                            stencil_width
   
   contains
@@ -147,8 +154,8 @@ module parameters_mod
     end if
     
     ! Calculate element numbers on x/y direction
-    Nx = int((x_max - x_min)/dx)
-    Ny = int((y_max - y_min)/dy)
+    Nx = nint((x_max - x_min)/dx)
+    Ny = nint((y_max - y_min)/dy)
     
     recBdy = ( stencil_width - 1 ) / 2
     xhalo  = recBdy
@@ -159,6 +166,11 @@ module parameters_mod
     ide  = nx
     jds  = 1
     jde  = ny
+    
+    idsm1 = ids - 1
+    idep1 = ide + 1
+    jdsm1 = jds - 1
+    jdep1 = jde + 1
     
     ims  = 1  - xhalo
     ime  = Nx + xhalo
@@ -189,8 +201,14 @@ module parameters_mod
     nsteps = total_run_time / dt
     
     nEdgesOnCell         = 4
-    nQuadPointsOnCell    = nQuadOrder * nEdgesOnCell
-    maxGhostPointsOnCell = 2 * nQuadPointsOnCell
+    
+    if(quad_opt==1)then
+      nQuadPointsOnCell = nPointsOnEdge**2
+    elseif(quad_opt==2)then
+      nQuadPointsOnCell = nQuadOrder * nEdgesOnCell
+    endif
+    
+    maxGhostPointsOnCell = 4 * nQuadPointsOnCell
     ! nPointsOnCell = center point + corner points + boundary points + triangle quadrature points + max ghost points
     nPointsOnCell        = 1 + nEdgesOnCell + nEdgesOnCell * nPointsOnEdge + nQuadPointsOnCell + maxGhostPointsOnCell
     

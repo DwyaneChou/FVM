@@ -91,6 +91,7 @@ MODULE mesh_mod
   real(r_kind), dimension(:,:,:    ), allocatable :: areaCell
   
   logical, dimension(:,:,:), allocatable :: inDomain
+  logical, dimension(:,:,:), allocatable :: inCorner
       
   contains
   
@@ -189,9 +190,16 @@ MODULE mesh_mod
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
     
     allocate(inDomain  (ims:ime,jms:jme,ifs:ife))
+    allocate(inCorner  (ims:ime,jms:jme,ifs:ife))
       
     inDomain(ims:ime,jms:jme,ifs:ife) = .false. 
     inDomain(ids:ide,jds:jde,ifs:ife) = .true.
+    
+    inCorner(ims:ime,jms:jme,ifs:ife) = .false. 
+    inCorner(ims:ids-1,jms:jds-1,ifs:ife) = .true. ! low left
+    inCorner(ide+1:ime,jms:jds-1,ifs:ife) = .true. ! low right
+    inCorner(ims:ids-1,jde+1:jme,ifs:ife) = .true. ! up left
+    inCorner(ide+1:ime,jde+1:jme,ifs:ife) = .true. ! up right
     
     ! Init arrays
     ghost_i = 0
@@ -236,22 +244,37 @@ MODULE mesh_mod
           x(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = x(ccs+0,i,j,iPatch)
           y(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = y(ccs+0,i,j,iPatch) + quad_pos_1d * dy
           
-          ! Triangle quadrature points
-          countQP = 0
-          verticesCoord(1,:) = (/x(cc,i,j,iPatch), y(cc,i,j,iPatch)/)
-          ! Loop 4 triangles on cell
-          do iTOC = 1,nEdgesOnCell
-            iVertex1 = ccs+iTOC-1
-            iVertex2 = ccs+iTOC
-            if(iTOC==nEdgesOnCell)iVertex2 = ccs
-            verticesCoord(2,:) = (/x(iVertex1,i,j,iPatch), y(iVertex1,i,j,iPatch)/)
-            verticesCoord(3,:) = (/x(iVertex2,i,j,iPatch), y(iVertex2,i,j,iPatch)/)
-            do iQP = 1,nQuadOrder
-              x(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,1), triQuad_pos(iQP,:) )
-              y(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
-              countQP = countQP + 1
+          if(quad_opt==1)then
+            ! Square Gaussian quadrature points
+            countQP = 0
+            do jQP = 1,nPointsOnEdge
+              do iQP = 1,nPointsOnEdge
+                x(cqs+countQP,i,j,iPatch) = x(ccs,i,j,iPatch) + dx * quad_pos_1d(iQP)
+                y(cqs+countQP,i,j,iPatch) = y(ccs,i,j,iPatch) + dy * quad_pos_1d(jQP)
+                !print*,i,j,iPatch,iQP,jQP,dx*R2D,quad_opt
+                !print*,x(cqs+countQP,i,j,iPatch)*R2D,x(ccs,i,j,iPatch)*R2D
+                !print*,y(cqs+countQP,i,j,iPatch)*R2D,y(ccs,i,j,iPatch)*R2D
+                countQP = countQP + 1
+              enddo
             enddo
-          enddo
+          elseif(quad_opt==2)then
+            ! Triangular quadrature points
+            countQP = 0
+            verticesCoord(1,:) = (/x(cc,i,j,iPatch), y(cc,i,j,iPatch)/)
+            ! Loop 4 triangles on cell
+            do iTOC = 1,nEdgesOnCell
+              iVertex1 = ccs+iTOC-1
+              iVertex2 = ccs+iTOC
+              if(iTOC==nEdgesOnCell)iVertex2 = ccs
+              verticesCoord(2,:) = (/x(iVertex1,i,j,iPatch), y(iVertex1,i,j,iPatch)/)
+              verticesCoord(3,:) = (/x(iVertex2,i,j,iPatch), y(iVertex2,i,j,iPatch)/)
+              do iQP = 1,nQuadOrder
+                x(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,1), triQuad_pos(iQP,:) )
+                y(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
+                countQP = countQP + 1
+              enddo
+            enddo
+          endif
           
           ! Calculate parameters on each points on this cell
           do iPOC = cc,cqe
@@ -304,6 +327,11 @@ MODULE mesh_mod
                             lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
               ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
               ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+              
+              if( ghost_i(countQP,i,j,iPatch)==ids-1 ) ghost_i(countQP,i,j,iPatch) = ids
+              if( ghost_j(countQP,i,j,iPatch)==jds-1 ) ghost_j(countQP,i,j,iPatch) = jds
+              if( ghost_i(countQP,i,j,iPatch)==ide+1 ) ghost_i(countQP,i,j,iPatch) = ide
+              if( ghost_j(countQP,i,j,iPatch)==jde+1 ) ghost_j(countQP,i,j,iPatch) = jde
               
               ! Set ghost points for interpolation
               ig = ghost_i(countQP,i,j,iPatch)

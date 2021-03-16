@@ -70,8 +70,6 @@
         
         call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
         
-        call Gaussian_Legendre(n, quad_pos_tri_1d, quad_wts_tri_1d)
-        
         ! Square quadrature
         quad_pos_1d = ( quad_pos_1d + 1. ) / 2.
         quad_wts_1d = quad_wts_1d / 2.
@@ -95,6 +93,8 @@
           
           triQuad_wts      = (/ 1 /)
         else
+          call Gaussian_Legendre(n, quad_pos_tri_1d, quad_wts_tri_1d)
+          
           quad_pos_tri_1d = ( quad_pos_tri_1d + 1. ) / 2.
           quad_wts_tri_1d = quad_wts_tri_1d / 2.
           
@@ -159,13 +159,18 @@
         integer(i_kind) :: iT
         integer(i_kind) :: is,ie
         
-        cell_quadrature = 0
-        do iT = 1,nEdgesOnCell
-          is = 1 + ( it - 1 ) * nQuadOrder
-          ie = it * nQuadOrder
-          cell_quadrature = cell_quadrature + dot_product( triQuad_wts,q(is:ie) )
-        enddo
-        cell_quadrature = cell_quadrature / real(nEdgesOnCell,r_kind)
+        if(quad_opt==1)then
+          cell_quadrature = Gaussian_quadrature_2d(q)
+        elseif(quad_opt==2)then
+          cell_quadrature = 0
+          do iT = 1,nEdgesOnCell
+            is = 1 + ( it - 1 ) * nQuadOrder
+            ie = it * nQuadOrder
+            cell_quadrature = cell_quadrature + dot_product( triQuad_wts,q(is:ie) )
+          enddo
+          cell_quadrature = cell_quadrature / real(nEdgesOnCell,r_kind)
+        endif
+    
       end function cell_quadrature
     
       function WLS_ENO(A,u,h,m,n,ic,x0)
@@ -190,7 +195,7 @@
         
         real   (r_kind), dimension(n  ), intent(in),optional :: x0
         
-        real(r_kind),parameter :: alpha   = 10
+        real(r_kind),parameter :: alpha   = 1.5
         real(r_kind),parameter :: epsilon = 1.e-2
         
         real(r_kind), dimension(m,n) :: WA
