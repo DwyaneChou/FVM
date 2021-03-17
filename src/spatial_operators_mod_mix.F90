@@ -563,8 +563,6 @@ module spatial_operators_mod
       type(tend_field), target, intent(inout) :: tend
       
       integer(i_kind) :: iVar,i,j,iPatch,iPOC,iEOC
-      
-      real(r_kind) :: avg
   
       real(r_kind), dimension(nPointsOnEdge) :: eigL,eigR
       
@@ -580,19 +578,6 @@ module spatial_operators_mod
                             qT(iVar,:,:,:,:),&
                             qQ(iVar,:,:,:,:))
       enddo
-      
-      !do iPatch = ifs,ife
-      !  do j = jms,jme
-      !    do i = ims,ime
-      !      phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
-      !      phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
-      !    enddo
-      !  enddo
-      !enddo
-      !
-      !call reconstruction(phitC       ,&
-      !                    dqdx=dphitdx,&
-      !                    dqdy=dphitdy)
       
       call fill_bdy_flux(qL,qR,qB,qT)
       
@@ -652,10 +637,7 @@ module spatial_operators_mod
         do j = jds,jde
           do i = ids,idep1
             do iPOC = 1,nPointsOnEdge
-              eigL(iPOC) = calc_eigenvalue_x(sqrtGR(iPOC,i-1,j,iPatch),matrixIGR(:,:,iPOC,i-1,j,iPatch),qR(:,iPOC,i-1,j,iPatch))
-              eigR(iPOC) = calc_eigenvalue_x(sqrtGL(iPOC,i  ,j,iPatch),matrixIGL(:,:,iPOC,i  ,j,iPatch),qL(:,iPOC,i  ,j,iPatch))
-              
-              FeP(:,iPOC,i,j,iPatch) = 0.5 * ( FL(:,iPOC,i,j,iPatch) + FR(:,iPOC,i-1,j,iPatch) - max(eigL(iPOC),eigR(iPOC)) * ( qL(:,iPOC,i,j,iPatch) - qR(:,iPOC,i-1,j,iPatch) ) )
+              FeP(:,iPOC,i,j,iPatch) = 0.5 * ( FL(:,iPOC,i,j,iPatch) + FR(:,iPOC,i-1,j,iPatch) - sign(1.,qL(2,iPOC,i,j,iPatch)) * ( FL(:,iPOC,i,j,iPatch) - FR(:,iPOC,i-1,j,iPatch) ) )
             enddo
             do iVar = 1,nVar
               Fe(iVar,i,j,iPatch) = Gaussian_quadrature_1d(FeP(iVar,:,i,j,iPatch))
@@ -670,10 +652,7 @@ module spatial_operators_mod
         do j = jds,jdep1
           do i = ids,ide
             do iPOC = 1,nPointsOnEdge
-              eigL(iPOC) = calc_eigenvalue_y(sqrtGT(iPOC,i,j-1,iPatch),matrixIGT(:,:,iPOC,i,j-1,iPatch),qT(:,iPOC,i,j-1,iPatch))
-              eigR(iPOC) = calc_eigenvalue_y(sqrtGB(iPOC,i,j  ,iPatch),matrixIGB(:,:,iPOC,i,j  ,iPatch),qB(:,iPOC,i,j  ,iPatch))
-              
-              GeP(:,iPOC,i,j,iPatch) = 0.5 * ( GB(:,iPOC,i,j,iPatch) + GT(:,iPOC,i,j-1,iPatch) - max(eigL(iPOC),eigR(iPOC)) * ( qB(:,iPOC,i,j,iPatch) - qT(:,iPOC,i,j-1,iPatch) ) )
+              GeP(:,iPOC,i,j,iPatch) = 0.5 * ( GB(:,iPOC,i,j,iPatch) + GT(:,iPOC,i,j-1,iPatch) - sign(1.,qB(3,iPOC,i,j,iPatch)) * ( GB(:,iPOC,i,j,iPatch) - GT(:,iPOC,i,j-1,iPatch) ) )
             enddo
             do iVar = 1,nVar
               Ge(iVar,i,j,iPatch) = Gaussian_quadrature_1d(GeP(iVar,:,i,j,iPatch))
@@ -684,34 +663,19 @@ module spatial_operators_mod
       !$OMP END DO
       !$OMP END PARALLEL
       
-      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,ide
-            src(:,i,j,iPatch) = calc_src(sqrtG(cqs:cqe,i,j,iPatch),matrixG(:,:,cqs:cqe,i,j,iPatch),matrixIG(:,:,cqs:cqe,i,j,iPatch),&
-                                         qQ(:,:,i,j,iPatch),dphitdx(:,i,j,iPatch),dphitdy(:,i,j,iPatch)                            ,&
-                                         tanx(cqs:cqe,i,j,iPatch),tany(cqs:cqe,i,j,iPatch)                                         ,&
-                                         Coriolis(cqs:cqe,i,j,iPatch),delta(cqs:cqe,i,j,iPatch),iPatch)
-          enddo
-        enddo
-      enddo
-      !$OMP END PARALLEL DO
-      
-      !$OMP PARALLEL DO PRIVATE(i,j,iVar) COLLAPSE(4)
+      !$OMP PARALLEL DO PRIVATE(i,j,iVar) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
             do iVar = 1,nVar
-              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
-              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
-              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
-              !tend%q(iVar,i,j,iPatch) = - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
-              !tend%q(iVar,i,j,iPatch) = src(iVar,i,j,iPatch)
+              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
             enddo
           enddo
         enddo
       enddo
       !$OMP END PARALLEL DO
+      tend%q(2,ids:ide,jds:jde,ifs:ife) = stat%q(2,ids:ide,jds:jde,ifs:ife) / stat%q(1,ids:ide,jds:jde,ifs:ife) * tend%q(1,ids:ide,jds:jde,ifs:ife)
+      tend%q(3,ids:ide,jds:jde,ifs:ife) = stat%q(3,ids:ide,jds:jde,ifs:ife) / stat%q(1,ids:ide,jds:jde,ifs:ife) * tend%q(1,ids:ide,jds:jde,ifs:ife)
       
       !print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
       !       minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
@@ -897,8 +861,8 @@ module spatial_operators_mod
       v   = q(3) / q(1)
       
       calc_F(1) = q(2)
-      calc_F(2) = q(2) * u + 0.5 * IG11 * sqrtG * phi**2
-      calc_F(3) = q(2) * v + 0.5 * IG21 * sqrtG * phi**2
+      calc_F(2) = 0
+      calc_F(3) = 0
     end function calc_F
     
     function calc_G(sqrtG,matrixIG,q)
@@ -918,152 +882,9 @@ module spatial_operators_mod
       v   = q(3) / q(1)
       
       calc_G(1) = q(3)
-      calc_G(2) = q(3) * u + 0.5 * IG12 * sqrtG * phi**2
-      calc_G(3) = q(3) * v + 0.5 * IG22 * sqrtG * phi**2
+      calc_G(2) = 0
+      calc_G(3) = 0
     end function calc_G
-    
-    function calc_eigenvalue_x(sqrtG,matrixIG,q)
-      real(r_kind) :: calc_eigenvalue_x
-      real(r_kind), dimension(nVar), intent(in) :: q
-      real(r_kind)                 , intent(in) :: sqrtG
-      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
-      
-      real(r_kind) :: IG11
-      
-      real(r_kind) :: phi
-      real(r_kind) :: u
-      
-      phi = q(1) / sqrtG
-      u   = q(2) / q(1)
-      
-      IG11 = matrixIG(1,1)
-      
-      calc_eigenvalue_x = max( abs( u + sqrt(IG11*phi) ), abs( u - sqrt(IG11*phi) ) )
-      
-    end function calc_eigenvalue_x
-    
-    function calc_eigenvalue_y(sqrtG,matrixIG,q)
-      real(r_kind) :: calc_eigenvalue_y
-      real(r_kind), dimension(nVar), intent(in) :: q
-      real(r_kind)                 , intent(in) :: sqrtG
-      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
-      
-      real(r_kind) :: IG22
-      
-      real(r_kind) :: phi
-      real(r_kind) :: v
-      
-      phi = q(1) / sqrtG
-      v   = q(3) / q(1)
-      
-      IG22 = matrixIG(2,2)
-      
-      calc_eigenvalue_y = max( abs( v + sqrt(IG22*phi) ), abs( v - sqrt(IG22*phi) ) )
-      
-    end function calc_eigenvalue_y
-    
-    function calc_src(sqrtG,matrixG,matrixIG,q,dphitdx,dphitdy,x,y,Coriolis,delta,iPatch)
-      real(r_kind), dimension(nVar) :: calc_src
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: sqrtG
-      real(r_kind), dimension(2, 2,nQuadPointsOnCell), intent(in) :: matrixG
-      real(r_kind), dimension(2, 2,nQuadPointsOnCell), intent(in) :: matrixIG
-      real(r_kind), dimension(nVar,nQuadPointsOnCell), intent(in) :: q
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: dphitdx
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: dphitdy
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: x ! tan(x) actually
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: y ! tan(y) actually
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: Coriolis
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: delta
-      integer(i_kind) :: iPatch
-      
-      real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_M
-      real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_C
-      real(r_kind), dimension(nVar,nQuadPointsOnCell) :: psi_B
-      
-      real(r_kind), dimension(nQuadPointsOnCell) :: phi
-      real(r_kind), dimension(nQuadPointsOnCell) :: u
-      real(r_kind), dimension(nQuadPointsOnCell) :: v
-      real(r_kind), dimension(nQuadPointsOnCell) :: phiu
-      real(r_kind), dimension(nQuadPointsOnCell) :: phiv
-      real(r_kind), dimension(nQuadPointsOnCell) :: G11
-      real(r_kind), dimension(nQuadPointsOnCell) :: G12
-      real(r_kind), dimension(nQuadPointsOnCell) :: G21
-      real(r_kind), dimension(nQuadPointsOnCell) :: G22
-      real(r_kind), dimension(nQuadPointsOnCell) :: IG11
-      real(r_kind), dimension(nQuadPointsOnCell) :: IG12
-      real(r_kind), dimension(nQuadPointsOnCell) :: IG21
-      real(r_kind), dimension(nQuadPointsOnCell) :: IG22
-      
-      integer :: iVar
-      
-      phi  = q(1,:) / sqrtG
-      u    = q(2,:) / q(1,:)
-      v    = q(3,:) / q(1,:)
-      phiu = phi * u
-      phiv = phi * v
-      
-      G11  = matrixG(1,1,:)
-      G12  = matrixG(1,2,:)
-      G21  = matrixG(2,1,:)
-      G22  = matrixG(2,2,:)
-           
-      IG11 = matrixIG(1,1,:)
-      IG12 = matrixIG(1,2,:)
-      IG21 = matrixIG(2,1,:)
-      IG22 = matrixIG(2,2,:)
-      
-      psi_M(1,:) = 0
-      psi_M(2,:) = 2. * sqrtG / (delta**2) * (-x * y**2 * phiu * u + y * ( 1. + y**2 ) * phiu * v )
-      psi_M(3,:) = 2. * sqrtG / (delta**2) * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
-      
-      psi_C(1,:) = 0
-      ! Coriolis scheme 1
-      psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
-      psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
-      
-      !! Coriolis scheme 2
-      !psi_C(2,:) = sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
-      !psi_C(3,:) = sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
-      
-      !! Coriolis scheme 3
-      !if(iPatch==6)then
-      !  psi_C(2,:) = -sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
-      !  psi_C(3,:) = -sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
-      !elseif(iPatch==5)then
-      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
-      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
-      !else
-      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -x*y*phiu + (1.+y*y)*phiv )
-      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -(1.+x*x)*phiu + x*y*phiv )
-      !endif
-      
-      !print*,iPatch
-      !print*,psi_C(2,:)
-      !print*,Coriolis * (  G12 * phiu + G22 * phiv )
-      !print*,sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
-      !!print*,psi_C(3,:)
-      !!print*,sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
-      !!print*,Coriolis * ( -G11 * phiu - G12 * phiv )
-      !print*,''
-      
-      psi_B(1,:) = 0
-      psi_B(2,:) = - sqrtG * phi * ( IG11 * dphitdx + IG12 * dphitdy )
-      psi_B(3,:) = - sqrtG * phi * ( IG21 * dphitdx + IG22 * dphitdy )
-      
-      !iVar = 2
-      !print*,cell_quadrature( psi_M(iVar,:) )
-      !print*,cell_quadrature( psi_C(iVar,:) )
-      !print*,cell_quadrature( psi_B(iVar,:) )
-      !print*,''
-      
-      do iVar = 1,nVar
-        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
-        calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) )
-        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) )
-        !calc_src(iVar) = cell_quadrature( psi_C(iVar,:) )
-        !calc_src(iVar) = cell_quadrature( psi_B(iVar,:) )
-      enddo
-    end function calc_src
     
     subroutine fill_bdy_flux(qL,qR,qB,qT)
       real(r_kind), dimension(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife),intent(inout) :: qL

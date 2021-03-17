@@ -17,6 +17,7 @@ MODULE constants_mod
   real(r_kind),parameter    :: gravity   = 9.80616
   real(r_kind),parameter    :: pi        = 2.*asin(1.)
   real(r_kind),parameter    :: radius    = 6371220.
+  !real(r_kind),parameter    :: radius    = 1.
   real(r_kind),parameter    :: D2R       = PI/180.    ! convert degree into radian
   real(r_kind),parameter    :: R2D       = 180./PI    ! convert radian into degree
   real(r_kind),parameter    :: Omega     = 7.292E-5

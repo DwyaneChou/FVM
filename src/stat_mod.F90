@@ -28,8 +28,8 @@ module stat_mod
 
       !$OMP PARALLEL DO PRIVATE(i,j,iVar) COLLAPSE(4)
       do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,ide
+        do j = jms,jme
+          do i = ims,ime
             do iVar = 1,nVar
               stat_out%q(iVar,i,j,iPatch) = stat_in%q(iVar,i,j,iPatch)
             enddo
