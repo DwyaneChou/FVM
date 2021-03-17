@@ -21,7 +21,7 @@ for iVar = 1:nVar
 end
 
 figure
-iVar = 1;
+iVar = 3;
 iPatch = 2;
 var_plt = squeeze(var(iVar,:,:,iPatch))';
 plt = pcolor(var_plt);

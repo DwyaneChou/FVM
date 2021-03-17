@@ -8,8 +8,8 @@ history_path = '..\run';
 
 res_nc{1} = [history_path,'\','output.nc'];
 
-res_nc{1} = [history_path,'\','output_3p0.nc'];
-res_nc{2} = [history_path,'\','output_6p0.nc'];
+% res_nc{1} = [history_path,'\','output_3p0.nc'];
+% res_nc{2} = [history_path,'\','output_6p0.nc'];
 % res_nc{1} = [history_path,'\','output_1p5.nc'];
 % res_nc{2} = [history_path,'\','output_0p75.nc'];
 

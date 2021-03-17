@@ -5,7 +5,7 @@
 var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
-it       = 5;
+it       = 121;
 
 nc_file = '..\run\output.nc';
 

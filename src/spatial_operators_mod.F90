@@ -677,13 +677,13 @@ module spatial_operators_mod
       tend%q(2,ids:ide,jds:jde,ifs:ife) = stat%q(2,ids:ide,jds:jde,ifs:ife) / stat%q(1,ids:ide,jds:jde,ifs:ife) * tend%q(1,ids:ide,jds:jde,ifs:ife)
       tend%q(3,ids:ide,jds:jde,ifs:ife) = stat%q(3,ids:ide,jds:jde,ifs:ife) / stat%q(1,ids:ide,jds:jde,ifs:ife) * tend%q(1,ids:ide,jds:jde,ifs:ife)
       
-      print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
-             minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
-      
-      call check_halo(stat%q)
-      call check_tend(tend%q)
-      
-      stop 'spatial_operator'
+      !print*,maxval(tend%q(1,ids:ide,jds:jde,ifs:ife)/stat%q(1,ids:ide,jds:jde,ifs:ife)),&
+      !       minval(tend%q(1,ids:ide,jds:jde,ifs:ife)/stat%q(1,ids:ide,jds:jde,ifs:ife))
+      !
+      !call check_halo(stat%q)
+      !call check_tend(tend%q)
+      !
+      !stop 'spatial_operator'
       
     end subroutine spatial_operator
     

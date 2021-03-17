@@ -212,8 +212,8 @@
         
         integer(i_kind) :: i,j,k
         
-        u_avg = sum( u ) / m
-        if(u_avg/=0) u_bar = u / u_avg
+        u_avg = sum( abs(u) ) / m
+        if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
         
         do j = 1,m
           beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h*h
@@ -222,11 +222,11 @@
         
         W = 1./beta
         W(ic) = alpha * W(ic)
+        W = W / sum(W)
         
         do j = 1,m
           WA(j,:) = W(j) * A(j,:)
-          !Wu(j  ) = W(j) * u(j  )
-          Wu(j  ) = W(j) * u_bar(j  )
+          Wu(j  ) = W(j) * u(j  )
         enddo
         
         ! Solver by Tsinghua
@@ -241,8 +241,6 @@
         !! Solver by LAPACK DGELS
         !call DGELS( 'N', M, N, 1, WA, M, Wu, M, WORK, M+N, INFO )
         !WLS_ENO = Wu
-        
-        WLS_ENO = WLS_ENO * u_avg
         
       end function WLS_ENO
       
