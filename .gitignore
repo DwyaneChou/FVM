@@ -2,3 +2,5 @@
 build/*
 *.nc
 *.exe
+run/check_tend.txt
+run/check_halo.txt
