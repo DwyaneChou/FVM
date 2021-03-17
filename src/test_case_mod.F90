@@ -75,6 +75,7 @@ module test_case_mod
     real(r_kind)    :: u0
     real(r_kind)    :: gh0 = 29400.
     real(r_kind)    :: gh
+    real(r_kind)    :: alpha = pi/4.
     
     integer :: i,j,iPatch,iPOC
     
@@ -90,14 +91,15 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
-            phi(iPOC,i,j,iPatch) = gh0 - (radius * Omega * u0 + u0**2 / 2.) * sinlat(iPOC,i,j,iPatch)**2
-            u  (iPOC,i,j,iPatch) = u0 * coslat(iPOC,i,j,iPatch)
+            phi(iPOC,i,j,iPatch) = gh0 - (radius * Omega * u0 + u0**2 / 2.) * ( -coslon(iPOC,i,j,iPatch)*coslat(iPOC,i,j,iPatch)*sin(alpha) + sinlat(iPOC,i,j,iPatch)*cos(alpha) )**2
+            u  (iPOC,i,j,iPatch) = u0 * ( coslat(iPOC,i,j,iPatch)*cos(alpha) + coslon(iPOC,i,j,iPatch)*sinlat(iPOC,i,j,iPatch)*sin(alpha) )
+            v  (iPOC,i,j,iPatch) = -u0 * sinlon(iPOC,i,j,iPatch) * sin(alpha)
+            
+            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * ( -coslon(iPOC,i,j,iPatch)*coslat(iPOC,i,j,iPatch)*sin(alpha) + sinlat(iPOC,i,j,iPatch)*cos(alpha) )
           enddo
         enddo
       enddo
     enddo
-    
-    v = 0.
     
     do iPatch = ifs, ife
       do j = jms, jme

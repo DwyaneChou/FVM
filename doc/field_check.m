@@ -5,7 +5,9 @@
 var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
-it       = 337;
+it       = 31;
+
+gravity = 9.80616;
 
 nc_file = '..\run\output.nc';
 
@@ -30,12 +32,16 @@ Npatch = ife - ifs + 1;
 lon = ncread(nc_file,'lon'   );
 lat = ncread(nc_file,'lat'   );
 var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1]);
+var0= ncread(nc_file,var_name,[ids,jds,1,1],[Nx,Ny,Npatch,1]);
+% var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1])/gravity;
+% var0= ncread(nc_file,var_name,[ids,jds,1,1],[Nx,Ny,Npatch,1])/gravity;
 
 lon(lon<0) = 360 + lon((lon<0));
 
 lon1d = reshape(lon,[],1);
 lat1d = reshape(lat,[],1);
 var1d = reshape(var,[],1);
+% var1d = reshape(var-var0,[],1);
 
 res = dx;
 x   = 0:res:360;
@@ -48,5 +54,5 @@ var_plot = griddata(lon1d,lat1d,var1d,lon2d,lat2d,'linear');
 figure
 pcolor(lon2d,lat2d,var_plot)
 shading interp
-% set(gca,'CLim',[-16,38])
+set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
 colormap(jet)

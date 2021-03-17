@@ -22,7 +22,7 @@ end
 
 figure
 iVar = 2;
-iPatch = 5;
+iPatch = 1;
 ids = 3;
 ide = 28;
 jds = 3;

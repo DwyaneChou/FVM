@@ -21,12 +21,6 @@ module spatial_operators_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: iGstCell ! x index of ghost reconstruction cells
   integer(i_kind), dimension(:,:,:,:), allocatable :: jGstCell ! y index of ghost reconstruction cells
   
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: xRel ! relative x coordinate of reconstruction cells
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: yRel ! relative y coordinate of reconstruction cells
-  
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: xGst ! relative x coordinate of Ghost reconstruction cells
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: yGst ! relative y coordinate of Ghost reconstruction cells
-  
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixL
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixR
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixB
@@ -43,12 +37,6 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixT
   
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyMatrixQ
-  
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: Apoly
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: invApoly
-  
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: A
-  real   (r_kind), dimension(:,:,:,:,:), allocatable :: invA
   
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrix
   
@@ -83,8 +71,8 @@ module spatial_operators_mod
   
   real(r_kind), dimension(:,:,:,:), allocatable :: src   ! source term
   
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! sqrtG * zs * gravity
-  real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! sqrtG * zs * gravity on Cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! zs * gravity
+  real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! zs * gravity on Cell
   
   real(r_kind), dimension(:,:,:,:), allocatable :: phit    ! phi + phis
   real(r_kind), dimension(:,:,:  ), allocatable :: phitC   ! phi + phis on cell
@@ -94,18 +82,18 @@ module spatial_operators_mod
   
     contains
     subroutine init_spatial_operator
-      integer(i_kind) :: i,j,iPatch
-      integer(i_kind) :: iCOS ! indices of Cells On Stencils
-      integer(i_kind) :: iPOC ! indices of points on cell
-      integer(i_kind) :: iRec,jRec
-      integer(i_kind) :: iQP,jQP
-      integer(i_kind) :: iR,jR
+  
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: A
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: invA
+  
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: Apoly
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: invApoly
+  
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: xRel ! relative x coordinate of reconstruction cells
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: yRel ! relative y coordinate of reconstruction cells
       
-      integer(i_kind) :: nxp,nyp
-      integer(i_kind) :: invstat
-      integer(i_kind) :: nRC,nRT
-      
-      integer :: pg
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: xGst ! relative x coordinate of Ghost reconstruction cells
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: yGst ! relative y coordinate of Ghost reconstruction cells
   
       real(r_kind), dimension(:), allocatable :: xL
       real(r_kind), dimension(:), allocatable :: xR
@@ -122,6 +110,19 @@ module spatial_operators_mod
       
       real(r_kind), dimension(:), allocatable :: xq
       real(r_kind), dimension(:), allocatable :: yq
+      
+      integer(i_kind) :: i,j,iPatch
+      integer(i_kind) :: iCOS ! indices of Cells On Stencils
+      integer(i_kind) :: iPOC ! indices of points on cell
+      integer(i_kind) :: iRec,jRec
+      integer(i_kind) :: iQP,jQP
+      integer(i_kind) :: iR,jR
+      
+      integer(i_kind) :: nxp,nyp
+      integer(i_kind) :: invstat
+      integer(i_kind) :: nRC,nRT
+      
+      integer :: pg
       
       allocate(iCenCell  (ims:ime,jms:jme,ifs:ife))
       
@@ -563,8 +564,6 @@ module spatial_operators_mod
       type(tend_field), target, intent(inout) :: tend
       
       integer(i_kind) :: iVar,i,j,iPatch,iPOC,iEOC
-      
-      real(r_kind) :: avg
   
       real(r_kind), dimension(nPointsOnEdge) :: eigL,eigR
       
@@ -713,13 +712,13 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
-             minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
-      
-      call check_halo(stat%q)
-      call check_tend(tend%q)
-      
-      stop 'spatial_operator'
+      !print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
+      !       minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
+      !
+      !call check_halo(stat%q)
+      !call check_tend(tend%q)
+      !
+      !stop 'spatial_operator'
       
     end subroutine spatial_operator
     
