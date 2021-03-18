@@ -117,6 +117,7 @@ module spatial_operators_mod
       integer(i_kind) :: iRec,jRec
       integer(i_kind) :: iQP,jQP
       integer(i_kind) :: iR,jR
+      integer(i_kind) :: irs,ire,jrs,jre
       
       integer(i_kind) :: nxp,nyp
       integer(i_kind) :: invstat
@@ -240,13 +241,40 @@ module spatial_operators_mod
             
             ! Ghost interpolation cells
             iCOS = 0
-            do jRec = -recBdy,recBdy
-              do iRec = -recBdy,recBdy
-                if(inDomain(i+iRec,j+jRec,iPatch))then
-                  iCOS = iCOS + 1
-                  iGstCell(iCOS,i,j,iPatch) = i + iRec
-                  jGstCell(iCOS,i,j,iPatch) = j + jRec
-                endif
+            !do jRec = -recBdy,recBdy
+            !  do iRec = -recBdy,recBdy
+            !    if(inDomain(i+iRec,j+jRec,iPatch))then
+            !      iCOS = iCOS + 1
+            !      iGstCell(iCOS,i,j,iPatch) = i + iRec
+            !      jGstCell(iCOS,i,j,iPatch) = j + jRec
+            !    endif
+            !  enddo
+            !enddo
+            irs = i - recBdy
+            ire = i + recBdy
+            jrs = j - recBdy
+            jre = j + recBdy
+            if(i-recBdy<ids)then
+              irs = ids
+              ire = ids + 2 * recBdy
+            endif
+            if(i+recBdy>ide)then
+              irs = ide - 2 * recBdy
+              ire = ide
+            endif
+            if(j-recBdy<jds)then
+              jrs = jds
+              jre = jds + 2 * recBdy
+            endif
+            if(j+recBdy>ide)then
+              jrs = jde - 2 * recBdy
+              jre = jde
+            endif
+            do jRec = jrs,jre
+              do iRec = irs,ire
+                iCOS = iCOS + 1
+                iGstCell(iCOS,i,j,iPatch) = iRec
+                jGstCell(iCOS,i,j,iPatch) = jRec
               enddo
             enddo
             nGstRecCells(i,j,iPatch) = iCOS
