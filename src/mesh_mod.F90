@@ -448,6 +448,19 @@ MODULE mesh_mod
     print*,''
     print*,'max areaCell sqrtGC diff ratio',maxval(abs(sqrtGC(ids:ide,jds:jde,ifs:ife)*dx*dy-areaCell(ids:ide,jds:jde,ifs:ife))/areaCell(ids:ide,jds:jde,ifs:ife))
     
+    deallocate( sinx )
+    deallocate( cosx )
+    !deallocate( tanx )
+    deallocate( cotx )
+    deallocate( secx )
+    deallocate( cscx )
+    deallocate( siny )
+    deallocate( cosy )
+    !deallocate( tany )
+    deallocate( coty )
+    deallocate( secy )
+    deallocate( cscy )
+    
   end subroutine init_mesh
   
   !------------------------------------------------------------------------------

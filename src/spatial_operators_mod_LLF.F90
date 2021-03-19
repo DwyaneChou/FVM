@@ -1209,45 +1209,6 @@ module spatial_operators_mod
       
     end subroutine restore_bdy_field
     
-    function M2(M,signal)
-      real(r_kind) :: M2
-      real(r_kind) :: M
-      real(r_kind) :: signal ! must be 1 or -1
-      
-      M2 = signal * 0.25 * ( M + signal )**2
-      
-    end function M2
-    
-    function M4(M,signal)
-      real(r_kind) :: M4
-      real(r_kind) :: M
-      real(r_kind) :: signal ! must be 1 or -1
-      
-      real(r_kind),parameter :: beta  = 0.125
-      
-      if(abs(M)>=1)then
-        M4 = 0.5 * ( M + signal * abs(M) )
-      else
-        M4 = M2( M, signal ) * ( 1. - signal * 16. * beta * M2( M, -signal ) )
-      endif
-      
-    end function M4
-    
-    function P5(M,signal)
-      real(r_kind) :: P5
-      real(r_kind) :: M
-      real(r_kind) :: signal ! must be 1 or -1
-      
-      real(r_kind),parameter :: alpha = 0.1875
-      
-      if(abs(M)>=1)then
-        P5 = 0.5 * ( 1. + signal * sign(1._r_kind,M) )
-      else
-        P5 = M2( M, signal ) * ( ( 2. * signal - M ) - signal * 16.*alpha * M * M2( M, -signal ) )
-      endif
-      
-    end function P5
-  
     subroutine check_halo(q)
       real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(in) :: q
       
