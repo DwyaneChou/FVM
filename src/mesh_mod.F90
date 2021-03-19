@@ -209,7 +209,7 @@ MODULE mesh_mod
     
     nGhostPointsOnCell = 0
     
-    !$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
+    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
     do iPatch = ifs,ife
       do j = jms,jme
         do i = ims,ime
@@ -312,10 +312,10 @@ MODULE mesh_mod
         enddo
       enddo
     enddo
-    !$OMP END PARALLEL DO
+    !!$OMP END PARALLEL DO
     
     ! Calculate ghost position
-    !$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
+    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
     do iPatch = ifs,ife
       do j = jms,jme
         do i = ims,ime
@@ -348,7 +348,7 @@ MODULE mesh_mod
         enddo
       enddo
     enddo
-    !$OMP END PARALLEL DO
+    !!$OMP END PARALLEL DO
     
     print*,''
     print*,'Actual max ghost points',maxval(nGhostPointsOnCell)

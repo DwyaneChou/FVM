@@ -21,8 +21,8 @@ for iVar = 1:nVar
 end
 
 figure
-iVar = 2;
-iPatch = 1;
+iVar = 1;
+iPatch = 5;
 ids = 3;
 ide = 28;
 jds = 3;
@@ -32,4 +32,5 @@ var_plt = squeeze(var(iVar,:,:,iPatch))';
 plt = pcolor(var_plt);
 colormap(jet)
 % set(plt,'edgeColor','none')
+% set(gca,'Clim',[-100000,100000])
 shading interp

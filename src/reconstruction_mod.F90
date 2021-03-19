@@ -196,7 +196,7 @@
         real   (r_kind), dimension(n  ), intent(in),optional :: x0
         
         real(r_kind),parameter :: alpha   = 1.5
-        real(r_kind),parameter :: epsilon = 1.e-2
+        !real(r_kind),parameter :: epsilon = 1.e-2 ! 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
         
         real(r_kind), dimension(m,n) :: WA
         real(r_kind), dimension(m  ) :: Wu

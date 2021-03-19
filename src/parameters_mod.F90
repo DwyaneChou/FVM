@@ -39,7 +39,8 @@ module parameters_mod
   character*200   :: reconstruct_scheme = 'WENO'
   integer(i_kind) :: stencil_width = 5
   integer(i_kind) :: recBdy        = 2
-  
+  real   (r_kind) :: epsilon       = 1.e-2 ! Coefficient for avioding divide 0 in WLS-ENO, 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
+                                           ! or in other words, increasing by finer grid
   ! Index parameter
   integer(i_kind) :: ids      ! The starting index in the x-direction (Physical domain)
   integer(i_kind) :: ide      ! The ending index in the x-direction  (Physical domain)
@@ -105,7 +106,8 @@ module parameters_mod
   namelist /dynamic_opt/   reconstruct_scheme,&
                            quad_opt          ,&
                            nQuadOrder        ,&
-                           stencil_width
+                           stencil_width     ,&
+                           epsilon
   
   contains
   

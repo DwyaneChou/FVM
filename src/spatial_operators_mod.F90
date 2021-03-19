@@ -53,16 +53,6 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: qT
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: qQ ! Just for phit quadrature on cell
   
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: FL    ! Reconstructed F_(i-1/2,j)
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: FR    ! Reconstructed F_(i+1/2,j)
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: FB    ! Reconstructed F_(i,j-1/2)
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: FT    ! Reconstructed F_(i,j+1/2)
-      
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: GL    ! Reconstructed G_(i-1/2,j)
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: GR    ! Reconstructed G_(i+1/2,j)
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: GB    ! Reconstructed G_(i,j-1/2)
-  real(r_kind), dimension(:,:,:,:,:), allocatable :: GT    ! Reconstructed G_(i,j+1/2)
-  
   real(r_kind), dimension(:,:,:,:), allocatable :: Fe    ! F on edges of each cell
   real(r_kind), dimension(:,:,:,:), allocatable :: Ge    ! H on edges of each cell
   
@@ -170,11 +160,6 @@ module spatial_operators_mod
       allocate(qB(nVar,nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife))
       allocate(qT(nVar,nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife))
       allocate(qQ(nVar,nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
-      
-      allocate(FL(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(FR(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(GB(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(GT(nVar,nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
       
       allocate(Fe(nVar,ids:ide+1,jds:jde  ,ifs:ife))
       allocate(Ge(nVar,ids:ide  ,jds:jde+1,ifs:ife))
@@ -623,66 +608,13 @@ module spatial_operators_mod
       
       call fill_bdy_flux(qL,qR,qB,qT)
       
-      !$OMP PARALLEL 
-      !$OMP DO PRIVATE(i,j,iPOC) COLLAPSE(4)
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = idsm1,ide
-            do iPOC = 1,nPointsOnEdge
-              FR(:,iPOC,i,j,iPatch) = calc_F(sqrtGR(iPOC,i,j,iPatch),matrixIGR(:,:,iPOC,i,j,iPatch),qR(:,iPOC,i,j,iPatch))
-            enddo
-          enddo
-        enddo
-      enddo
-      !$OMP END DO NOWAIT
-      
-      !$OMP DO PRIVATE(i,j,iPOC) COLLAPSE(4)
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,idep1
-            do iPOC = 1,nPointsOnEdge
-              FL(:,iPOC,i,j,iPatch) = calc_F(sqrtGL(iPOC,i,j,iPatch),matrixIGL(:,:,iPOC,i,j,iPatch),qL(:,iPOC,i,j,iPatch))
-            enddo
-          enddo
-        enddo
-      enddo
-      !$OMP END DO NOWAIT
-      
-      !$OMP DO PRIVATE(i,j,iPOC) COLLAPSE(4)
-      do iPatch = ifs,ife
-        do j = jdsm1,jde
-          do i = ids,ide
-            do iPOC = 1,nPointsOnEdge
-              GT(:,iPOC,i,j,iPatch) = calc_G(sqrtGT(iPOC,i,j,iPatch),matrixIGT(:,:,iPOC,i,j,iPatch),qT(:,iPOC,i,j,iPatch))
-            enddo
-          enddo
-        enddo
-      enddo
-      !$OMP END DO NOWAIT
-      
-      !$OMP DO PRIVATE(i,j,iPOC) COLLAPSE(4)
-      do iPatch = ifs,ife
-        do j = jds,jdep1
-          do i = ids,ide
-            do iPOC = 1,nPointsOnEdge
-              GB(:,iPOC,i,j,iPatch) = calc_G(sqrtGB(iPOC,i,j,iPatch),matrixIGB(:,:,iPOC,i,j,iPatch),qB(:,iPOC,i,j,iPatch))
-            enddo
-          enddo
-        enddo
-      enddo
-      !$OMP END DO
-      !$OMP END PARALLEL
-      
       !$OMP PARALLEL
-      !$OMP DO PRIVATE(i,j,iPOC,eigL,eigR,iVar) COLLAPSE(3)
+      !$OMP DO PRIVATE(i,j,iPOC,iVar) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,idep1
             do iPOC = 1,nPointsOnEdge
-              eigL(iPOC) = calc_eigenvalue_x(sqrtGR(iPOC,i-1,j,iPatch),matrixIGR(:,:,iPOC,i-1,j,iPatch),qR(:,iPOC,i-1,j,iPatch))
-              eigR(iPOC) = calc_eigenvalue_x(sqrtGL(iPOC,i  ,j,iPatch),matrixIGL(:,:,iPOC,i  ,j,iPatch),qL(:,iPOC,i  ,j,iPatch))
-              
-              FeP(:,iPOC,i,j,iPatch) = 0.5 * ( FL(:,iPOC,i,j,iPatch) + FR(:,iPOC,i-1,j,iPatch) - max(eigL(iPOC),eigR(iPOC)) * ( qL(:,iPOC,i,j,iPatch) - qR(:,iPOC,i-1,j,iPatch) ) )
+              FeP(:,iPOC,i,j,iPatch) = calc_F(sqrtGL(iPOC,i,j,iPatch),matrixIGL(:,:,iPOC,i,j,iPatch),qR(:,iPOC,i-1,j,iPatch),qL(:,iPOC,i,j,iPatch))
             enddo
             do iVar = 1,nVar
               Fe(iVar,i,j,iPatch) = Gaussian_quadrature_1d(FeP(iVar,:,i,j,iPatch))
@@ -692,15 +624,12 @@ module spatial_operators_mod
       enddo
       !$OMP END DO NOWAIT
       
-      !$OMP DO PRIVATE(i,j,iPOC,eigL,eigR,iVar) COLLAPSE(3)
+      !$OMP DO PRIVATE(i,j,iPOC,iVar) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jdep1
           do i = ids,ide
             do iPOC = 1,nPointsOnEdge
-              eigL(iPOC) = calc_eigenvalue_y(sqrtGT(iPOC,i,j-1,iPatch),matrixIGT(:,:,iPOC,i,j-1,iPatch),qT(:,iPOC,i,j-1,iPatch))
-              eigR(iPOC) = calc_eigenvalue_y(sqrtGB(iPOC,i,j  ,iPatch),matrixIGB(:,:,iPOC,i,j  ,iPatch),qB(:,iPOC,i,j  ,iPatch))
-              
-              GeP(:,iPOC,i,j,iPatch) = 0.5 * ( GB(:,iPOC,i,j,iPatch) + GT(:,iPOC,i,j-1,iPatch) - max(eigL(iPOC),eigR(iPOC)) * ( qB(:,iPOC,i,j,iPatch) - qT(:,iPOC,i,j-1,iPatch) ) )
+              GeP(:,iPOC,i,j,iPatch) = calc_G(sqrtGB(iPOC,i,j,iPatch),matrixIGB(:,:,iPOC,i,j,iPatch),qT(:,iPOC,i,j-1,iPatch),qB(:,iPOC,i,j,iPatch))
             enddo
             do iVar = 1,nVar
               Ge(iVar,i,j,iPatch) = Gaussian_quadrature_1d(GeP(iVar,:,i,j,iPatch))
@@ -907,87 +836,41 @@ module spatial_operators_mod
       
     end subroutine reconstruction
     
-    function calc_F(sqrtG,matrixIG,q)
+    function calc_F(sqrtG,matrixIG,qL,qR)
       real(r_kind), dimension(nVar) :: calc_F
       real(r_kind)                 , intent(in) :: sqrtG
       real(r_kind), dimension(2,2) , intent(in) :: matrixIG
-      real(r_kind), dimension(nVar), intent(in) :: q
+      real(r_kind), dimension(nVar), intent(in) :: qL
+      real(r_kind), dimension(nVar), intent(in) :: qR
       
-      real(r_kind) :: phi,u,v
-      real(r_kind) :: IG11,IG21
+      real(r_kind) :: m ! mach speed
+      real(r_kind) :: p ! phi**2 / 2
       
-      IG11 = matrixIG(1,1)
-      IG21 = matrixIG(2,1)
+      call AUSM_up(m,p,sqrtG,matrixIG,qL,qR,1)
       
-      phi = q(1) / sqrtG
-      u   = q(2) / q(1)
-      v   = q(3) / q(1)
+      calc_F = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
-      calc_F(1) = q(2)
-      calc_F(2) = q(2) * u + 0.5 * IG11 * sqrtG * phi**2
-      calc_F(3) = q(2) * v + 0.5 * IG21 * sqrtG * phi**2
+      calc_F(2) = calc_F(2) + sqrtG * matrixIG(1,1) * p
+      calc_F(3) = calc_F(3) + sqrtG * matrixIG(2,1) * p
     end function calc_F
     
-    function calc_G(sqrtG,matrixIG,q)
+    function calc_G(sqrtG,matrixIG,qL,qR)
       real(r_kind), dimension(nVar) :: calc_G
       real(r_kind)                 , intent(in) :: sqrtG
       real(r_kind), dimension(2,2) , intent(in) :: matrixIG
-      real(r_kind), dimension(nVar), intent(in) :: q
+      real(r_kind), dimension(nVar), intent(in) :: qL
+      real(r_kind), dimension(nVar), intent(in) :: qR
       
-      real(r_kind) :: phi,u,v
-      real(r_kind) :: IG12,IG22
+      real(r_kind) :: m ! mach speed
+      real(r_kind) :: p ! phi**2 / 2
       
-      IG12 = matrixIG(1,2)
-      IG22 = matrixIG(2,2)
+      call AUSM_up(m,p,sqrtG,matrixIG,qL,qR,2)
       
-      phi = q(1) / sqrtG
-      u   = q(2) / q(1)
-      v   = q(3) / q(1)
+      calc_G = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
-      calc_G(1) = q(3)
-      calc_G(2) = q(3) * u + 0.5 * IG12 * sqrtG * phi**2
-      calc_G(3) = q(3) * v + 0.5 * IG22 * sqrtG * phi**2
+      calc_G(2) = calc_G(2) + sqrtG * matrixIG(1,2) * p
+      calc_G(3) = calc_G(3) + sqrtG * matrixIG(2,2) * p
     end function calc_G
-    
-    function calc_eigenvalue_x(sqrtG,matrixIG,q)
-      real(r_kind) :: calc_eigenvalue_x
-      real(r_kind), dimension(nVar), intent(in) :: q
-      real(r_kind)                 , intent(in) :: sqrtG
-      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
-      
-      real(r_kind) :: IG11
-      
-      real(r_kind) :: phi
-      real(r_kind) :: u
-      
-      phi = q(1) / sqrtG
-      u   = q(2) / q(1)
-      
-      IG11 = matrixIG(1,1)
-      
-      calc_eigenvalue_x = max( abs( u + sqrt(IG11*phi) ), abs( u - sqrt(IG11*phi) ) )
-      
-    end function calc_eigenvalue_x
-    
-    function calc_eigenvalue_y(sqrtG,matrixIG,q)
-      real(r_kind) :: calc_eigenvalue_y
-      real(r_kind), dimension(nVar), intent(in) :: q
-      real(r_kind)                 , intent(in) :: sqrtG
-      real(r_kind), dimension(2,2) , intent(in) :: matrixIG
-      
-      real(r_kind) :: IG22
-      
-      real(r_kind) :: phi
-      real(r_kind) :: v
-      
-      phi = q(1) / sqrtG
-      v   = q(3) / q(1)
-      
-      IG22 = matrixIG(2,2)
-      
-      calc_eigenvalue_y = max( abs( v + sqrt(IG22*phi) ), abs( v - sqrt(IG22*phi) ) )
-      
-    end function calc_eigenvalue_y
     
     function calc_src(sqrtG,matrixG,matrixIG,q,dphitdx,dphitdy,x,y,Coriolis,delta,iPatch)
       real(r_kind), dimension(nVar) :: calc_src
@@ -1208,6 +1091,79 @@ module spatial_operators_mod
       enddo
       
     end subroutine restore_bdy_field
+    
+    subroutine AUSM_up(m,p,sqrtG,matrixIG,qL,qR,dir)
+      real   (r_kind),                  intent(out) :: m
+      real   (r_kind),                  intent(out) :: p
+      real   (r_kind),                  intent(in ) :: sqrtG
+      real   (r_kind), dimension(2,2) , intent(in ) :: matrixIG
+      real   (r_kind), dimension(nVar), intent(in ) :: qL
+      real   (r_kind), dimension(nVar), intent(in ) :: qR
+      integer(i_kind)                 , intent(in ) :: dir ! 1 for x direction, 2 for y direction
+      
+      real(r_kind),parameter :: Ku    = 0.75
+      real(r_kind),parameter :: Kp    = 0.25
+      real(r_kind),parameter :: sigma = 1.
+      real(r_kind),parameter :: sp    = 1.
+      real(r_kind),parameter :: sn    = -1.
+      
+      real(r_kind) :: phi
+      real(r_kind) :: u
+      real(r_kind) :: v
+      
+      real(r_kind) :: phiL
+      real(r_kind) :: uL
+      real(r_kind) :: cL
+      real(r_kind) :: pL
+      real(r_kind) :: phiR
+      real(r_kind) :: uR
+      real(r_kind) :: cR
+      real(r_kind) :: pR
+      
+      real(r_kind) :: a
+      real(r_kind) :: ML
+      real(r_kind) :: MR
+      real(r_kind) :: Mbar2
+      real(r_kind) :: Mh
+      
+      real(r_kind) :: P5MLsp
+      real(r_kind) :: P5MRsn
+      
+      phiL = qL(1) / sqrtG
+      phiR = qR(1) / sqrtG
+      ! Convert wind to perpendicular to the edge on sphere
+      if(dir==1)then
+        uL = qL(2) / qL(1) / matrixIG(1,1) / radius
+        uR = qR(2) / qR(1) / matrixIG(1,1) / radius
+      elseif(dir==2)then
+        uL = qL(3) / qL(1) / matrixIG(2,2) / radius
+        uR = qR(3) / qR(1) / matrixIG(2,2) / radius
+      endif
+      cL   = sqrt( phiL )
+      cR   = sqrt( phiR )
+      pL   = 0.5 * phiL**2
+      pR   = 0.5 * phiR**2
+      
+      phi = 0.5 * ( phiL + phiR )
+      a   = 0.5 * ( cL + cR )
+      
+      ML = uL / a
+      MR = uR / a
+      
+      Mbar2 = ( uL**2 + uR**2 ) / ( 2. * a**2 )
+      
+      Mh = M4( ML, sp ) + M4( MR, sn ) - Kp * max( 1. - sigma * Mbar2, 0. ) * ( phiR**2 - phiL**2 ) / ( 2. * phi * a**2 )
+      m  = a * Mh
+      
+      ! Convert wind back to computational space
+      if(dir==1)m = m * radius * matrixIG(1,1)
+      if(dir==2)m = m * radius * matrixIG(2,2)
+      
+      P5MLsp = P5(ML,sp)
+      P5MRsn = P5(MR,sn)
+      
+      p = P5MLsp * pL + P5MRsn * pR - Ku * P5MLsp * P5MRsn * ( phiL + phiR ) * a * ( uR - uL )
+    end subroutine AUSM_up
     
     function M2(M,signal)
       real(r_kind) :: M2
