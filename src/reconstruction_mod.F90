@@ -182,7 +182,7 @@
         ! u       : vector of known values
         ! h       : average edge length of cell
         ! m       : number of known values (volumn integration value on cell, or in other words, number of cells in a stencil)
-        ! n       : number of coeficients of reconstruction polynomial
+        ! n       : number of coefficients of reconstruction polynomial
         ! ic      : index of center cell on stencil
         ! x0      : initial value for Conjugate Gradient Method
         real   (r_kind), dimension(n  )             :: WLS_ENO
@@ -190,12 +190,12 @@
         integer(i_kind)                , intent(in) :: n
         real   (r_kind), dimension(m,n), intent(in) :: A
         real   (r_kind), dimension(m  ), intent(in) :: u
-        real   (r_kind)                , intent(in) :: h
+        real   (r_kind), dimension(m  ), intent(in) :: h
         integer(i_kind)                , intent(in) :: ic
         
         real   (r_kind), dimension(n  ), intent(in),optional :: x0
         
-        real(r_kind),parameter :: alpha   = 1.5
+        real(r_kind),parameter :: alpha   = 100
         !real(r_kind),parameter :: epsilon = 1.e-2 ! 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
         
         real(r_kind), dimension(m,n) :: WA
@@ -212,13 +212,14 @@
         
         integer(i_kind) :: i,j,k
         
+        u_bar = u
         u_avg = sum( abs(u) ) / m
         if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
         
         do j = 1,m
-          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h*h
+          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h(j)**2
         enddo
-        beta(ic) = minval(beta,abs(beta)>1.e-15)
+        beta(ic) = minval(beta,abs(beta)>0)
         
         W = 1./beta
         W(ic) = alpha * W(ic)

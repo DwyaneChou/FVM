@@ -40,8 +40,6 @@ module spatial_operators_mod
   
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: gstMatrix
   
-  real   (r_kind), dimension(:,:,:,:), allocatable :: dh
-  
   !real(r_kind) :: recCoef
   !real(r_kind) :: recdx
   !real(r_kind) :: recdy
@@ -179,8 +177,6 @@ module spatial_operators_mod
       
       allocate(dphitdx(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
       allocate(dphitdy(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
-      
-      allocate(dh(maxRecCells,ids:ide,jds:jde,ifs:ife))
       
       allocate(xL(nPointsOnEdge))
       allocate(xR(nPointsOnEdge))
@@ -320,8 +316,6 @@ module spatial_operators_mod
               
               call calc_polynomial_square_integration(locPolyDegree(i,j,iPatch),xRel(1,iCOS,i,j,iPatch),xRel(2,iCOS,i,j,iPatch),&
                                                                                 yRel(1,iCOS,i,j,iPatch),yRel(4,iCOS,i,j,iPatch),polyCoordCoef(iCOS,1:nRT,i,j,iPatch))
-              ! Calculate distance between reconstruction cells and center cell
-              dh(iCOS,i,j,iPatch) = sqrt( ( x(cc,iRec,jRec,iPatch) - x(cc,i,j,iPatch) )**2 + ( y(cc,iRec,jRec,iPatch) - y(cc,i,j,iPatch) )**2 )
             enddo
             
             ! Calculate reconstruction matrix on edge
@@ -675,13 +669,13 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
-             minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
-      
-      call check_halo(stat%q)
-      call check_tend(tend%q)
-      
-      stop 'spatial_operator'
+      !print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
+      !       minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
+      !
+      !call check_halo(stat%q)
+      !call check_tend(tend%q)
+      !
+      !stop 'spatial_operator'
       
     end subroutine spatial_operator
     
@@ -800,7 +794,7 @@ module spatial_operators_mod
               enddo
               ic = iCenCell(i,j,iPatch)
               
-              polyCoef(1:n) = WLS_ENO(coordMtx(1:m,1:n),u(1:m),dh(1:m,i,j,iPatch),m,n,ic)
+              polyCoef(1:n) = WLS_ENO(coordMtx(1:m,1:n),u(1:m),dx,m,n,ic)
               
               if(present(qL  )) qL  (:,i,j,iPatch) = matmul(recMatrixL (:,1:n,i,j,iPatch),polyCoef(1:n))
               if(present(qR  )) qR  (:,i,j,iPatch) = matmul(recMatrixR (:,1:n,i,j,iPatch),polyCoef(1:n))
