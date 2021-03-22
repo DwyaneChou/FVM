@@ -675,13 +675,13 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
-             minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
+      !print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
+      !       minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
       
-      call check_halo(stat%q)
-      call check_tend(tend%q)
+      !call check_halo(stat%q)
+      !call check_tend(tend%q)
       
-      stop 'spatial_operator'
+      !stop 'spatial_operator'
       
     end subroutine spatial_operator
     

@@ -195,17 +195,19 @@
         
         real   (r_kind), dimension(n  ), intent(in),optional :: x0
         
-        real(r_kind),parameter :: alpha   = 100
+        real(r_kind),parameter :: alpha   = 1.5
         !real(r_kind),parameter :: epsilon = 1.e-2 ! 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
         
         real(r_kind), dimension(m,n) :: WA
         real(r_kind), dimension(m  ) :: Wu
         real(r_kind), dimension(m  ) :: W ! weights on each cells
         real(r_kind), dimension(m  ) :: beta
-        
+
         real(r_kind), dimension(m  ) :: u_bar
         real(r_kind)                 :: u_avg
         
+        real(r_kind)                 :: dfg2
+
         !  For LAPACK only
         real   (r_kind), dimension(m+n) :: work
         integer(i_kind) :: INFO
@@ -216,10 +218,12 @@
         u_avg = sum( abs(u) ) / m
         if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
         
+        dfg2 = ( maxval(u_bar) - minval(u_bar) )**2
+
         do j = 1,m
-          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h(j)**2
+          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * dfg2 * h(j)**2
         enddo
-        beta(ic) = minval(beta,abs(beta)>0)
+        beta(ic) = minval(beta,beta>0)
         
         W = 1./beta
         W(ic) = alpha * W(ic)
