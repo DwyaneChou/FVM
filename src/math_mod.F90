@@ -160,6 +160,15 @@
       
     end subroutine  calc_rectangle_poly_integration
     
+    ! spherical distance on unit sphere
+    function spherical_distance(lat1,lon1,lat2,lon2,r)
+      real(r_kind) :: spherical_distance
+      real(r_kind),intent(in) :: lat1,lon1,lat2,lon2
+      real(r_kind),intent(in) :: r
+      
+      spherical_distance = r * acos( sin(lat1)*sin(lat2) + cos(lat1)*cos(lat2)*cos(lon1-lon2) )
+    end function spherical_distance
+  
     function nchoosek(n,k) ! same as nchoosek in matlab
       real   (r_kind) :: nchoosek
       integer(i_kind) :: n

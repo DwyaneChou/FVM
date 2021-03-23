@@ -221,13 +221,22 @@
         dfg2 = maxval( ( u_bar - u_bar(ic) )**2 )
 
         do j = 1,m
-          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * dfg2 * h(j)**2
+          !beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * dfg2 * h(j)**2
+          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h(j)**2
         enddo
         beta(ic) = minval(beta,beta>0)
         
         W = 1./beta
         W(ic) = alpha * W(ic)
         W = W / sum(W)
+        
+        !print*,'u_bar'
+        !write(*,'(5e)')u_bar
+        !print*,'W'
+        !write(*,'(5e)')W
+        !print*,'h'
+        !write(*,'(5e)')h
+        !print*,''
         
         do j = 1,m
           WA(j,:) = W(j) * A(j,:)
