@@ -218,7 +218,7 @@
         u_avg = sum( abs(u) ) / m
         if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
         
-        dfg2 = ( maxval(u_bar) - minval(u_bar) )**2
+        dfg2 = maxval( ( u_bar - u_bar(ic) )**2 )
 
         do j = 1,m
           beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * dfg2 * h(j)**2

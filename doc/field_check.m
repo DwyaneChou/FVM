@@ -2,10 +2,10 @@
 % clc
 % clear
 
-var_name = 'phit';
+% var_name = 'phit';
 % var_name = 'zonal_wind';
-% var_name = 'meridional_wind';
-it       = 100*24+1;
+var_name = 'meridional_wind';
+it       = 2;
 
 gravity = 9.80616;
 
@@ -55,5 +55,5 @@ var_plot = griddata(lon1d,lat1d,var1d,lon2d,lat2d,'linear');
 figure
 pcolor(lon2d,lat2d,var_plot)
 shading interp
-set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
+% set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
 colormap(jet)
