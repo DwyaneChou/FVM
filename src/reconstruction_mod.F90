@@ -205,8 +205,6 @@
 
         real(r_kind), dimension(m  ) :: u_bar
         real(r_kind)                 :: u_avg
-        
-        real(r_kind)                 :: dfg2
 
         !  For LAPACK only
         real   (r_kind), dimension(m+n) :: work
@@ -214,14 +212,13 @@
         
         integer(i_kind) :: i,j,k
         
-        u_bar = u
-        u_avg = sum( abs(u) ) / m
-        if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
+        !u_bar = u
+        !u_avg = sum( abs(u) ) / m
+        !if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
         
-        dfg2 = maxval( ( u_bar - u_bar(ic) )**2 )
+        u_bar = std(u,m)
 
         do j = 1,m
-          !beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * dfg2 * h(j)**2
           beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h(j)**2
         enddo
         beta(ic) = minval(beta,beta>0)
@@ -236,6 +233,10 @@
         !write(*,'(5e)')W
         !print*,'h'
         !write(*,'(5e)')h
+        !print*,'diff u'
+        !write(*,'(5e)')( u_bar - u_bar(ic) )**2
+        !print*,'eps*h**2'
+        !write(*,'(5e)')epsilon * h**2
         !print*,''
         
         do j = 1,m
@@ -257,6 +258,24 @@
         !WLS_ENO = Wu
         
       end function WLS_ENO
+      
+      function std(q,m)
+        integer(i_kind) :: m
+        real(r_kind), dimension(m) :: std
+        real(r_kind), dimension(m) :: q
+        
+        real   (r_kind) :: avg
+        real   (r_kind) :: n
+        
+        n = real(m,r_kind)
+        
+        avg = sum(q) / n
+        
+        std = sqrt( sum( ( q - avg )**2 ) / n )
+        
+        std = ( q - avg ) / std
+        
+      end function std
       
       subroutine WENO_limiter(Qrec,Q,dir)
         real   (r_kind)              , intent(out) :: Qrec

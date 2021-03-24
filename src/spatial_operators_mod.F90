@@ -321,9 +321,9 @@ module spatial_operators_mod
               call calc_polynomial_square_integration(locPolyDegree(i,j,iPatch),xRel(1,iCOS,i,j,iPatch),xRel(2,iCOS,i,j,iPatch),&
                                                                                 yRel(1,iCOS,i,j,iPatch),yRel(4,iCOS,i,j,iPatch),polyCoordCoef(iCOS,1:nRT,i,j,iPatch))
               ! Calculate distance between reconstruction cells and center cell
-              !dh(iCOS,i,j,iPatch) = sqrt( ( x(cc,iRec,jRec,iPatch) - x(cc,i,j,iPatch) )**2 + ( y(cc,iRec,jRec,iPatch) - y(cc,i,j,iPatch) )**2 )
-              dh(iCOS,i,j,iPatch) = spherical_distance(lat(cc,iRec,jRec,iPatch),lon(cc,iRec,jRec,iPatch),lat(cc,i,j,iPatch),lon(cc,i,j,iPatch),radius)
-              if(iRec==i.and.jRec==j)dh(iCOS,i,j,iPatch)=0
+              dh(iCOS,i,j,iPatch) = sqrt( ( x(cc,iRec,jRec,iPatch) - x(cc,i,j,iPatch) )**2 + ( y(cc,iRec,jRec,iPatch) - y(cc,i,j,iPatch) )**2 )
+              !dh(iCOS,i,j,iPatch) = spherical_distance(lat(cc,iRec,jRec,iPatch),lon(cc,iRec,jRec,iPatch),lat(cc,i,j,iPatch),lon(cc,i,j,iPatch),radius)
+              !if(iRec==i.and.jRec==j)dh(iCOS,i,j,iPatch)=0
             enddo
             
             ! Calculate reconstruction matrix on edge
@@ -787,7 +787,7 @@ module spatial_operators_mod
       integer(i_kind) :: m,n
       
       if(trim(reconstruct_scheme)=='WLS-ENO')then
-        !!$OMP PARALLEL DO PRIVATE(j,i,m,n,iCOS,iRec,jRec,u,coordMtx,ic,polyCoef) COLLAPSE(3)
+        !$OMP PARALLEL DO PRIVATE(j,i,m,n,iCOS,iRec,jRec,u,coordMtx,ic,polyCoef) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -803,8 +803,6 @@ module spatial_operators_mod
               ic = iCenCell(i,j,iPatch)
               
               polyCoef(1:n) = WLS_ENO(coordMtx(1:m,1:n),u(1:m),dh(1:m,i,j,iPatch),m,n,ic)
-              !if(j==22)pause
-              !if(j==181)pause
               
               if(present(qL  )) qL  (:,i,j,iPatch) = matmul(recMatrixL (:,1:n,i,j,iPatch),polyCoef(1:n))
               if(present(qR  )) qR  (:,i,j,iPatch) = matmul(recMatrixR (:,1:n,i,j,iPatch),polyCoef(1:n))
@@ -818,7 +816,7 @@ module spatial_operators_mod
             enddo
           enddo
         enddo
-        !!$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
       elseif(trim(reconstruct_scheme)=='Polynomial')then
         !$OMP PARALLEL DO PRIVATE(j,i,m,iCOS,iRec,jRec,u) COLLAPSE(3)
         do iPatch = ifs,ife
