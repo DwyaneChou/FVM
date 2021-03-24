@@ -68,7 +68,12 @@
         allocate(quad_wts_tri_tmp_1d(n,1))
         allocate(quad_wts_tri_tmp_2d(n,n))
         
-        call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
+        if(nPointsOnEdge>1)then
+          call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
+        elseif(nPointsOnEdge==1)then
+          quad_pos_1d = 0
+          quad_wts_1d = 2
+        endif
         
         ! Square quadrature
         quad_pos_1d = ( quad_pos_1d + 1. ) / 2.

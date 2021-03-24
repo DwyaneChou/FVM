@@ -221,6 +221,12 @@ module spatial_operators_mod
                   iCOS = iCOS + 1
                   iRecCell(iCOS,i,j,iPatch) = i + iRec
                   jRecCell(iCOS,i,j,iPatch) = j + jRec
+                elseif(trim(reconstruct_scheme)=='WENO')then
+                  if( iRec==0 .or. (jRec==0.and.iRec/=0) )then
+                    iCOS = iCOS + 1
+                    iRecCell(iCOS,i,j,iPatch) = i + iRec
+                    jRecCell(iCOS,i,j,iPatch) = j + jRec
+                  endif
                 endif
               enddo
             enddo
@@ -303,38 +309,40 @@ module spatial_operators_mod
       recdy   = 1. / ( dy * recCoef )
       recdV   = 1. / ( recCoef**2 )
       
-      !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC,nRT) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,ide
-            nRC = nRecCells(i,j,iPatch)
-            nRT = nRecTerms(i,j,iPatch)
-            do iCOS = 1,nRC
-              iRec = iRecCell(iCOS,i,j,iPatch)
-              jRec = jRecCell(iCOS,i,j,iPatch)
+      if(trim(reconstruct_scheme)=='WLS-ENO')then
+        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC,nRT) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jds,jde
+            do i = ids,ide
+              nRC = nRecCells(i,j,iPatch)
+              nRT = nRecTerms(i,j,iPatch)
+              do iCOS = 1,nRC
+                iRec = iRecCell(iCOS,i,j,iPatch)
+                jRec = jRecCell(iCOS,i,j,iPatch)
+                
+                if(iRec==i.and.jRec==j)iCenCell(i,j,iPatch) = iCOS
+                
+                xRel(:,iCOS,i,j,iPatch) = ( x(ccs:cce,iRec,jRec,iPatch) - x(cc,i,j,iPatch) ) * recdx
+                yRel(:,iCOS,i,j,iPatch) = ( y(ccs:cce,iRec,jRec,iPatch) - y(cc,i,j,iPatch) ) * recdy
+                
+                call calc_polynomial_square_integration(locPolyDegree(i,j,iPatch),xRel(1,iCOS,i,j,iPatch),xRel(2,iCOS,i,j,iPatch),&
+                                                                                  yRel(1,iCOS,i,j,iPatch),yRel(4,iCOS,i,j,iPatch),polyCoordCoef(iCOS,1:nRT,i,j,iPatch))
+                ! Calculate distance between reconstruction cells and center cell
+                dh(iCOS,i,j,iPatch) = sqrt( ( x(cc,iRec,jRec,iPatch) - x(cc,i,j,iPatch) )**2 + ( y(cc,iRec,jRec,iPatch) - y(cc,i,j,iPatch) )**2 )
+                !dh(iCOS,i,j,iPatch) = spherical_distance(lat(cc,iRec,jRec,iPatch),lon(cc,iRec,jRec,iPatch),lat(cc,i,j,iPatch),lon(cc,i,j,iPatch),radius)
+                !if(iRec==i.and.jRec==j)dh(iCOS,i,j,iPatch)=0
+              enddo
               
-              if(iRec==i.and.jRec==j)iCenCell(i,j,iPatch) = iCOS
-              
-              xRel(:,iCOS,i,j,iPatch) = ( x(ccs:cce,iRec,jRec,iPatch) - x(cc,i,j,iPatch) ) * recdx
-              yRel(:,iCOS,i,j,iPatch) = ( y(ccs:cce,iRec,jRec,iPatch) - y(cc,i,j,iPatch) ) * recdy
-              
-              call calc_polynomial_square_integration(locPolyDegree(i,j,iPatch),xRel(1,iCOS,i,j,iPatch),xRel(2,iCOS,i,j,iPatch),&
-                                                                                yRel(1,iCOS,i,j,iPatch),yRel(4,iCOS,i,j,iPatch),polyCoordCoef(iCOS,1:nRT,i,j,iPatch))
-              ! Calculate distance between reconstruction cells and center cell
-              dh(iCOS,i,j,iPatch) = sqrt( ( x(cc,iRec,jRec,iPatch) - x(cc,i,j,iPatch) )**2 + ( y(cc,iRec,jRec,iPatch) - y(cc,i,j,iPatch) )**2 )
-              !dh(iCOS,i,j,iPatch) = spherical_distance(lat(cc,iRec,jRec,iPatch),lon(cc,iRec,jRec,iPatch),lat(cc,i,j,iPatch),lon(cc,i,j,iPatch),radius)
-              !if(iRec==i.and.jRec==j)dh(iCOS,i,j,iPatch)=0
+              ! Calculate reconstruction matrix on edge
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xL*recdx,yL*recdy,recMatrixL(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xR*recdx,yR*recdy,recMatrixR(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xB*recdx,yB*recdy,recMatrixB(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xT*recdx,yT*recdy,recMatrixT(:,1:nRT,i,j,iPatch))
             enddo
-            
-            ! Calculate reconstruction matrix on edge
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xL*recdx,yL*recdy,recMatrixL(:,1:nRT,i,j,iPatch))
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xR*recdx,yR*recdy,recMatrixR(:,1:nRT,i,j,iPatch))
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xB*recdx,yB*recdy,recMatrixB(:,1:nRT,i,j,iPatch))
-            call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xT*recdx,yT*recdy,recMatrixT(:,1:nRT,i,j,iPatch))
           enddo
         enddo
-      enddo
-      !$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
+      endif
       
       !$OMP PARALLEL DO PRIVATE(j,i,iPOC,xq,yq,nRC,nRT) COLLAPSE(3)
       do iPatch = ifs,ife
@@ -677,13 +685,13 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
-             minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
-      
-      call check_halo(stat%q)
-      call check_tend(tend%q)
-      
-      stop 'spatial_operator'
+      !print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
+      !       minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
+      !
+      !call check_halo(stat%q)
+      !call check_tend(tend%q)
+      !
+      !stop 'spatial_operator'
       
     end subroutine spatial_operator
     
@@ -836,6 +844,21 @@ module spatial_operators_mod
               if(present(qT  )) qT(:,i,j,iPatch) = matmul(polyMatrixT (:,1:m,i,j,iPatch),u(1:m))
               
               if(present(qQ  )) qQ(:,i,j,iPatch) = matmul(polyMatrixQ (:,1:m,i,j,iPatch),u(1:m))
+            enddo
+          enddo
+        enddo
+        !$OMP END PARALLEL DO
+      elseif(trim(reconstruct_scheme)=='WENO')then
+        !$OMP PARALLEL DO PRIVATE(j,i) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jds,jde
+            do i = ids,ide
+              if(present(qL  ))call WENO5(qL(1,i,j,iPatch),q(i-recBdy:i+recBdy,j,iPatch),-1)
+              if(present(qR  ))call WENO5(qR(1,i,j,iPatch),q(i-recBdy:i+recBdy,j,iPatch), 1)
+              if(present(qB  ))call WENO5(qB(1,i,j,iPatch),q(i,j-recBdy:j+recBdy,iPatch),-1)
+              if(present(qT  ))call WENO5(qT(1,i,j,iPatch),q(i,j-recBdy:j+recBdy,iPatch), 1)
+              
+              if(present(qQ  )) qQ(:,i,j,iPatch) = q(i,j,iPatch)
             enddo
           enddo
         enddo

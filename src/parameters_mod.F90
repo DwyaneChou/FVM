@@ -140,6 +140,17 @@ module parameters_mod
     ! Read namelist
     call readNamelist
     
+    if(trim(reconstruct_scheme)=='WENO')then
+      if(stencil_width/=5)then
+        print*,'stencil_width is not 5, during using WENO, stencil_width has been reset to 5'
+        stencil_width = 5
+      endif
+      if(nPointsOnEdge/=1)then
+        print*,'nPointsOnEdge is not 1, during using WENO, nPointsOnEdge has been reset to 1'
+        nPointsOnEdge = 1
+      endif
+    endif
+    
     ! Calculate total run time in seconds
     total_run_time = run_days * 86400 + run_hours * 3600 + run_minutes * 60 + run_seconds
     
