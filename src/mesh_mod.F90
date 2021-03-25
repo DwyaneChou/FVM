@@ -92,6 +92,7 @@ MODULE mesh_mod
   
   logical, dimension(:,:,:), allocatable :: inDomain
   logical, dimension(:,:,:), allocatable :: inCorner
+  logical, dimension(:,:,:), allocatable :: noCorner
       
   contains
   
@@ -191,6 +192,7 @@ MODULE mesh_mod
     
     allocate(inDomain  (ims:ime,jms:jme,ifs:ife))
     allocate(inCorner  (ims:ime,jms:jme,ifs:ife))
+    allocate(noCorner  (ims:ime,jms:jme,ifs:ife))
       
     inDomain(ims:ime,jms:jme,ifs:ife) = .false. 
     inDomain(ids:ide,jds:jde,ifs:ife) = .true.
@@ -200,6 +202,12 @@ MODULE mesh_mod
     inCorner(ide+1:ime,jms:jds-1,ifs:ife) = .true. ! low right
     inCorner(ims:ids-1,jde+1:jme,ifs:ife) = .true. ! up left
     inCorner(ide+1:ime,jde+1:jme,ifs:ife) = .true. ! up right
+    
+    noCorner = .true.
+    noCorner(ims:ids+recBdy-1,jms:jds+recBdy-1,ifs:ife) = .false.
+    noCorner(ide-recBdy+1:ime,jms:jds+recBdy-1,ifs:ife) = .false.
+    noCorner(ims:ids+recBdy-1,jde-recBdy+1:jme,ifs:ife) = .false.
+    noCorner(ide-recBdy+1:ime,jde-recBdy+1:jme,ifs:ife) = .false.
     
     ! Init arrays
     ghost_i = 0

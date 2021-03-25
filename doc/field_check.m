@@ -2,10 +2,10 @@
 % clc
 % clear
 
-% var_name = 'phit';
+var_name = 'phit';
 % var_name = 'zonal_wind';
-var_name = 'meridional_wind';
-it       = 2;
+% var_name = 'meridional_wind';
+it       = 13;
 
 gravity = 9.80616;
 
