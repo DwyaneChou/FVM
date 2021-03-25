@@ -401,8 +401,8 @@ module spatial_operators_mod
                   if(existPolyTerm(k)>0)then
                     iCOS = iCOS + 1
                     call calc_rectangle_poly_integration(nxp,nyp,&
-                                                         xRel(1,k,i,j,iPatch),xRel(2,k,i,j,iPatch),&
-                                                         yRel(1,k,i,j,iPatch),yRel(4,k,i,j,iPatch),&
+                                                         xRel(1,iCOS,i,j,iPatch),xRel(2,iCOS,i,j,iPatch),&
+                                                         yRel(1,iCOS,i,j,iPatch),yRel(4,iCOS,i,j,iPatch),&
                                                          Apoly(iCOS,1:nRC,i,j,iPatch),existPolyTerm)
                   endif
                 enddo
