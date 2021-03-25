@@ -103,7 +103,9 @@ module spatial_operators_mod
       real(r_kind), dimension(:), allocatable :: xq
       real(r_kind), dimension(:), allocatable :: yq
       
-      integer(i_kind) :: i,j,iPatch
+      real(r_kind), dimension(:), allocatable :: existPolyTerm
+      
+      integer(i_kind) :: i,j,k,iPatch
       integer(i_kind) :: iCOS ! indices of Cells On Stencils
       integer(i_kind) :: iPOC ! indices of points on cell
       integer(i_kind) :: iRec,jRec
@@ -115,7 +117,11 @@ module spatial_operators_mod
       integer(i_kind) :: invstat
       integer(i_kind) :: nRC,nRT
       
-      integer :: pg
+      integer(i_kind) :: pg
+      
+      integer(i_kind) :: idx(2)
+      integer(i_kind) :: xdir
+      integer(i_kind) :: ydir
       
       allocate(iCenCell  (ims:ime,jms:jme,ifs:ife))
       
@@ -198,6 +204,8 @@ module spatial_operators_mod
       allocate(xq(nQuadPointsOncell))
       allocate(yq(nQuadPointsOncell))
       
+      allocate(existPolyTerm(maxRecCells))
+      
       dV = dx * dy
     
       ! set reconstruction cells on each stencil
@@ -211,22 +219,10 @@ module spatial_operators_mod
             iCOS = 0
             do jRec = -recBdy,recBdy
               do iRec = -recBdy,recBdy
-                if(trim(reconstruct_scheme)=='WLS-ENO')then
-                  if( .not.inCorner(i+iRec,j+jRec,iPatch) )then
-                    iCOS = iCOS + 1
-                    iRecCell(iCOS,i,j,iPatch) = i + iRec
-                    jRecCell(iCOS,i,j,iPatch) = j + jRec
-                  endif
-                elseif(trim(reconstruct_scheme)=='Polynomial')then
+                if( .not.inCorner(i+iRec,j+jRec,iPatch) )then
                   iCOS = iCOS + 1
                   iRecCell(iCOS,i,j,iPatch) = i + iRec
                   jRecCell(iCOS,i,j,iPatch) = j + jRec
-                elseif(trim(reconstruct_scheme)=='WENO')then
-                  if( iRec==0 .or. (jRec==0.and.iRec/=0) )then
-                    iCOS = iCOS + 1
-                    iRecCell(iCOS,i,j,iPatch) = i + iRec
-                    jRecCell(iCOS,i,j,iPatch) = j + jRec
-                  endif
                 endif
               enddo
             enddo
@@ -351,8 +347,6 @@ module spatial_operators_mod
             nRC = nRecCells(i,j,iPatch)
             nRT = nRecTerms(i,j,iPatch)
             do iPOC = 1,nQuadPointsOncell
-              !xq(iPOC) = ( x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch) ) * recdx
-              !yq(iPOC) = ( y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch) ) * recdy
               xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
               yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
             enddo
@@ -367,7 +361,7 @@ module spatial_operators_mod
       !$OMP END PARALLEL DO
       
       if( trim(reconstruct_scheme)=='Polynomial' )then
-        !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat) COLLAPSE(3)
+        !!$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat,iPOC,xq,yq) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -375,12 +369,42 @@ module spatial_operators_mod
               nxp = maxval(iRecCell(1:nRC,i,j,iPatch)) - minval(iRecCell(1:nRC,i,j,iPatch)) + 1
               nyp = maxval(jRecCell(1:nRC,i,j,iPatch)) - minval(jRecCell(1:nRC,i,j,iPatch)) + 1
               
+              ! Pick the cells that not in corner for reconstruction
+              idx = minloc( abs( x(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
+              idx = minloc( abs( y(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ), &
+                            x(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch)==x(cc,idx(1),idx(2),iPatch) )
+              
+              xdir = 1
+              ydir = 1
+              if(iRecCell(idx(1),i,j,iPatch)/=i)xdir=-1
+              if(jRecCell(idx(2),i,j,iPatch)/=j)ydir=-1
+              
+              k = 0
+              do jR = 0,nyp-1
+                do iR = 0,nxp-1
+                  k = k + 1
+                  iRec = iRecCell(idx(1),i,j,iPatch) + xdir * iR
+                  jRec = jRecCell(idx(2),i,j,iPatch) + ydir * jR
+                  if( .not.inCorner(iRec,jRec,iPatch) )then
+                    existPolyTerm(k) = 1
+                  else
+                    existPolyTerm(k) = 0
+                  endif
+                enddo
+              enddo
+              
+              k    = 0
               iCOS = 0
               do jR = 1,nyp
                 do iR = 1,nxp
-                  iCOS = iCOS + 1
-                  call calc_rectangle_poly_integration(nxp,nyp,xRel(1,iCOS,i,j,iPatch),xRel(2,iCOS,i,j,iPatch),&
-                                                               yRel(1,iCOS,i,j,iPatch),yRel(4,iCOS,i,j,iPatch),Apoly(iCOS,1:nRC,i,j,iPatch))
+                  k = k + 1
+                  if(existPolyTerm(k)>0)then
+                    iCOS = iCOS + 1
+                    call calc_rectangle_poly_integration(nxp,nyp,&
+                                                         xRel(1,k,i,j,iPatch),xRel(2,k,i,j,iPatch),&
+                                                         yRel(1,k,i,j,iPatch),yRel(4,k,i,j,iPatch),&
+                                                         Apoly(iCOS,1:nRC,i,j,iPatch),existPolyTerm)
+                  endif
                 enddo
               enddo
               
@@ -392,6 +416,11 @@ module spatial_operators_mod
                 stop 'Check BRINV for Special treamtment on boundary cells'
               endif
               
+              do iPOC = 1,nQuadPointsOncell
+                xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
+                yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
+              enddo
+            
               ! Calculate reconstruction matrix on edge
               call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL*recdx,yL*recdy,polyMatrixL(:,1:nRC,i,j,iPatch))
               call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR*recdx,yR*recdy,polyMatrixR(:,1:nRC,i,j,iPatch))
@@ -409,7 +438,7 @@ module spatial_operators_mod
             enddo
           enddo
         enddo
-        !$OMP END PARALLEL DO
+        !!$OMP END PARALLEL DO
       endif
       
       !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iCOS,jR,iR,iRec,jRec,invstat,xg,yg,pg) COLLAPSE(3)
