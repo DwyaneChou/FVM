@@ -625,6 +625,9 @@ module spatial_operators_mod
         enddo
       enddo
       
+      dphitdx = dzsdx(cqs:cqe,:,:,:) * gravity
+      dphitdy = dzsdy(cqs:cqe,:,:,:) * gravity
+      
     end subroutine init_spatial_operator
     
     subroutine spatial_operator(stat,tend)
@@ -651,7 +654,8 @@ module spatial_operators_mod
       !do iPatch = ifs,ife
       !  do j = jms,jme
       !    do i = ims,ime
-      !      phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
+      !      !phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
+      !      phit(:,i,j,iPatch) = ghs(cqs:cqe,i,j,iPatch)
       !      phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
       !    enddo
       !  enddo
@@ -660,6 +664,17 @@ module spatial_operators_mod
       !call reconstruction(phitC       ,&
       !                    dqdx=dphitdx,&
       !                    dqdy=dphitdy)
+      !
+      !print*,maxval(dphitdx),minval(dphitdx)
+      !print*,maxval(dphitdy),minval(dphitdy)
+      !
+      !dphitdx = dzsdx(cqs:cqe,:,:,:) * gravity
+      !dphitdy = dzsdy(cqs:cqe,:,:,:) * gravity
+      !
+      !print*,maxval(dphitdx),minval(dphitdx)
+      !print*,maxval(dphitdy),minval(dphitdy)
+      !
+      !stop
       
       call fill_bdy_flux(qL,qR,qB,qT)
       
@@ -1027,8 +1042,8 @@ module spatial_operators_mod
       !print*,''
       
       psi_B(1,:) = 0
-      psi_B(2,:) = - sqrtG * phi * ( IG11 * dphitdx + IG12 * dphitdy )
-      psi_B(3,:) = - sqrtG * phi * ( IG21 * dphitdx + IG22 * dphitdy )
+      psi_B(2,:) = - q(1,:) * ( IG11 * dphitdx + IG12 * dphitdy )
+      psi_B(3,:) = - q(1,:) * ( IG21 * dphitdx + IG22 * dphitdy )
       
       !iVar = 2
       !print*,cell_quadrature( psi_M(iVar,:) )
@@ -1037,8 +1052,8 @@ module spatial_operators_mod
       !print*,''
       
       do iVar = 1,nVar
-        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
-        calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) )
+        calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) )
         !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) )
         !calc_src(iVar) = cell_quadrature( psi_C(iVar,:) )
         !calc_src(iVar) = cell_quadrature( psi_B(iVar,:) )

@@ -217,11 +217,11 @@
         
         integer(i_kind) :: i,j,k
         
-        !u_bar = u
-        !u_avg = sum( abs(u) ) / m
-        !if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
+        u_bar = u
+        u_avg = sum( abs(u) ) / m
+        if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
         
-        u_bar = std(u,m)
+        !u_bar = std(u,m)
 
         do j = 1,m
           beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h(j)**2
