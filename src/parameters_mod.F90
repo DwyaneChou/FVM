@@ -171,8 +171,8 @@ module parameters_mod
     Ny = nint((y_max - y_min)/dy)
     
     recBdy = ( stencil_width - 1 ) / 2
-    xhalo  = recBdy
-    yhalo  = recBdy
+    xhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
+    yhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
     
     ! Calculate starting and ending index for physical domain
     ids  = 1

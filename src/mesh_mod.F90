@@ -87,8 +87,6 @@ MODULE mesh_mod
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: zs    ! surface height
   real(r_kind), dimension(:,:,:      ), allocatable :: zsc   ! surface height on cell
-  real(r_kind), dimension(:,:,:,:    ), allocatable :: dzsdx ! x derivative surface height
-  real(r_kind), dimension(:,:,:,:    ), allocatable :: dzsdy ! y derivative surface height
   
   real(r_kind), dimension(:,:,:    ), allocatable :: areaCell
   
@@ -189,8 +187,6 @@ MODULE mesh_mod
     
     allocate( zs       (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( zsc      (                     ims:ime, jms:jme, ifs:ife) )
-    allocate( dzsdx    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( dzsdy    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
     

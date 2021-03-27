@@ -6,7 +6,7 @@
 var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
-it       = 12;
+it       = 121;
 
 gravity = 9.80616;
 

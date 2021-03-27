@@ -439,12 +439,17 @@ module spatial_operators_mod
               
               call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,polyMatrixQ(:,1:nRC,i,j,iPatch),existPolyTerm)
               
+              call calc_rectangle_poly_deriv_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,recMatrixDx(:,1:nRC,i,j,iPatch),recMatrixDy(:,1:nRC,i,j,iPatch),existPolyTerm)
+              
               polyMatrixL(:,1:nRC,i,j,iPatch) = matmul( polyMatrixL(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
               polyMatrixR(:,1:nRC,i,j,iPatch) = matmul( polyMatrixR(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
               polyMatrixB(:,1:nRC,i,j,iPatch) = matmul( polyMatrixB(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
               polyMatrixT(:,1:nRC,i,j,iPatch) = matmul( polyMatrixT(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
               
               polyMatrixQ(:,1:nRC,i,j,iPatch) = matmul( polyMatrixQ(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
+              
+              recMatrixDx(:,1:nRC,i,j,iPatch) = matmul( recMatrixDx(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
+              recMatrixDy(:,1:nRC,i,j,iPatch) = matmul( recMatrixDy(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
             enddo
           enddo
         enddo
@@ -625,9 +630,6 @@ module spatial_operators_mod
         enddo
       enddo
       
-      dphitdx = dzsdx(cqs:cqe,:,:,:) * gravity
-      dphitdy = dzsdy(cqs:cqe,:,:,:) * gravity
-      
     end subroutine init_spatial_operator
     
     subroutine spatial_operator(stat,tend)
@@ -651,29 +653,52 @@ module spatial_operators_mod
                             qQ(iVar,:,:,:,:))
       enddo
       
-      !do iPatch = ifs,ife
-      !  do j = jms,jme
-      !    do i = ims,ime
-      !      !phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
-      !      phit(:,i,j,iPatch) = ghs(cqs:cqe,i,j,iPatch)
-      !      phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
-      !    enddo
-      !  enddo
-      !enddo
-      !
+      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+      do iPatch = ifs,ife
+        do j = jms,jme
+          do i = ims,ime
+            phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
+            phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+      
       !call reconstruction(phitC       ,&
       !                    dqdx=dphitdx,&
       !                    dqdy=dphitdy)
-      !
-      !print*,maxval(dphitdx),minval(dphitdx)
-      !print*,maxval(dphitdy),minval(dphitdy)
-      !
-      !dphitdx = dzsdx(cqs:cqe,:,:,:) * gravity
-      !dphitdy = dzsdy(cqs:cqe,:,:,:) * gravity
-      !
-      !print*,maxval(dphitdx),minval(dphitdx)
-      !print*,maxval(dphitdy),minval(dphitdy)
-      !
+      
+      !print*,maxval(dphitdx(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdx(:,ids:ide,jds:jde,ifs:ife))
+      !print*,maxval(dphitdy(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdy(:,ids:ide,jds:jde,ifs:ife))
+      
+      
+      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+      do iPatch = ifs,ife
+        do j = jds,jde
+          do i = ids,ide
+            !print*,i,j,iPatch
+            !print*,maxval(dphitdx(:,i,j,iPatch)),minval(dphitdx(:,i,j,iPatch))
+            !print*,maxval(dphitdy(:,i,j,iPatch)),minval(dphitdy(:,i,j,iPatch))
+            
+            !! 4th order
+            !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
+            !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
+            ! 6th order
+            dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
+            dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
+          
+            !print*,maxval(dphitdx(:,i,j,iPatch)),minval(dphitdx(:,i,j,iPatch))
+            !print*,maxval(dphitdy(:,i,j,iPatch)),minval(dphitdy(:,i,j,iPatch))
+            !
+            !print*,''
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+      
+      !print*,maxval(dphitdx(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdx(:,ids:ide,jds:jde,ifs:ife))
+      !print*,maxval(dphitdy(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdy(:,ids:ide,jds:jde,ifs:ife))
+      
       !stop
       
       call fill_bdy_flux(qL,qR,qB,qT)
@@ -898,6 +923,9 @@ module spatial_operators_mod
               if(present(qT  )) qT(:,i,j,iPatch) = matmul(polyMatrixT (:,1:m,i,j,iPatch),u(1:m))
               
               if(present(qQ  )) qQ(:,i,j,iPatch) = matmul(polyMatrixQ (:,1:m,i,j,iPatch),u(1:m))
+              
+              if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,1:m,i,j,iPatch),u(1:m))
+              if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:m,i,j,iPatch),u(1:m))
             enddo
           enddo
         enddo
@@ -935,8 +963,8 @@ module spatial_operators_mod
       
       calc_F = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
-      calc_F(2) = calc_F(2) + sqrtG * matrixIG(1,1) * p
-      calc_F(3) = calc_F(3) + sqrtG * matrixIG(2,1) * p
+      !calc_F(2) = calc_F(2) + sqrtG * matrixIG(1,1) * p
+      !calc_F(3) = calc_F(3) + sqrtG * matrixIG(2,1) * p
     end function calc_F
     
     function calc_G(sqrtG,matrixIG,qL,qR)
@@ -953,8 +981,8 @@ module spatial_operators_mod
       
       calc_G = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
-      calc_G(2) = calc_G(2) + sqrtG * matrixIG(1,2) * p
-      calc_G(3) = calc_G(3) + sqrtG * matrixIG(2,2) * p
+      !calc_G(2) = calc_G(2) + sqrtG * matrixIG(1,2) * p
+      !calc_G(3) = calc_G(3) + sqrtG * matrixIG(2,2) * p
     end function calc_G
     
     function calc_src(sqrtG,matrixG,matrixIG,q,dphitdx,dphitdy,x,y,Coriolis,delta,iPatch)

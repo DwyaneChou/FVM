@@ -179,6 +179,48 @@
       
     end subroutine  calc_rectangle_poly_integration
     
+    subroutine calc_rectangle_poly_deriv_matrix(nx,ny,m,xi,eta,dpdx,dpdy,existPolyTerm)
+      integer(i_kind), intent(in   ) :: nx ! number of points on x direction for reconstruction
+      integer(i_kind), intent(in   ) :: ny ! number of points on y direction for reconstruction
+      integer(i_kind), intent(in   ) :: m  ! number of unkonwn point values
+      real   (r_kind), intent(in   ) :: xi (m)
+      real   (r_kind), intent(in   ) :: eta(m)
+      real   (r_kind), intent(inout) :: dpdx(:,:)
+      real   (r_kind), intent(inout) :: dpdy(:,:)
+      real   (r_kind), intent(in   ),optional :: existPolyTerm(nx*ny)
+      
+      real   (r_kind) :: ext(nx*ny)
+      
+      real   (r_kind) :: x
+      real   (r_kind) :: y
+      integer(i_kind) :: iPOC
+      integer(i_kind)  :: i,j,k,iCOS
+      
+      ext = 1
+      if(present(existPolyTerm))ext = existPolyTerm
+      
+      dpdx = 0
+      dpdy = 0
+      do iPOC = 1,m
+        x = xi (iPOC)
+        y = eta(iPOC)
+        
+        k = 0
+        iCOS = 0
+        do j = 0,ny-1
+          do i = 0,nx-1
+            k = k + 1
+            if(ext(k)>0)then
+              iCOS = iCOS + 1
+              dpdx(iPOC,iCOS) = merge(0.,real(i,r_kind),i-1<0) * x**real(i-1,r_kind) * y**real(j,r_kind)
+              dpdy(iPOC,iCOS) = merge(0.,real(j,r_kind),j-1<0) * x**real(i,r_kind) * y**real(j-1,r_kind)
+            endif
+          enddo
+        enddo
+      enddo
+  
+    end subroutine calc_rectangle_poly_deriv_matrix
+    
     ! spherical distance on unit sphere
     function spherical_distance(lat1,lon1,lat2,lon2,r)
       real(r_kind) :: spherical_distance

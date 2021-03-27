@@ -22,9 +22,6 @@ module test_case_mod
     allocate(uc (ims:ime,jms:jme,ifs:ife))
     allocate(vc (ims:ime,jms:jme,ifs:ife))
     
-    dzsdx = 0
-    dzsdy = 0
-    
     if(case_num == 2)then
       print*,''
       print*,'test case 2 is selected'
@@ -51,31 +48,6 @@ module test_case_mod
         enddo
       enddo
     enddo
-    
-    !do iPatch = ifs,ife
-    !  do j = jds,jde
-    !    do i = ids,ide
-    !      if(abs(zsc(i,j,iPatch))/=0)then
-    !        !! 2nd
-    !        !dzsdx(cqs:cqe,i,j,iPatch) = (zsc(i+1,j,iPatch)-zsc(i-1,j,iPatch))/(2.*dx)
-    !        !dzsdy(cqs:cqe,i,j,iPatch) = (zsc(i,j+1,iPatch)-zsc(i,j-1,iPatch))/(2.*dy)
-    !        ! 4th
-    !        dzsdx(cqs:cqe,i,j,iPatch) = ( zsc(i-2,j,iPatch) - 8.*zsc(i-1,j,iPatch) + 8.*zsc(i+1,j,iPatch) - zsc(i+2,j,iPatch) )/(12.*dx)
-    !        dzsdy(cqs:cqe,i,j,iPatch) = ( zsc(i,j-2,iPatch) - 8.*zsc(i,j-1,iPatch) + 8.*zsc(i,j+1,iPatch) - zsc(i,j+2,iPatch) )/(12.*dy)
-    !        !! 6th
-    !        !dzsdx(cqs:cqe,i,j,iPatch) = (-zsc(i-3,j,iPatch) + 9.*zsc(i-2,j,iPatch) - 45.*zsc(i-1,j,iPatch) + 45.*zsc(i+1,j,iPatch) - 9.*zsc(i+2,j,iPatch) + zsc(i+3,j,iPatch) )/(60.*dx)
-    !        !dzsdy(cqs:cqe,i,j,iPatch) = (-zsc(i,j-3,iPatch) + 9.*zsc(i,j-2,iPatch) - 45.*zsc(i,j-1,iPatch) + 45.*zsc(i,j+1,iPatch) - 9.*zsc(i,j+2,iPatch) + zsc(i,j+3,iPatch) )/(60.*dy)
-    !        
-    !        !print*,i,j,iPatch
-    !        !!print*,cell_quadrature(dzsdx(cqs:cqe,i,j,iPatch)),(zsc(i+1,j,iPatch)-zsc(i-1,j,iPatch))/(2.*dx),zsc(i,j,iPatch)
-    !        !!print*,cell_quadrature(dzsdy(cqs:cqe,i,j,iPatch)),(zsc(i,j+1,iPatch)-zsc(i,j-1,iPatch))/(2.*dy),zsc(i,j,iPatch)
-    !        !print*,cell_quadrature(dzsdx(cqs:cqe,i,j,iPatch)),( zsc(i-2,j,iPatch) - 8.*zsc(i-1,j,iPatch) + 8.*zsc(i+1,j,iPatch) - zsc(i+2,j,iPatch) )/(12.*dx),zsc(i,j,iPatch)
-    !        !print*,cell_quadrature(dzsdy(cqs:cqe,i,j,iPatch)),( zsc(i,j-2,iPatch) - 8.*zsc(i,j-1,iPatch) + 8.*zsc(i,j+1,iPatch) - zsc(i,j+2,iPatch) )/(12.*dy),zsc(i,j,iPatch)
-    !        !print*,''
-    !      endif
-    !    enddo
-    !  enddo
-    !enddo
     
     print*,''
     print*,'max/min value of phi: ',maxval(phi(ids:ide,jds:jde,ifs:ife)),minval(phi(ids:ide,jds:jde,ifs:ife))
@@ -254,25 +226,6 @@ module test_case_mod
     deallocate(vc  )
     
     zs = ghs / gravity
-    
-    do iPatch = ifs, ife
-      do j = jms, jme
-        do i = ims, ime
-          do iPOC = 1,nPointsOnCell
-            if( zs(iPOC,i,j,iPatch)>0 )then
-              dzsdlon = - hs0 / rr * ( longitude(iPOC,i,j,iPatch)-labmda_c ) / r(iPOC,i,j,iPatch)
-              dzsdlat = - hs0 / rr * ( latitude (iPOC,i,j,iPatch)-theta_c  ) / r(iPOC,i,j,iPatch)
-              dzsdx(iPOC,i,j,iPatch) = ( dzsdlon * matrixA(1,1,iPOC,i,j,iPatch) + dzsdlat * matrixA(2,1,iPOC,i,j,iPatch) ) / radius
-              dzsdy(iPOC,i,j,iPatch) = ( dzsdlon * matrixA(1,2,iPOC,i,j,iPatch) + dzsdlat * matrixA(2,2,iPOC,i,j,iPatch) ) / radius
-            else
-              dzsdx(iPOC,i,j,iPatch) = 0
-              dzsdy(iPOC,i,j,iPatch) = 0
-            endif
-          enddo
-        enddo
-      enddo
-    enddo
-    
   end subroutine case5
   
   ! Rossby-Haurwitz wave with wavenumber 4
