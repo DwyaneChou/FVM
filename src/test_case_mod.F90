@@ -190,6 +190,10 @@ module test_case_mod
             u  (iPOC,i,j,iPatch) = u0*(cos(latitude(iPOC,i,j,iPatch))*cos(alpha)+cos(longitude(iPOC,i,j,iPatch))*sin(latitude(iPOC,i,j,iPatch))*sin(alpha))
             v  (iPOC,i,j,iPatch) = -u0*sin(longitude(iPOC,i,j,iPatch))*sin(alpha)
             phi(iPOC,i,j,iPatch) = gh0 - (radius*Omega*u0 + u0**2/2.d0)*(-cos(longitude(iPOC,i,j,iPatch))*cos(latitude(iPOC,i,j,iPatch))*sin(alpha) + sin(latitude(iPOC,i,j,iPatch))*cos(alpha))**2 - ghs(iPOC,i,j,iPatch)
+            
+            !u  (iPOC,i,j,iPatch) = 0
+            !v  (iPOC,i,j,iPatch) = 0
+            !phi(iPOC,i,j,iPatch) = gh0 - ghs(iPOC,i,j,iPatch)
           enddo
         enddo
       enddo

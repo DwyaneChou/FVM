@@ -6,12 +6,12 @@
 var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
-it       = 121;
+it       = 2;
 
 gravity = 9.80616;
 
 nc_file = '..\run\output.nc';
-% nc_file = '..\run\output_RH_2p0.nc';
+% nc_file = '..\run\output_IM_2p0.nc';
 
 dx         = ncreadatt(nc_file,'/','dx');
 ids        = ncreadatt(nc_file,'/','ids');

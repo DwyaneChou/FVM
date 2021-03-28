@@ -212,8 +212,8 @@
             k = k + 1
             if(ext(k)>0)then
               iCOS = iCOS + 1
-              dpdx(iPOC,iCOS) = merge(0.,real(i,r_kind),i-1<0) * x**real(i-1,r_kind) * y**real(j,r_kind)
-              dpdy(iPOC,iCOS) = merge(0.,real(j,r_kind),j-1<0) * x**real(i,r_kind) * y**real(j-1,r_kind)
+              dpdx(iPOC,iCOS) = merge(0.,real(i,r_kind),i-1<0) * x**merge(0,i-1,i-1<0) * y**j
+              dpdy(iPOC,iCOS) = merge(0.,real(j,r_kind),j-1<0) * x**i * y**merge(0,j-1,j-1<0)
             endif
           enddo
         enddo
