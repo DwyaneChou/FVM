@@ -455,8 +455,8 @@ module spatial_operators_mod
               polyMatrixQ(:,1:nRC,i,j,iPatch) = matmul( polyMatrixQ(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
               
               ! Calculate derivative matrix
-              xq = 0
-              yq = 0
+              !xq = 0
+              !yq = 0
               call calc_rectangle_poly_deriv_matrix(nxp,nyp,nQuadPointsOnCell,xq,yq,recMatrixDx(:,1:nRC,i,j,iPatch),recMatrixDy(:,1:nRC,i,j,iPatch),existPolyTerm)
               
               recMatrixDx(:,1:nRC,i,j,iPatch) = matmul( recMatrixDx(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) ) / dx
@@ -659,11 +659,8 @@ module spatial_operators_mod
       integer(i_kind) :: iVar,i,j,iPatch,iPOE
       
       call fill_halo(stat%q,qQ(1,:,:,:,:))
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) + sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
       
       qC = stat%q
-      
-      qC(1,:,:,:) = qC(1,:,:,:) + sqrtGC * ghsC
       
       do iVar = 1,nVar
         call reconstruction(qC(iVar,:,:,:  ),&
@@ -674,17 +671,11 @@ module spatial_operators_mod
                             qQ(iVar,:,:,:,:))
       enddo
       
-      qL(1,:,:,:,:) = qL(1,:,:,:,:) - sqrtGL * ghsL
-      qR(1,:,:,:,:) = qR(1,:,:,:,:) - sqrtGR * ghsR
-      qB(1,:,:,:,:) = qB(1,:,:,:,:) - sqrtGB * ghsB
-      qT(1,:,:,:,:) = qT(1,:,:,:,:) - sqrtGT * ghsT
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) - sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
-      
       !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jms,jme
           do i = ims,ime
-            phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
+            phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch)
             phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
           enddo
         enddo
@@ -839,14 +830,14 @@ module spatial_operators_mod
                 igp = cgs + ng   - 1
                 iqp = cqs + iPOC - 1
                 
-                uc = tgq(2,iPOC,i,j,iPatch) / tgq(1,iPOC,i,j,iPatch)
-                vc = tgq(3,iPOC,i,j,iPatch) / tgq(1,iPOC,i,j,iPatch)
+                uc = tgq(2,iPOC,i,j,iPatch) / ( tgq(1,iPOC,i,j,iPatch) - sqrtG(igp,ig,jg,pg) * ghs(igp,ig,jg,pg) )
+                vc = tgq(3,iPOC,i,j,iPatch) / ( tgq(1,iPOC,i,j,iPatch) - sqrtG(igp,ig,jg,pg) * ghs(igp,ig,jg,pg) )
                 call contravProjPlane2Sphere(us, vs, uc, vc, matrixA (:,:,igp,ig,jg,pg    ))
                 call contravProjSphere2Plane(uc, vc, us, vs, matrixIA(:,:,iqp,i ,j ,iPatch))
                 
                 tgq(1,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) / sqrtG(igp,ig,jg,pg) * sqrtG(iqp,i,j,iPatch)
-                tgq(2,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) * uc
-                tgq(3,iPOC,i,j,iPatch) = tgq(1,iPOC,i,j,iPatch) * vc
+                tgq(2,iPOC,i,j,iPatch) = ( tgq(1,iPOC,i,j,iPatch)- sqrtG(iqp,i,j,iPatch) * ghs(iqp,i,j,iPatch) ) * uc
+                tgq(3,iPOC,i,j,iPatch) = ( tgq(1,iPOC,i,j,iPatch)- sqrtG(iqp,i,j,iPatch) * ghs(iqp,i,j,iPatch) ) * vc
               enddo
                 
               do iVar = 1,nVar
@@ -972,6 +963,7 @@ module spatial_operators_mod
       
       calc_F = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
+      calc_F(1) = calc_F(1) - 0.5 * m * sqrtG * ( ghsL + ghsR - sign(1._r_kind,m) * ( ghsR - ghsL ) )
       calc_F(2) = calc_F(2) + sqrtG * matrixIG(1,1) * p
       calc_F(3) = calc_F(3) + sqrtG * matrixIG(2,1) * p
     end function calc_F
@@ -992,6 +984,7 @@ module spatial_operators_mod
       
       calc_G = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
+      calc_G(1) = calc_G(1) - 0.5 * m * sqrtG * ( ghsL + ghsR - sign(1._r_kind,m) * ( ghsR - ghsL ) )
       calc_G(2) = calc_G(2) + sqrtG * matrixIG(1,2) * p
       calc_G(3) = calc_G(3) + sqrtG * matrixIG(2,2) * p
     end function calc_G
@@ -1031,9 +1024,9 @@ module spatial_operators_mod
       
       integer :: iVar
       
-      phi  = q(1,:) / sqrtG
-      u    = q(2,:) / q(1,:)
-      v    = q(3,:) / q(1,:)
+      phi  = q(1,:) / sqrtG - ghs
+      u    = q(2,:) / ( sqrtG * phi )
+      v    = q(3,:) / ( sqrtG * phi )
       phiu = phi * u
       phiv = phi * v
       
@@ -1107,15 +1100,15 @@ module spatial_operators_mod
       enddo
       
       do iPatch = ifs,ife
-        call convert_bdy_flux(sqrtGR(:,ids-1,jds:jde,iPatch),sqrtGR_adj(:,ids-1,jds:jde,iPatch),matrixAR(:,:,:,ids-1,jds:jde,iPatch),matrixAR_adj(:,:,:,ids-1,jds:jde,iPatch),matrixIAR(:,:,:,ids-1,jds:jde,iPatch),matrixIAR_adj(:,:,:,ids-1,jds:jde,iPatch),qR(:,:,ids-1,jds:jde,iPatch))
-        call convert_bdy_flux(sqrtGL(:,ide+1,jds:jde,iPatch),sqrtGL_adj(:,ide+1,jds:jde,iPatch),matrixAL(:,:,:,ide+1,jds:jde,iPatch),matrixAL_adj(:,:,:,ide+1,jds:jde,iPatch),matrixIAL(:,:,:,ide+1,jds:jde,iPatch),matrixIAL_adj(:,:,:,ide+1,jds:jde,iPatch),qL(:,:,ide+1,jds:jde,iPatch))
-        call convert_bdy_flux(sqrtGT(:,ids:ide,jds-1,iPatch),sqrtGT_adj(:,ids:ide,jds-1,iPatch),matrixAT(:,:,:,ids:ide,jds-1,iPatch),matrixAT_adj(:,:,:,ids:ide,jds-1,iPatch),matrixIAT(:,:,:,ids:ide,jds-1,iPatch),matrixIAT_adj(:,:,:,ids:ide,jds-1,iPatch),qT(:,:,ids:ide,jds-1,iPatch))
-        call convert_bdy_flux(sqrtGB(:,ids:ide,jde+1,iPatch),sqrtGB_adj(:,ids:ide,jde+1,iPatch),matrixAB(:,:,:,ids:ide,jde+1,iPatch),matrixAB_adj(:,:,:,ids:ide,jde+1,iPatch),matrixIAB(:,:,:,ids:ide,jde+1,iPatch),matrixIAB_adj(:,:,:,ids:ide,jde+1,iPatch),qB(:,:,ids:ide,jde+1,iPatch))
+        call convert_bdy_flux(sqrtGR(:,ids-1,jds:jde,iPatch),sqrtGR_adj(:,ids-1,jds:jde,iPatch),matrixAR(:,:,:,ids-1,jds:jde,iPatch),matrixAR_adj(:,:,:,ids-1,jds:jde,iPatch),matrixIAR(:,:,:,ids-1,jds:jde,iPatch),matrixIAR_adj(:,:,:,ids-1,jds:jde,iPatch),qR(:,:,ids-1,jds:jde,iPatch),ghsR(:,ids-1,jds:jde,iPatch))
+        call convert_bdy_flux(sqrtGL(:,ide+1,jds:jde,iPatch),sqrtGL_adj(:,ide+1,jds:jde,iPatch),matrixAL(:,:,:,ide+1,jds:jde,iPatch),matrixAL_adj(:,:,:,ide+1,jds:jde,iPatch),matrixIAL(:,:,:,ide+1,jds:jde,iPatch),matrixIAL_adj(:,:,:,ide+1,jds:jde,iPatch),qL(:,:,ide+1,jds:jde,iPatch),ghsL(:,ide+1,jds:jde,iPatch))
+        call convert_bdy_flux(sqrtGT(:,ids:ide,jds-1,iPatch),sqrtGT_adj(:,ids:ide,jds-1,iPatch),matrixAT(:,:,:,ids:ide,jds-1,iPatch),matrixAT_adj(:,:,:,ids:ide,jds-1,iPatch),matrixIAT(:,:,:,ids:ide,jds-1,iPatch),matrixIAT_adj(:,:,:,ids:ide,jds-1,iPatch),qT(:,:,ids:ide,jds-1,iPatch),ghsT(:,ids:ide,jds-1,iPatch))
+        call convert_bdy_flux(sqrtGB(:,ids:ide,jde+1,iPatch),sqrtGB_adj(:,ids:ide,jde+1,iPatch),matrixAB(:,:,:,ids:ide,jde+1,iPatch),matrixAB_adj(:,:,:,ids:ide,jde+1,iPatch),matrixIAB(:,:,:,ids:ide,jde+1,iPatch),matrixIAB_adj(:,:,:,ids:ide,jde+1,iPatch),qB(:,:,ids:ide,jde+1,iPatch),ghsB(:,ids:ide,jde+1,iPatch))
       enddo
       
     end subroutine fill_bdy_flux
     
-    subroutine convert_bdy_flux(sqrtG,sqrtG_adj,matrixA,matrixA_adj,matrixIA,matrixIA_adj,q)
+    subroutine convert_bdy_flux(sqrtG,sqrtG_adj,matrixA,matrixA_adj,matrixIA,matrixIA_adj,q,ghs)
       real(r_kind), dimension(     nPointsOnEdge,nx), intent(in   ) :: sqrtG
       real(r_kind), dimension(     nPointsOnEdge,nx), intent(in   ) :: sqrtG_adj
       real(r_kind), dimension(2,2, nPointsOnEdge,nx), intent(in   ) :: matrixA
@@ -1123,6 +1116,7 @@ module spatial_operators_mod
       real(r_kind), dimension(2,2, nPointsOnEdge,nx), intent(in   ) :: matrixIA
       real(r_kind), dimension(2,2, nPointsOnEdge,nx), intent(in   ) :: matrixIA_adj
       real(r_kind), dimension(nVar,nPointsOnEdge,nx), intent(inout) :: q
+      real(r_kind), dimension(     nPointsOnEdge,nx), intent(in   ) :: ghs
       
       real(r_kind) :: phi
       real(r_kind) :: uc,vc,us,vs
@@ -1131,14 +1125,14 @@ module spatial_operators_mod
       
       do i = 1,nx
         do iPOE = 1,nPointsOnEdge
-          phi = q(1,iPOE,i) / sqrtG_adj(iPOE,i)
-          uc  = q(2,iPOE,i) / q(1,iPOE,i)
-          vc  = q(3,iPOE,i) / q(1,iPOE,i)
+          phi = q(1,iPOE,i) / sqrtG_adj(iPOE,i) - ghs(iPOE,i)
+          uc  = q(2,iPOE,i) / ( sqrtG_adj(iPOE,i) * phi )
+          vc  = q(3,iPOE,i) / ( sqrtG_adj(iPOE,i) * phi )
           call contravProjPlane2Sphere(us, vs, uc, vc, matrixA_adj(:,:,iPOE,i))
           call contravProjSphere2Plane(uc, vc, us, vs, matrixIA   (:,:,iPOE,i))
-          q(1,iPOE,i) = sqrtG(iPOE,i) * phi
-          q(2,iPOE,i) = q(1,iPOE,i) * uc
-          q(3,iPOE,i) = q(1,iPOE,i) * vc
+          q(1,iPOE,i) = sqrtG(iPOE,i) * ( phi + ghs(iPOE,i) )
+          q(2,iPOE,i) = sqrtG(iPOE,i) * phi * uc
+          q(3,iPOE,i) = sqrtG(iPOE,i) * phi * vc
         enddo
       enddo
       
@@ -1220,15 +1214,15 @@ module spatial_operators_mod
       real(r_kind) :: P5MLsp
       real(r_kind) :: P5MRsn
       
-      phiL = qL(1) / sqrtG + ghsL
-      phiR = qR(1) / sqrtG + ghsR
+      phiL = qL(1) / sqrtG
+      phiR = qR(1) / sqrtG
       ! Convert wind to perpendicular to the edge on sphere
       if(dir==1)then
-        uL = qL(2) / qL(1) / matrixIG(1,1) / radius
-        uR = qR(2) / qR(1) / matrixIG(1,1) / radius
+        uL = qL(2) / ( qL(1) - sqrtG * ghsL ) / matrixIG(1,1) / radius
+        uR = qR(2) / ( qR(1) - sqrtG * ghsR ) / matrixIG(1,1) / radius
       elseif(dir==2)then
-        uL = qL(3) / qL(1) / matrixIG(2,2) / radius
-        uR = qR(3) / qR(1) / matrixIG(2,2) / radius
+        uL = qL(3) / ( qL(1) - sqrtG * ghsL ) / matrixIG(2,2) / radius
+        uR = qR(3) / ( qR(1) - sqrtG * ghsR ) / matrixIG(2,2) / radius
       endif
       cL   = sqrt( phiL )
       cR   = sqrt( phiR )

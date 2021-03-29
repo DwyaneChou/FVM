@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[     46252,       1034]
-NotebookOptionsPosition[     45070,       1007]
-NotebookOutlinePosition[     45455,       1024]
-CellTagsIndexPosition[     45412,       1021]
+NotebookDataLength[     46512,       1043]
+NotebookOptionsPosition[     45330,       1016]
+NotebookOutlinePosition[     45715,       1033]
+CellTagsIndexPosition[     45672,       1030]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -275,7 +275,8 @@ Cell[BoxData[{
    3.82366030111215*^9}, {3.823660351657032*^9, 3.82366040608002*^9}, {
    3.8236657391311502`*^9, 3.823665760690121*^9}, {3.823665938491839*^9, 
    3.823666079598665*^9}, {3.823666210129634*^9, 3.8236662696484036`*^9}, {
-   3.8236663047190995`*^9, 3.8236663053181*^9}, 3.8236663534091063`*^9},
+   3.8236663047190995`*^9, 3.8236663053181*^9}, 3.8236663534091063`*^9, {
+   3.82598451060849*^9, 3.825984553733661*^9}},
  CellLabel->
   "In[255]:=",ExpressionUUID->"8944afd6-016e-43c8-88bf-617cf9e79f92"],
 
@@ -370,7 +371,7 @@ Cell[BoxData[
      MatrixForm[BoxForm`e$]]]}],
   SequenceForm["EigenValues=", 
    MatrixForm[{{$CellContext`v, 0, 0}, {
-     0, -$CellContext`G22^Rational[1, 2] $CellContext`phi^
+     0, (-$CellContext`G22^Rational[1, 2]) $CellContext`phi^
         Rational[1, 2] + $CellContext`v, 0}, {
      0, 0, $CellContext`G22^Rational[1, 2] $CellContext`phi^
         Rational[1, 2] + $CellContext`v}}]],
@@ -465,19 +466,19 @@ Cell[BoxData[
   SequenceForm["RightEigenVectorMatrix=", 
    MatrixForm[{{
      0, (-1)/($CellContext`G22^Rational[1, 2] $CellContext`phi^
-        Rational[1, 2] - $CellContext`v), (-1)/(-$CellContext`G22^
-        Rational[1, 2] $CellContext`phi^Rational[1, 2] - $CellContext`v)}, {
-     1, -$CellContext`G22^
-       Rational[-1, 2] (-$CellContext`G12 $CellContext`phi^
-         Rational[1, 2] + $CellContext`G22^
+        Rational[1, 2] - $CellContext`v), (-1)/((-$CellContext`G22^
+         Rational[1, 2]) $CellContext`phi^Rational[1, 2] - $CellContext`v)}, {
+     1, (-$CellContext`G22^
+        Rational[-1, 2]) (((-$CellContext`G12) $CellContext`phi^
+          Rational[1, 2] + $CellContext`G22^
+          Rational[1, 2] $CellContext`u)/($CellContext`G22^
+         Rational[1, 2] $CellContext`phi^
+         Rational[1, 2] - $CellContext`v)), (-$CellContext`G22^
+        Rational[-1, 2]) (((-$CellContext`G12) $CellContext`phi^
+          Rational[1, 2] - $CellContext`G22^
          Rational[1, 2] $CellContext`u)/($CellContext`G22^
-        Rational[1, 2] $CellContext`phi^
-        Rational[1, 2] - $CellContext`v), -$CellContext`G22^
-       Rational[-1, 2] (-$CellContext`G12 $CellContext`phi^
-         Rational[1, 2] - $CellContext`G22^
-        Rational[1, 2] $CellContext`u)/($CellContext`G22^
-        Rational[1, 2] $CellContext`phi^Rational[1, 2] + $CellContext`v)}, {0,
-      1, 1}}]],
+         Rational[1, 2] $CellContext`phi^Rational[1, 2] + $CellContext`v))}, {
+     0, 1, 1}}]],
   Editable->False]], "Print",
  CellChangeTimes->{{3.790746546980073*^9, 3.7907465663213253`*^9}, 
    3.7907466087159305`*^9, 3.790746700616064*^9, 3.790746985158238*^9, 
@@ -559,19 +560,22 @@ Cell[BoxData[
     Function[BoxForm`e$, 
      MatrixForm[BoxForm`e$]]]}],
   SequenceForm["LeftEigenVectorMatrix=", 
-   MatrixForm[{{-$CellContext`u + $CellContext`G12 $CellContext`G22^(-1) \
-$CellContext`v, 1, -$CellContext`G12/$CellContext`G22}, {
-     Rational[1, 2] $CellContext`G22^Rational[-1, 2] $CellContext`phi^
-       Rational[-1, 
-         2] (-$CellContext`G22 $CellContext`phi + $CellContext`v^2), 0, 
-      Rational[1, 2] + 
-      Rational[-1, 2] $CellContext`G22^Rational[-1, 2] $CellContext`phi^
-        Rational[-1, 2] $CellContext`v}, {
-     Rational[1, 2] $CellContext`G22^Rational[-1, 2] $CellContext`phi^
-       Rational[-1, 2] ($CellContext`G22 $CellContext`phi - $CellContext`v^2),
-       0, Rational[1, 2] (
-       1 + $CellContext`G22^Rational[-1, 2] $CellContext`phi^
-         Rational[-1, 2] $CellContext`v)}}]],
+   MatrixForm[{{-$CellContext`u + ($CellContext`G12/$CellContext`G22) \
+$CellContext`v, 
+      1, (-$CellContext`G12)/$CellContext`G22}, {((
+        Rational[1, 2] $CellContext`G22^Rational[-1, 2]) $CellContext`phi^
+        Rational[-1, 
+          2]) ((-$CellContext`G22) $CellContext`phi + $CellContext`v^2), 0, 
+      Rational[1, 
+        2] + ((Rational[-1, 2] $CellContext`G22^
+          Rational[-1, 2]) $CellContext`phi^
+         Rational[-1, 2]) $CellContext`v}, {((
+        Rational[1, 2] $CellContext`G22^Rational[-1, 2]) $CellContext`phi^
+        Rational[-1, 
+          2]) ($CellContext`G22 $CellContext`phi - $CellContext`v^2), 0, 
+      Rational[1, 2] (
+       1 + ($CellContext`G22^Rational[-1, 2] $CellContext`phi^
+          Rational[-1, 2]) $CellContext`v)}}]],
   Editable->False]], "Print",
  CellChangeTimes->{{3.790746546980073*^9, 3.7907465663213253`*^9}, 
    3.7907466087159305`*^9, 3.790746700616064*^9, 3.790746985158238*^9, 
@@ -716,41 +720,46 @@ Cell[BoxData[
   SequenceForm["RAR=", 
    MatrixForm[{{
      Rational[1, 
-        2] ($CellContext`b + $CellContext`c + $CellContext`b $CellContext`G22^
-         Rational[-1, 2] $CellContext`phi^
-         Rational[-1, 2] $CellContext`v - $CellContext`c $CellContext`G22^
-        Rational[-1, 2] $CellContext`phi^Rational[-1, 2] $CellContext`v), 0, 
-      Rational[1, 2] (-$CellContext`b + $CellContext`c) $CellContext`G22^
-       Rational[-1, 2] $CellContext`phi^Rational[-1, 2]}, {
-     Rational[1, 2] $CellContext`G22^(-1) $CellContext`phi^
-       Rational[-1, 
-         2] ($CellContext`c ($CellContext`G12 $CellContext`phi^
-           Rational[1, 2] + $CellContext`G22^
-           Rational[1, 2] $CellContext`u) ($CellContext`G22^
+        2] ($CellContext`b + $CellContext`c + (($CellContext`b \
+$CellContext`G22^Rational[-1, 2]) $CellContext`phi^
+          Rational[-1, 2]) $CellContext`v - (($CellContext`c $CellContext`G22^
+          Rational[-1, 2]) $CellContext`phi^Rational[-1, 2]) $CellContext`v), 
+      0, ((Rational[
+         1, 2] (-$CellContext`b + $CellContext`c)) $CellContext`G22^
+        Rational[-1, 2]) $CellContext`phi^
+       Rational[-1, 2]}, {((Rational[1, 2]/$CellContext`G22) $CellContext`phi^
+        Rational[-1, 
+          2]) (($CellContext`c ($CellContext`G12 $CellContext`phi^
+            Rational[1, 2] + $CellContext`G22^
+            Rational[1, 2] $CellContext`u)) ($CellContext`G22^
            Rational[1, 2] $CellContext`phi^
            Rational[
-            1, 2] - $CellContext`v) - $CellContext`b ($CellContext`G12 \
+            1, 2] - $CellContext`v) - ($CellContext`b ($CellContext`G12 \
 $CellContext`phi^Rational[1, 2] - $CellContext`G22^
-         Rational[1, 2] $CellContext`u) ($CellContext`G22^
-          Rational[1, 2] $CellContext`phi^Rational[1, 2] + $CellContext`v) + 
-       2 $CellContext`a $CellContext`phi^
-         Rational[
-          1, 2] (-$CellContext`G22 $CellContext`u + $CellContext`G12 \
-$CellContext`v)), $CellContext`a, 
-      Rational[-1, 2] $CellContext`G22^(-1) (
-       2 $CellContext`a $CellContext`G12 - $CellContext`b $CellContext`G12 - \
-$CellContext`c $CellContext`G12 + $CellContext`b $CellContext`G22^
-         Rational[1, 2] $CellContext`phi^
-         Rational[-1, 2] $CellContext`u - $CellContext`c $CellContext`G22^
-        Rational[1, 2] $CellContext`phi^Rational[-1, 2] $CellContext`u)}, {
-     Rational[-1, 2] ($CellContext`b - $CellContext`c) $CellContext`G22^
-       Rational[-1, 2] $CellContext`phi^
-       Rational[-1, 2] ($CellContext`G22 $CellContext`phi - $CellContext`v^2),
-       0, Rational[
-       1, 2] ($CellContext`b + $CellContext`c - $CellContext`b \
-$CellContext`G22^Rational[-1, 2] $CellContext`phi^
-        Rational[-1, 2] $CellContext`v + $CellContext`c $CellContext`G22^
-         Rational[-1, 2] $CellContext`phi^Rational[-1, 2] $CellContext`v)}}]],
+          Rational[1, 2] $CellContext`u)) ($CellContext`G22^
+          Rational[1, 2] $CellContext`phi^
+          Rational[1, 2] + $CellContext`v) + ((
+          2 $CellContext`a) $CellContext`phi^
+          Rational[
+           1, 2]) ((-$CellContext`G22) $CellContext`u + $CellContext`G12 \
+$CellContext`v)), $CellContext`a, (
+       Rational[-1, 2]/$CellContext`G22) ((
+         2 $CellContext`a) $CellContext`G12 - $CellContext`b $CellContext`G12 - \
+$CellContext`c $CellContext`G12 + (($CellContext`b $CellContext`G22^
+           Rational[1, 2]) $CellContext`phi^
+          Rational[-1, 2]) $CellContext`u - (($CellContext`c $CellContext`G22^
+          Rational[1, 2]) $CellContext`phi^
+         Rational[-1, 2]) $CellContext`u)}, {(((
+         Rational[-1, 2] ($CellContext`b - $CellContext`c)) $CellContext`G22^
+         Rational[-1, 2]) $CellContext`phi^
+        Rational[-1, 
+          2]) ($CellContext`G22 $CellContext`phi - $CellContext`v^2), 0, 
+      Rational[1, 
+        2] ($CellContext`b + $CellContext`c - (($CellContext`b \
+$CellContext`G22^Rational[-1, 2]) $CellContext`phi^
+         Rational[-1, 2]) $CellContext`v + (($CellContext`c $CellContext`G22^
+           Rational[-1, 2]) $CellContext`phi^
+          Rational[-1, 2]) $CellContext`v)}}]],
   Editable->False]], "Print",
  CellChangeTimes->{{3.790746546980073*^9, 3.7907465663213253`*^9}, 
    3.7907466087159305`*^9, 3.790746700616064*^9, 3.790746985158238*^9, 
@@ -810,9 +819,9 @@ Cell[BoxData[
     Function[BoxForm`e$, 
      MatrixForm[BoxForm`e$]]]}],
   SequenceForm["ReverseMatrix=", 
-   MatrixForm[{$CellContext`phi $CellContext`sqrtG $CellContext`v, \
-$CellContext`phi $CellContext`sqrtG ($CellContext`G12 $CellContext`phi + \
-$CellContext`u $CellContext`v), $CellContext`phi $CellContext`sqrtG \
+   MatrixForm[{($CellContext`phi $CellContext`sqrtG) $CellContext`v, \
+($CellContext`phi $CellContext`sqrtG) ($CellContext`G12 $CellContext`phi + \
+$CellContext`u $CellContext`v), ($CellContext`phi $CellContext`sqrtG) \
 ($CellContext`G22 $CellContext`phi + $CellContext`v^2)}]],
   Editable->False]], "Print",
  CellChangeTimes->{{3.790746546980073*^9, 3.7907465663213253`*^9}, 
@@ -1024,16 +1033,16 @@ CellTagsIndex->{}
 (*NotebookFileOutline
 Notebook[{
 Cell[CellGroupData[{
-Cell[580, 22, 13858, 257, 1228, "Input",ExpressionUUID->"8944afd6-016e-43c8-88bf-617cf9e79f92"],
+Cell[580, 22, 13907, 258, 1228, "Input",ExpressionUUID->"8944afd6-016e-43c8-88bf-617cf9e79f92"],
 Cell[CellGroupData[{
-Cell[14463, 283, 2673, 55, 69, "Print",ExpressionUUID->"cc3eebe5-0feb-48e1-92d6-6b51ed581e88"],
-Cell[17139, 340, 2728, 58, 78, "Print",ExpressionUUID->"2a5107ad-1d50-4947-ba8c-6b59abf441f3"],
-Cell[19870, 400, 4253, 102, 115, "Print",ExpressionUUID->"c31a0611-44b0-480a-99dc-efc38e104807"],
-Cell[24126, 504, 4004, 92, 123, "Print",ExpressionUUID->"a39a3c10-e69d-4ff3-b511-0b4727cfe01f"],
-Cell[28133, 598, 7315, 177, 163, "Print",ExpressionUUID->"e2ffee86-ed6e-4777-9157-51828bb328c9"],
-Cell[35451, 777, 2949, 61, 73, "Print",ExpressionUUID->"fac27ed1-2083-4133-a2be-2a16bf222586"],
-Cell[38403, 840, 2655, 55, 69, "Print",ExpressionUUID->"b4ad2cf9-a970-4af8-bbbf-384bb7786dd0"],
-Cell[41061, 897, 3981, 106, 144, "Print",ExpressionUUID->"14171cc8-ebf0-40bf-8543-772ffd1ba8be"]
+Cell[14512, 284, 2673, 55, 69, "Print",ExpressionUUID->"cc3eebe5-0feb-48e1-92d6-6b51ed581e88"],
+Cell[17188, 341, 2730, 58, 78, "Print",ExpressionUUID->"2a5107ad-1d50-4947-ba8c-6b59abf441f3"],
+Cell[19921, 401, 4277, 102, 115, "Print",ExpressionUUID->"c31a0611-44b0-480a-99dc-efc38e104807"],
+Cell[24201, 505, 4061, 95, 123, "Print",ExpressionUUID->"a39a3c10-e69d-4ff3-b511-0b4727cfe01f"],
+Cell[28265, 602, 7437, 182, 163, "Print",ExpressionUUID->"e2ffee86-ed6e-4777-9157-51828bb328c9"],
+Cell[35705, 786, 2955, 61, 73, "Print",ExpressionUUID->"fac27ed1-2083-4133-a2be-2a16bf222586"],
+Cell[38663, 849, 2655, 55, 69, "Print",ExpressionUUID->"b4ad2cf9-a970-4af8-bbbf-384bb7786dd0"],
+Cell[41321, 906, 3981, 106, 144, "Print",ExpressionUUID->"14171cc8-ebf0-40bf-8543-772ffd1ba8be"]
 }, Open  ]]
 }, Open  ]]
 }

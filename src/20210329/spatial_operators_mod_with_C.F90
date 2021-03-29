@@ -64,10 +64,6 @@ module spatial_operators_mod
   real(r_kind), dimension(:,:,:,:), allocatable :: src   ! source term
   
   real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! zs * gravity
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsL   ! zs * gravity on left bondary on cell
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsR   ! zs * gravity on right bondary on cell
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsB   ! zs * gravity on bottom bondary on cell
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsT   ! zs * gravity on top bondary on cell
   real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! zs * gravity on Cell
   
   real(r_kind), dimension(:,:,:,:), allocatable :: phit    ! phi + phis
@@ -183,10 +179,6 @@ module spatial_operators_mod
       allocate(src(nVar,ids:ide,jds:jde,ifs:ife))
       
       allocate(ghs (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsL(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsR(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsB(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsT(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
       allocate(ghsC(              ims:ime,jms:jme,ifs:ife))
       
       allocate(phit (nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
@@ -517,19 +509,10 @@ module spatial_operators_mod
       !$OMP END PARALLEL DO
       
       ghs = zs * gravity
-          
+      
       do iPatch = ifs,ife
         do j = jms,jme
           do i = ims,ime
-            ! Bottom Boundary Points
-            ghsB(:,i,j,iPatch) = ghs(cbs+0*nPointsOnEdge:cbs+1*nPointsOnEdge-1,i,j,iPatch)
-            ! Right Boundary Points
-            ghsR(:,i,j,iPatch) = ghs(cbs+1*nPointsOnEdge:cbs+2*nPointsOnEdge-1,i,j,iPatch)
-            ! Top Boundary Points
-            ghsT(:,i,j,iPatch) = ghs(cbs+2*nPointsOnEdge:cbs+3*nPointsOnEdge-1,i,j,iPatch)
-            ! Left Boundary Points
-            ghsL(:,i,j,iPatch) = ghs(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch)
-      
             ghsC(i,j,iPatch) = cell_quadrature(ghs(cqs:cqe,i,j,iPatch))
           enddo
         enddo
@@ -656,14 +639,13 @@ module spatial_operators_mod
       type(stat_field), target, intent(inout) :: stat
       type(tend_field), target, intent(inout) :: tend
       
-      integer(i_kind) :: iVar,i,j,iPatch,iPOE
+      integer(i_kind) :: iVar,i,j,iPatch,iPOC,iEOC
+  
+      real(r_kind), dimension(nPointsOnEdge) :: eigL,eigR
       
       call fill_halo(stat%q,qQ(1,:,:,:,:))
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) + sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
       
       qC = stat%q
-      
-      qC(1,:,:,:) = qC(1,:,:,:) + sqrtGC * ghsC
       
       do iVar = 1,nVar
         call reconstruction(qC(iVar,:,:,:  ),&
@@ -674,51 +656,64 @@ module spatial_operators_mod
                             qQ(iVar,:,:,:,:))
       enddo
       
-      qL(1,:,:,:,:) = qL(1,:,:,:,:) - sqrtGL * ghsL
-      qR(1,:,:,:,:) = qR(1,:,:,:,:) - sqrtGR * ghsR
-      qB(1,:,:,:,:) = qB(1,:,:,:,:) - sqrtGB * ghsB
-      qT(1,:,:,:,:) = qT(1,:,:,:,:) - sqrtGT * ghsT
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) - sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
-      
       !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jms,jme
           do i = ims,ime
             phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
             phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
+            !phitC(i,j,iPatch) = qC(1,i,j,iPatch) / sqrtGC(i,j,iPatch) + ghsC(i,j,iPatch)
           enddo
         enddo
       enddo
       !$OMP END PARALLEL DO
       
-      !call reconstruction(phitC       ,&
-      !                    dqdx=dphitdx,&
-      !                    dqdy=dphitdy)
+      call reconstruction(phitC       ,&
+                          dqdx=dphitdx,&
+                          dqdy=dphitdy)
       
-      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,ide
-            !! 4th order
-            !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
-            !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
-            ! 6th order
-            dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
-            dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
-          enddo
-        enddo
-      enddo
-      !$OMP END PARALLEL DO
+      !print*,maxval(dphitdx(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdx(:,ids:ide,jds:jde,ifs:ife))
+      !print*,maxval(dphitdy(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdy(:,ids:ide,jds:jde,ifs:ife))
+      
+      
+      !!!$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+      !do iPatch = ifs,ife
+      !  do j = jds,jde
+      !    do i = ids,ide
+      !      print*,i,j,iPatch
+      !      print*,maxval(dphitdx(:,i,j,iPatch)),minval(dphitdx(:,i,j,iPatch))
+      !      print*,maxval(dphitdy(:,i,j,iPatch)),minval(dphitdy(:,i,j,iPatch))
+      !      
+      !      !! 4th order
+      !      !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
+      !      !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
+      !      ! 6th order
+      !      dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
+      !      dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
+      !    
+      !      print*,maxval(dphitdx(:,i,j,iPatch)),minval(dphitdx(:,i,j,iPatch))
+      !      print*,maxval(dphitdy(:,i,j,iPatch)),minval(dphitdy(:,i,j,iPatch))
+      !      
+      !      print*,''
+      !    enddo
+      !  enddo
+      !enddo
+      !!!$OMP END PARALLEL DO
+      
+      !print*,maxval(dphitdx(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdx(:,ids:ide,jds:jde,ifs:ife))
+      !print*,maxval(dphitdy(:,ids:ide,jds:jde,ifs:ife)),minval(dphitdy(:,ids:ide,jds:jde,ifs:ife))
+      
+      !stop
       
       call fill_bdy_flux(qL,qR,qB,qT)
       
       !$OMP PARALLEL
-      !$OMP DO PRIVATE(i,j,iPOE,iVar) COLLAPSE(3)
+      !$OMP DO PRIVATE(i,j,iPOC,iVar) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,idep1
-            do iPOE = 1,nPointsOnEdge
-              FeP(:,iPOE,i,j,iPatch) = calc_F(sqrtGL(iPOE,i,j,iPatch),matrixIGL(:,:,iPOE,i,j,iPatch),qR(:,iPOE,i-1,j,iPatch),qL(:,iPOE,i,j,iPatch),ghsR(iPOE,i-1,j,iPatch),ghsL(iPOE,i,j,iPatch))
+            do iPOC = 1,nPointsOnEdge
+              FeP(:,iPOC,i,j,iPatch) = calc_F(sqrtGL(iPOC,i,j,iPatch),matrixIGL(:,:,iPOC,i,j,iPatch),qR(:,iPOC,i-1,j,iPatch),qL(:,iPOC,i,j,iPatch))
             enddo
             do iVar = 1,nVar
               Fe(iVar,i,j,iPatch) = Gaussian_quadrature_1d(FeP(iVar,:,i,j,iPatch))
@@ -728,12 +723,12 @@ module spatial_operators_mod
       enddo
       !$OMP END DO NOWAIT
       
-      !$OMP DO PRIVATE(i,j,iPOE,iVar) COLLAPSE(3)
+      !$OMP DO PRIVATE(i,j,iPOC,iVar) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jdep1
           do i = ids,ide
-            do iPOE = 1,nPointsOnEdge
-              GeP(:,iPOE,i,j,iPatch) = calc_G(sqrtGB(iPOE,i,j,iPatch),matrixIGB(:,:,iPOE,i,j,iPatch),qT(:,iPOE,i,j-1,iPatch),qB(:,iPOE,i,j,iPatch),ghsT(iPOE,i,j-1,iPatch),ghsB(iPOE,i,j,iPatch))
+            do iPOC = 1,nPointsOnEdge
+              GeP(:,iPOC,i,j,iPatch) = calc_G(sqrtGB(iPOC,i,j,iPatch),matrixIGB(:,:,iPOC,i,j,iPatch),qT(:,iPOC,i,j-1,iPatch),qB(:,iPOC,i,j,iPatch))
             enddo
             do iVar = 1,nVar
               Ge(iVar,i,j,iPatch) = Gaussian_quadrature_1d(GeP(iVar,:,i,j,iPatch))
@@ -749,7 +744,7 @@ module spatial_operators_mod
         do j = jds,jde
           do i = ids,ide
             src(:,i,j,iPatch) = calc_src(sqrtG(cqs:cqe,i,j,iPatch),matrixG(:,:,cqs:cqe,i,j,iPatch),matrixIG(:,:,cqs:cqe,i,j,iPatch),&
-                                         qQ(:,:,i,j,iPatch),ghs(cqs:cqe,i,j,iPatch),dphitdx(:,i,j,iPatch),dphitdy(:,i,j,iPatch)    ,&
+                                         qQ(:,:,i,j,iPatch),dphitdx(:,i,j,iPatch),dphitdy(:,i,j,iPatch)                            ,&
                                          tanx(cqs:cqe,i,j,iPatch),tany(cqs:cqe,i,j,iPatch)                                         ,&
                                          Coriolis(cqs:cqe,i,j,iPatch),delta(cqs:cqe,i,j,iPatch),iPatch)
           enddo
@@ -762,9 +757,11 @@ module spatial_operators_mod
         do j = jds,jde
           do i = ids,ide
             do iVar = 1,nVar
-              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx &
-                                        - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy &
-                                        + src(iVar,i,j,iPatch)
+              tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy + src(iVar,i,j,iPatch)
+              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
+              !tend%q(iVar,i,j,iPatch) = - ( Fe(iVar,i+1,j,iPatch) - Fe(iVar,i,j,iPatch) ) / dx
+              !tend%q(iVar,i,j,iPatch) = - ( Ge(iVar,i,j+1,iPatch) - Ge(iVar,i,j,iPatch) ) / dy
+              !tend%q(iVar,i,j,iPatch) = src(iVar,i,j,iPatch)
             enddo
           enddo
         enddo
@@ -956,53 +953,48 @@ module spatial_operators_mod
       
     end subroutine reconstruction
     
-    function calc_F(sqrtG,matrixIG,qL,qR,ghsL,ghsR)
+    function calc_F(sqrtG,matrixIG,qL,qR)
       real(r_kind), dimension(nVar) :: calc_F
       real(r_kind)                 , intent(in) :: sqrtG
       real(r_kind), dimension(2,2) , intent(in) :: matrixIG
       real(r_kind), dimension(nVar), intent(in) :: qL
       real(r_kind), dimension(nVar), intent(in) :: qR
-      real(r_kind),                  intent(in) :: ghsL
-      real(r_kind),                  intent(in) :: ghsR
       
       real(r_kind) :: m ! mach speed
       real(r_kind) :: p ! phi**2 / 2
       
-      call AUSM_up(m,p,sqrtG,matrixIG,qL,qR,ghsL,ghsR,1)
+      call AUSM_up(m,p,sqrtG,matrixIG,qL,qR,1)
       
       calc_F = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
-      calc_F(2) = calc_F(2) + sqrtG * matrixIG(1,1) * p
-      calc_F(3) = calc_F(3) + sqrtG * matrixIG(2,1) * p
+      !calc_F(2) = calc_F(2) + sqrtG * matrixIG(1,1) * p
+      !calc_F(3) = calc_F(3) + sqrtG * matrixIG(2,1) * p
     end function calc_F
     
-    function calc_G(sqrtG,matrixIG,qL,qR,ghsL,ghsR)
+    function calc_G(sqrtG,matrixIG,qL,qR)
       real(r_kind), dimension(nVar) :: calc_G
       real(r_kind)                 , intent(in) :: sqrtG
       real(r_kind), dimension(2,2) , intent(in) :: matrixIG
       real(r_kind), dimension(nVar), intent(in) :: qL
       real(r_kind), dimension(nVar), intent(in) :: qR
-      real(r_kind),                  intent(in) :: ghsL
-      real(r_kind),                  intent(in) :: ghsR
       
       real(r_kind) :: m ! mach speed
       real(r_kind) :: p ! phi**2 / 2
       
-      call AUSM_up(m,p,sqrtG,matrixIG,qL,qR,ghsL,ghsR,2)
+      call AUSM_up(m,p,sqrtG,matrixIG,qL,qR,2)
       
       calc_G = 0.5 * m * ( qL + qR - sign(1._r_kind,m) * ( qR - qL ) )
       
-      calc_G(2) = calc_G(2) + sqrtG * matrixIG(1,2) * p
-      calc_G(3) = calc_G(3) + sqrtG * matrixIG(2,2) * p
+      !calc_G(2) = calc_G(2) + sqrtG * matrixIG(1,2) * p
+      !calc_G(3) = calc_G(3) + sqrtG * matrixIG(2,2) * p
     end function calc_G
     
-    function calc_src(sqrtG,matrixG,matrixIG,q,ghs,dphitdx,dphitdy,x,y,Coriolis,delta,iPatch)
+    function calc_src(sqrtG,matrixG,matrixIG,q,dphitdx,dphitdy,x,y,Coriolis,delta,iPatch)
       real(r_kind), dimension(nVar) :: calc_src
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: sqrtG
       real(r_kind), dimension(2, 2,nQuadPointsOnCell), intent(in) :: matrixG
       real(r_kind), dimension(2, 2,nQuadPointsOnCell), intent(in) :: matrixIG
       real(r_kind), dimension(nVar,nQuadPointsOnCell), intent(in) :: q
-      real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: ghs
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: dphitdx
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: dphitdy
       real(r_kind), dimension(     nQuadPointsOnCell), intent(in) :: x ! tan(x) actually
@@ -1052,15 +1044,51 @@ module spatial_operators_mod
       psi_M(3,:) = 2. * sqrtG / (delta**2) * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
       
       psi_C(1,:) = 0
+      ! Coriolis scheme 1
       psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
       psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
       
+      !! Coriolis scheme 2
+      !psi_C(2,:) = sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
+      !psi_C(3,:) = sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
+      
+      !! Coriolis scheme 3
+      !if(iPatch==6)then
+      !  psi_C(2,:) = -sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = -sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
+      !elseif(iPatch==5)then
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
+      !else
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -(1.+x*x)*phiu + x*y*phiv )
+      !endif
+      
+      !print*,iPatch
+      !print*,psi_C(2,:)
+      !print*,Coriolis * (  G12 * phiu + G22 * phiv )
+      !print*,sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
+      !!print*,psi_C(3,:)
+      !!print*,sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
+      !!print*,Coriolis * ( -G11 * phiu - G12 * phiv )
+      !print*,''
+      
       psi_B(1,:) = 0
-      psi_B(2,:) = sqrtG * ghs * ( IG11 * dphitdx + IG12 * dphitdy )
-      psi_B(3,:) = sqrtG * ghs * ( IG21 * dphitdx + IG22 * dphitdy )
+      psi_B(2,:) = - q(1,:) * ( IG11 * dphitdx + IG12 * dphitdy )
+      psi_B(3,:) = - q(1,:) * ( IG21 * dphitdx + IG22 * dphitdy )
+      
+      !iVar = 2
+      !print*,cell_quadrature( psi_M(iVar,:) )
+      !print*,cell_quadrature( psi_C(iVar,:) )
+      !print*,cell_quadrature( psi_B(iVar,:) )
+      !print*,''
       
       do iVar = 1,nVar
         calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_C(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_B(iVar,:) )
       enddo
     end function calc_src
     
@@ -1181,15 +1209,13 @@ module spatial_operators_mod
       
     end subroutine restore_bdy_field
     
-    subroutine AUSM_up(m,p,sqrtG,matrixIG,qL,qR,ghsL,ghsR,dir)
+    subroutine AUSM_up(m,p,sqrtG,matrixIG,qL,qR,dir)
       real   (r_kind),                  intent(out) :: m
       real   (r_kind),                  intent(out) :: p
       real   (r_kind),                  intent(in ) :: sqrtG
       real   (r_kind), dimension(2,2) , intent(in ) :: matrixIG
       real   (r_kind), dimension(nVar), intent(in ) :: qL
       real   (r_kind), dimension(nVar), intent(in ) :: qR
-      real   (r_kind),                  intent(in ) :: ghsL
-      real   (r_kind),                  intent(in ) :: ghsR
       integer(i_kind)                 , intent(in ) :: dir ! 1 for x direction, 2 for y direction
       
       real(r_kind),parameter :: Ku    = 0.75
@@ -1220,8 +1246,8 @@ module spatial_operators_mod
       real(r_kind) :: P5MLsp
       real(r_kind) :: P5MRsn
       
-      phiL = qL(1) / sqrtG + ghsL
-      phiR = qR(1) / sqrtG + ghsR
+      phiL = qL(1) / sqrtG
+      phiR = qR(1) / sqrtG
       ! Convert wind to perpendicular to the edge on sphere
       if(dir==1)then
         uL = qL(2) / qL(1) / matrixIG(1,1) / radius

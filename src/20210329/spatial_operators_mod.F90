@@ -659,11 +659,8 @@ module spatial_operators_mod
       integer(i_kind) :: iVar,i,j,iPatch,iPOE
       
       call fill_halo(stat%q,qQ(1,:,:,:,:))
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) + sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
       
       qC = stat%q
-      
-      qC(1,:,:,:) = qC(1,:,:,:) + sqrtGC * ghsC
       
       do iVar = 1,nVar
         call reconstruction(qC(iVar,:,:,:  ),&
@@ -674,41 +671,23 @@ module spatial_operators_mod
                             qQ(iVar,:,:,:,:))
       enddo
       
-      qL(1,:,:,:,:) = qL(1,:,:,:,:) - sqrtGL * ghsL
-      qR(1,:,:,:,:) = qR(1,:,:,:,:) - sqrtGR * ghsR
-      qB(1,:,:,:,:) = qB(1,:,:,:,:) - sqrtGB * ghsB
-      qT(1,:,:,:,:) = qT(1,:,:,:,:) - sqrtGT * ghsT
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) - sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
-      
       !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jms,jme
           do i = ims,ime
             phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
             phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
+            !phitC(i,j,iPatch) = qC(1,i,j,iPatch) / sqrtGC(i,j,iPatch) + ghsC(i,j,iPatch)
+            
+            !phitC(i,j,iPatch) = ghsC(i,j,iPatch)
           enddo
         enddo
       enddo
       !$OMP END PARALLEL DO
       
-      !call reconstruction(phitC       ,&
-      !                    dqdx=dphitdx,&
-      !                    dqdy=dphitdy)
-      
-      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,ide
-            !! 4th order
-            !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
-            !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
-            ! 6th order
-            dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
-            dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
-          enddo
-        enddo
-      enddo
-      !$OMP END PARALLEL DO
+      call reconstruction(phitC       ,&
+                          dqdx=dphitdx,&
+                          dqdy=dphitdy)
       
       call fill_bdy_flux(qL,qR,qB,qT)
       
@@ -1055,12 +1034,47 @@ module spatial_operators_mod
       psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
       psi_C(3,:) = Coriolis * ( -G11 * phiu - G12 * phiv )
       
+      !! Coriolis scheme 2
+      !psi_C(2,:) = sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
+      !psi_C(3,:) = sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
+      
+      !! Coriolis scheme 3
+      !if(iPatch==6)then
+      !  psi_C(2,:) = -sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = -sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
+      !elseif(iPatch==5)then
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * ( -(1.+x*x)*phiu + x*y*phiv )
+      !else
+      !  psi_C(2,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -x*y*phiu + (1.+y*y)*phiv )
+      !  psi_C(3,:) = sqrtG * 2. * Omega / (delta**2) * y * ( -(1.+x*x)*phiu + x*y*phiv )
+      !endif
+      
+      !print*,iPatch
+      !print*,psi_C(2,:)
+      !print*,Coriolis * (  G12 * phiu + G22 * phiv )
+      !print*,sqrtG**2 * Coriolis * ( -IG12 * phiu + IG11 * phiv )
+      !!print*,psi_C(3,:)
+      !!print*,sqrtG**2 * Coriolis * ( -IG22 * phiu + IG12 * phiv )
+      !!print*,Coriolis * ( -G11 * phiu - G12 * phiv )
+      !print*,''
+      
       psi_B(1,:) = 0
       psi_B(2,:) = sqrtG * ghs * ( IG11 * dphitdx + IG12 * dphitdy )
       psi_B(3,:) = sqrtG * ghs * ( IG21 * dphitdx + IG22 * dphitdy )
       
+      !iVar = 2
+      !print*,cell_quadrature( psi_M(iVar,:) )
+      !print*,cell_quadrature( psi_C(iVar,:) )
+      !print*,cell_quadrature( psi_B(iVar,:) )
+      !print*,''
+      
       do iVar = 1,nVar
         calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) + psi_B(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) + psi_C(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_M(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_C(iVar,:) )
+        !calc_src(iVar) = cell_quadrature( psi_B(iVar,:) )
       enddo
     end function calc_src
     
