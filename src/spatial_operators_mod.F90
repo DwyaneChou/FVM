@@ -455,8 +455,8 @@ module spatial_operators_mod
               polyMatrixQ(:,1:nRC,i,j,iPatch) = matmul( polyMatrixQ(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
               
               ! Calculate derivative matrix
-              xq = 0
-              yq = 0
+              !xq = 0
+              !yq = 0
               call calc_rectangle_poly_deriv_matrix(nxp,nyp,nQuadPointsOnCell,xq,yq,recMatrixDx(:,1:nRC,i,j,iPatch),recMatrixDy(:,1:nRC,i,j,iPatch),existPolyTerm)
               
               recMatrixDx(:,1:nRC,i,j,iPatch) = matmul( recMatrixDx(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) ) / dx
@@ -659,11 +659,20 @@ module spatial_operators_mod
       integer(i_kind) :: iVar,i,j,iPatch,iPOE
       
       call fill_halo(stat%q,qQ(1,:,:,:,:))
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) + sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
       
-      qC = stat%q
-      
-      qC(1,:,:,:) = qC(1,:,:,:) + sqrtGC * ghsC
+      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+      do iPatch = ifs,ife
+        do j = jms,jme
+          do i = ims,ime
+            if(.not.inDomain(i,j,iPatch))then
+              qQ(1,:,i,j,iPatch) = qQ(1,:,i,j,iPatch) + sqrtG(cqs:cqe,i,j,iPatch) * ghs(cqs:cqe,i,j,iPatch)
+            endif
+            qC(:,i,j,iPatch) = stat%q(:,i,j,iPatch)
+            qC(1,i,j,iPatch) = qC(1,i,j,iPatch) + sqrtGC(i,j,iPatch) * ghsC(i,j,iPatch)
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
       
       do iVar = 1,nVar
         call reconstruction(qC(iVar,:,:,:  ),&
@@ -674,10 +683,19 @@ module spatial_operators_mod
                             qQ(iVar,:,:,:,:))
       enddo
       
-      qL(1,:,:,:,:) = qL(1,:,:,:,:) - sqrtGL * ghsL
-      qR(1,:,:,:,:) = qR(1,:,:,:,:) - sqrtGR * ghsR
-      qB(1,:,:,:,:) = qB(1,:,:,:,:) - sqrtGB * ghsB
-      qT(1,:,:,:,:) = qT(1,:,:,:,:) - sqrtGT * ghsT
+      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+      do iPatch = ifs,ife
+        do j = jdsm1,jdep1
+          do i = idsm1,idep1
+            qL(1,:,i,j,iPatch) = qL(1,:,i,j,iPatch) - sqrtGL(:,i,j,iPatch) * ghsL(:,i,j,iPatch)
+            qR(1,:,i,j,iPatch) = qR(1,:,i,j,iPatch) - sqrtGR(:,i,j,iPatch) * ghsR(:,i,j,iPatch)
+            qB(1,:,i,j,iPatch) = qB(1,:,i,j,iPatch) - sqrtGB(:,i,j,iPatch) * ghsB(:,i,j,iPatch)
+            qT(1,:,i,j,iPatch) = qT(1,:,i,j,iPatch) - sqrtGT(:,i,j,iPatch) * ghsT(:,i,j,iPatch)
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+            
       qQ(1,:,:,:,:) = qQ(1,:,:,:,:) - sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
       
       !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
@@ -691,24 +709,24 @@ module spatial_operators_mod
       enddo
       !$OMP END PARALLEL DO
       
-      !call reconstruction(phitC       ,&
-      !                    dqdx=dphitdx,&
-      !                    dqdy=dphitdy)
+      call reconstruction(phitC       ,&
+                          dqdx=dphitdx,&
+                          dqdy=dphitdy)
       
-      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jds,jde
-          do i = ids,ide
-            !! 4th order
-            !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
-            !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
-            ! 6th order
-            dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
-            dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
-          enddo
-        enddo
-      enddo
-      !$OMP END PARALLEL DO
+      !!$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+      !do iPatch = ifs,ife
+      !  do j = jds,jde
+      !    do i = ids,ide
+      !      !! 4th order
+      !      !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
+      !      !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
+      !      ! 6th order
+      !      dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
+      !      dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
+      !    enddo
+      !  enddo
+      !enddo
+      !!$OMP END PARALLEL DO
       
       call fill_bdy_flux(qL,qR,qB,qT)
       
