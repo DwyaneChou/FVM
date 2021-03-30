@@ -250,7 +250,6 @@ module spatial_operators_mod
             !    endif
             !  enddo
             !enddo
-            
             irs = i - recBdy
             ire = i + recBdy
             jrs = j - recBdy
@@ -278,7 +277,6 @@ module spatial_operators_mod
                 jGstCell(iCOS,i,j,iPatch) = jRec
               enddo
             enddo
-            
             nGstRecCells(i,j,iPatch) = iCOS
             
           enddo
@@ -761,9 +759,10 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
-      !$OMP END DO NOWAIT
+      !$OMP END DO
+      !$OMP END PARALLEL
       
-      !$OMP DO PRIVATE(i,j) COLLAPSE(3)
+      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -774,8 +773,7 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
-      !$OMP END DO
-      !$OMP END PARALLEL
+      !$OMP END PARALLEL DO
       
       !$OMP PARALLEL DO PRIVATE(i,j,iVar) COLLAPSE(4)
       do iPatch = ifs,ife
