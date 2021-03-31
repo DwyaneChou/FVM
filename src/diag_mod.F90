@@ -54,7 +54,7 @@ MODULE diag_mod
         do j = jds,jde
           do i = ids,ide
             KE = 0.5 * stat%q(1,i,j,iPatch) * ( u(i,j,iPatch) * uc(i,j,iPatch) + v(i,j,iPatch) * vc(i,j,iPatch) )
-            PE = 0.5 * ( stat%q(1,i,j,iPatch) + sqrtGC(i,j,iPatch) * zsc(i,j,iPatch) * gravity )**2
+            PE = 0.5 * ( stat%q(1,i,j,iPatch) + sqrtGC(i,j,iPatch) * ghsC(i,j,iPatch) )**2
             
             energyOnCell(i,j,iPatch) = ( KE + PE ) * dx * dy
           enddo

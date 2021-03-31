@@ -63,13 +63,6 @@ module spatial_operators_mod
   
   real(r_kind), dimension(:,:,:,:), allocatable :: src   ! source term
   
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! zs * gravity
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsL   ! zs * gravity on left bondary on cell
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsR   ! zs * gravity on right bondary on cell
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsB   ! zs * gravity on bottom bondary on cell
-  real(r_kind), dimension(:,:,:,:), allocatable :: ghsT   ! zs * gravity on top bondary on cell
-  real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! zs * gravity on Cell
-  
   real(r_kind), dimension(:,:,:,:), allocatable :: phit    ! phi + phis
   real(r_kind), dimension(:,:,:  ), allocatable :: phitC   ! phi + phis on cell
   
@@ -181,13 +174,6 @@ module spatial_operators_mod
       allocate(GeP(nVar,nPointsOnEdge,ids:ide  ,jds:jde+1,ifs:ife))
       
       allocate(src(nVar,ids:ide,jds:jde,ifs:ife))
-      
-      allocate(ghs (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsL(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsR(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsB(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsT(nPointsOnEdge,ims:ime,jms:jme,ifs:ife))
-      allocate(ghsC(              ims:ime,jms:jme,ifs:ife))
       
       allocate(phit (nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
       allocate(phitC(                  ims:ime,jms:jme,ifs:ife))
@@ -517,8 +503,6 @@ module spatial_operators_mod
         enddo
       enddo
       !$OMP END PARALLEL DO
-      
-      ghs = zs * gravity
           
       do iPatch = ifs,ife
         do j = jms,jme

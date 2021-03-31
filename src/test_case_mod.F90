@@ -36,7 +36,7 @@ module test_case_mod
       call case6(stat(0))
     endif
     
-    ! Check fields and calculate zs on cell
+    ! Check fields and calculate ghs on cell
     do iPatch = ifs,ife
       do j = jms,jme
         do i = ims,ime
@@ -44,16 +44,15 @@ module test_case_mod
           uc (i,j,iPatch) = stat(0)%q(2,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
           vc (i,j,iPatch) = stat(0)%q(3,i,j,iPatch) / stat(0)%q(1,i,j,iPatch)
           call contravProjPlane2Sphere(u(i,j,iPatch), v(i,j,iPatch), uc(i,j,iPatch), vc(i,j,iPatch), matrixA(:,:,cc,i,j,iPatch))
-          zsc(i,j,iPatch) = cell_quadrature(zs(cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
     
     print*,''
-    print*,'max/min value of phi: ',maxval(phi(ids:ide,jds:jde,ifs:ife)),minval(phi(ids:ide,jds:jde,ifs:ife))
-    print*,'max/min value of u  : ',maxval(u  (ids:ide,jds:jde,ifs:ife)),minval(u  (ids:ide,jds:jde,ifs:ife))
-    print*,'max/min value of v  : ',maxval(v  (ids:ide,jds:jde,ifs:ife)),minval(v  (ids:ide,jds:jde,ifs:ife))
-    print*,'max/min value of zsc: ',maxval(zsc(ids:ide,jds:jde,ifs:ife)),minval(zsc(ids:ide,jds:jde,ifs:ife))
+    print*,'max/min value of phi : ',maxval(phi (ids:ide,jds:jde,ifs:ife)),minval(phi (ids:ide,jds:jde,ifs:ife))
+    print*,'max/min value of u   : ',maxval(u   (ids:ide,jds:jde,ifs:ife)),minval(u   (ids:ide,jds:jde,ifs:ife))
+    print*,'max/min value of v   : ',maxval(v   (ids:ide,jds:jde,ifs:ife)),minval(v   (ids:ide,jds:jde,ifs:ife))
+    print*,'max/min value of ghsC: ',maxval(ghsC(ids:ide,jds:jde,ifs:ife)),minval(ghsC(ids:ide,jds:jde,ifs:ife))
     
     deallocate(phi)
     deallocate(u  )
@@ -91,11 +90,11 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
-            phi(iPOC,i,j,iPatch) = gh0 - (radius * Omega * u0 + u0**2 / 2.) * ( -coslon(iPOC,i,j,iPatch)*coslat(iPOC,i,j,iPatch)*sin(alpha) + sinlat(iPOC,i,j,iPatch)*cos(alpha) )**2
-            u  (iPOC,i,j,iPatch) = u0 * ( coslat(iPOC,i,j,iPatch)*cos(alpha) + coslon(iPOC,i,j,iPatch)*sinlat(iPOC,i,j,iPatch)*sin(alpha) )
-            v  (iPOC,i,j,iPatch) = -u0 * sinlon(iPOC,i,j,iPatch) * sin(alpha)
+            phi(iPOC,i,j,iPatch) = gh0 - (radius * Omega * u0 + u0**2 / 2.) * ( -cos(lon(iPOC,i,j,iPatch))*cos(lat(iPOC,i,j,iPatch))*sin(alpha) + sin(lat(iPOC,i,j,iPatch))*cos(alpha) )**2
+            u  (iPOC,i,j,iPatch) = u0 * ( cos(lat(iPOC,i,j,iPatch))*cos(alpha) + cos(lon(iPOC,i,j,iPatch))*sin(lat(iPOC,i,j,iPatch))*sin(alpha) )
+            v  (iPOC,i,j,iPatch) = -u0 * sin(lon(iPOC,i,j,iPatch)) * sin(alpha)
             
-            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * ( -coslon(iPOC,i,j,iPatch)*coslat(iPOC,i,j,iPatch)*sin(alpha) + sinlat(iPOC,i,j,iPatch)*cos(alpha) )
+            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * ( -cos(lon(iPOC,i,j,iPatch))*cos(lat(iPOC,i,j,iPatch))*sin(alpha) + sin(lat(iPOC,i,j,iPatch))*cos(alpha) )
           enddo
         enddo
       enddo
@@ -131,8 +130,8 @@ module test_case_mod
     deallocate(uc  )
     deallocate(vc  )
     
-    zs = 0
-    
+    ghs  = 0
+    ghsC = 0
   end subroutine case2
   
   ! Isolated mountain
@@ -145,7 +144,6 @@ module test_case_mod
     real(r_kind),dimension(:,:,:,:), allocatable :: uc
     real(r_kind),dimension(:,:,:,:), allocatable :: vc
     
-    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: ghs
     real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: longitude
     real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: latitude
     real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: r
@@ -205,6 +203,8 @@ module test_case_mod
           do iPOC = 1,nPointsOnCell
             call contravProjSphere2Plane(uc(iPOC,i,j,iPatch), vc(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
           enddo
+          
+          ghsC(i,j,iPatch) = cell_quadrature(ghs(cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
@@ -222,14 +222,12 @@ module test_case_mod
         enddo
       enddo
     enddo
-    
+      
     deallocate(phi )
     deallocate(u   )
     deallocate(v   )
     deallocate(uc  )
     deallocate(vc  )
-    
-    zs = ghs / gravity
   end subroutine case5
   
   ! Rossby-Haurwitz wave with wavenumber 4
@@ -270,27 +268,27 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
-            u1(iPOC,i,j,iPatch) = coslat(iPOC,i,j,iPatch)
-            u2(iPOC,i,j,iPatch) = R*coslat(iPOC,i,j,iPatch)**(R-1)*sinlat(iPOC,i,j,iPatch)**2*cos(R*longitude(iPOC,i,j,iPatch))
-            u3(iPOC,i,j,iPatch) = coslat(iPOC,i,j,iPatch)**(R+1)*cos(R*longitude(iPOC,i,j,iPatch))
+            u1(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
+            u2(iPOC,i,j,iPatch) = R*cos(lat(iPOC,i,j,iPatch))**(R-1)*sin(lat(iPOC,i,j,iPatch))**2*cos(R*longitude(iPOC,i,j,iPatch))
+            u3(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))**(R+1)*cos(R*longitude(iPOC,i,j,iPatch))
             u (iPOC,i,j,iPatch) = radius*omg*(u1(iPOC,i,j,iPatch)+u2(iPOC,i,j,iPatch)-u3(iPOC,i,j,iPatch))
             
-            v (iPOC,i,j,iPatch) = -radius*omg*R*coslat(iPOC,i,j,iPatch)**(R-1)*sinlat(iPOC,i,j,iPatch)*sin(R*longitude(iPOC,i,j,iPatch))
+            v (iPOC,i,j,iPatch) = -radius*omg*R*cos(lat(iPOC,i,j,iPatch))**(R-1)*sin(lat(iPOC,i,j,iPatch))*sin(R*longitude(iPOC,i,j,iPatch))
             
-            AA1 (iPOC,i,j,iPatch) = omg*0.5*(2.*Omega+omg)*coslat(iPOC,i,j,iPatch)**2
+            AA1 (iPOC,i,j,iPatch) = omg*0.5*(2.*Omega+omg)*cos(lat(iPOC,i,j,iPatch))**2
             Ac  (iPOC,i,j,iPatch) = 0.25*omg**2
-            A21 (iPOC,i,j,iPatch) = (R+1.)*coslat(iPOC,i,j,iPatch)**(2.*R+2.)
-            A22 (iPOC,i,j,iPatch) = (2.*R**2-R-2.)*coslat(iPOC,i,j,iPatch)**(2.*R)
-            A23 (iPOC,i,j,iPatch) = 2.*R**2*coslat(iPOC,i,j,iPatch)**(2.*R-2)
+            A21 (iPOC,i,j,iPatch) = (R+1.)*cos(lat(iPOC,i,j,iPatch))**(2.*R+2.)
+            A22 (iPOC,i,j,iPatch) = (2.*R**2-R-2.)*cos(lat(iPOC,i,j,iPatch))**(2.*R)
+            A23 (iPOC,i,j,iPatch) = 2.*R**2*cos(lat(iPOC,i,j,iPatch))**(2.*R-2)
             Ah  (iPOC,i,j,iPatch) = AA1(iPOC,i,j,iPatch)+Ac(iPOC,i,j,iPatch)*(A21(iPOC,i,j,iPatch)+A22(iPOC,i,j,iPatch)-A23(iPOC,i,j,iPatch))
             
-            Bc  (iPOC,i,j,iPatch) = 2.*(Omega+omg)*omg/((R+1)*(R+2))*coslat(iPOC,i,j,iPatch)**R
+            Bc  (iPOC,i,j,iPatch) = 2.*(Omega+omg)*omg/((R+1)*(R+2))*cos(lat(iPOC,i,j,iPatch))**R
             BB1 (iPOC,i,j,iPatch) = R**2+2.*R+2.
-            BB2 (iPOC,i,j,iPatch) = (R+1.)**2.*coslat(iPOC,i,j,iPatch)**2.
+            BB2 (iPOC,i,j,iPatch) = (R+1.)**2.*cos(lat(iPOC,i,j,iPatch))**2.
             Bh  (iPOC,i,j,iPatch) = Bc(iPOC,i,j,iPatch)*(BB1(iPOC,i,j,iPatch)-BB2(iPOC,i,j,iPatch))
             
-            CC  (iPOC,i,j,iPatch) = 0.25*omg**2*coslat(iPOC,i,j,iPatch)**(2.*R)
-            CC1 (iPOC,i,j,iPatch) = (R+1.)*coslat(iPOC,i,j,iPatch)**2;
+            CC  (iPOC,i,j,iPatch) = 0.25*omg**2*cos(lat(iPOC,i,j,iPatch))**(2.*R)
+            CC1 (iPOC,i,j,iPatch) = (R+1.)*cos(lat(iPOC,i,j,iPatch))**2;
             CC2 (iPOC,i,j,iPatch) = R+2.
             Ch  (iPOC,i,j,iPatch) = CC(iPOC,i,j,iPatch)*(CC1(iPOC,i,j,iPatch)-CC2(iPOC,i,j,iPatch))
             
@@ -330,7 +328,8 @@ module test_case_mod
     deallocate(uc  )
     deallocate(vc  )
     
-    zs = 0
+    ghs  = 0
+    ghsC = 0
   end subroutine case6
   
 end module test_case_mod

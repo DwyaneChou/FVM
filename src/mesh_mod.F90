@@ -56,7 +56,7 @@ MODULE mesh_mod
   ! For cube boundary !
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: Coriolis ! Coriolis parameter
-  real(r_kind), dimension(:,:,:,:    ), allocatable :: delta    ! sqrt( 1 + x**2 + y**2 )
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: delta    ! sqrt( 1 + tanx**2 + tany**2 )
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: sinlon  ! sin(longitude)
   real(r_kind), dimension(:,:,:,:    ), allocatable :: coslon  ! cos(longitude)
@@ -85,8 +85,12 @@ MODULE mesh_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_p
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_n
   
-  real(r_kind), dimension(:,:,:,:    ), allocatable :: zs    ! surface height
-  real(r_kind), dimension(:,:,:      ), allocatable :: zsc   ! surface height on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! surface height
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsL   ! surface height on left bondary on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsR   ! surface height on right bondary on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsB   ! surface height on bottom bondary on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsT   ! surface height on top bondary on cell
+  real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! surface height on cell
   
   real(r_kind), dimension(:,:,:    ), allocatable :: areaCell
   
@@ -160,23 +164,23 @@ MODULE mesh_mod
     allocate( Coriolis (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( delta    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
-    allocate( sinlon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( coslon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( sinlat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( coslat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( sinlon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( coslon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( sinlat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( coslat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
-    allocate( sinx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cosx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( sinx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cosx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( tanx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cotx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( secx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cscx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( siny     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cosy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cotx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( secx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cscx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( siny     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cosy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( tany     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( coty     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( secy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cscy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( coty     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( secy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cscy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( ghost_x (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( ghost_y (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
@@ -185,8 +189,12 @@ MODULE mesh_mod
     allocate( ghost_p (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( ghost_n (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
-    allocate( zs       (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( zsc      (                     ims:ime, jms:jme, ifs:ife) )
+    allocate( ghs (nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsL(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsR(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsB(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsT(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsC(               ims:ime, jms:jme, ifs:ife) )
     
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
     
@@ -289,24 +297,24 @@ MODULE mesh_mod
             call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
                                        x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
             
-            sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
-            coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
+            !sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
+            !coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
             
-            sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
-            coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
+            !sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
+            !coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
             
-            sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
-            cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
+            !sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
+            !cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
             tanx(iPOC,i,j,iPatch) = tan(x(iPOC,i,j,iPatch))
-            cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
-            secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
-            cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
-            siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
-            cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
+            !cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
+            !secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
+            !cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
+            !siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
+            !cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
             tany(iPOC,i,j,iPatch) = tan(y(iPOC,i,j,iPatch))
-            coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
-            secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
-            cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
+            !coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
+            !secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
+            !cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
             
             call calc_matrixG (matrixG (:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
             call calc_matrixIG(matrixIG(:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
@@ -314,7 +322,7 @@ MODULE mesh_mod
             call calc_matrixIA(matrixIA(:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
             call calc_Jacobian(sqrtG   (      iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
             
-            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
+            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sin(lat(iPOC,i,j,iPatch))
           enddo
           sqrtGC(i,j,iPatch) = cell_quadrature(sqrtG(cqs:cqe,i,j,iPatch))
         enddo
@@ -372,24 +380,24 @@ MODULE mesh_mod
               call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
                                          x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
               
-              sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
-              coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
+              !sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
+              !coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
               
-              sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
-              coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
+              !sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
+              !coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
               
-              sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
-              cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
+              !sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
+              !cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
               tanx(iPOC,i,j,iPatch) = tan(x(iPOC,i,j,iPatch))
-              cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
-              secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
-              cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
-              siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
-              cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
+              !cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
+              !secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
+              !cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
+              !siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
+              !cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
               tany(iPOC,i,j,iPatch) = tan(y(iPOC,i,j,iPatch))
-              coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
-              secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
-              cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
+              !coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
+              !secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
+              !cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
               
               call calc_matrixG (matrixG (:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
               call calc_matrixIG(matrixIG(:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
@@ -397,7 +405,7 @@ MODULE mesh_mod
               call calc_matrixIA(matrixIA(:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
               call calc_Jacobian(sqrtG   (      iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
               
-              Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
+              Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sin(lat(iPOC,i,j,iPatch))
             enddo
           endif
         enddo
@@ -456,18 +464,20 @@ MODULE mesh_mod
     print*,''
     print*,'max areaCell sqrtGC diff ratio',maxval(abs(sqrtGC(ids:ide,jds:jde,ifs:ife)*dx*dy-areaCell(ids:ide,jds:jde,ifs:ife))/areaCell(ids:ide,jds:jde,ifs:ife))
     
-    deallocate( sinx )
-    deallocate( cosx )
+    deallocate( ghost_x )
+    deallocate( ghost_y )
+    !deallocate( sinx )
+    !deallocate( cosx )
     !deallocate( tanx )
-    deallocate( cotx )
-    deallocate( secx )
-    deallocate( cscx )
-    deallocate( siny )
-    deallocate( cosy )
+    !deallocate( cotx )
+    !deallocate( secx )
+    !deallocate( cscx )
+    !deallocate( siny )
+    !deallocate( cosy )
     !deallocate( tany )
-    deallocate( coty )
-    deallocate( secy )
-    deallocate( cscy )
+    !deallocate( coty )
+    !deallocate( secy )
+    !deallocate( cscy )
     
   end subroutine init_mesh
   

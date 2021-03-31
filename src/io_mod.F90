@@ -110,7 +110,7 @@ module io_mod
       status = nf90_put_var(ncid,lon_id     , real(lon     (cc,ids:ide,jds:jde,ifs:ife)*R2D, r8) )
       status = nf90_put_var(ncid,lat_id     , real(lat     (cc,ids:ide,jds:jde,ifs:ife)*R2D, r8) )
       status = nf90_put_var(ncid,areaCell_id, real(areaCell(   ids:ide,jds:jde,ifs:ife), r8))
-      status = nf90_put_var(ncid,phis_id    , real(zsc     (   ids:ide,jds:jde,ifs:ife) * gravity, r8) )
+      status = nf90_put_var(ncid,phis_id    , real(ghsC    (   ids:ide,jds:jde,ifs:ife) / gravity, r8) )
       if(status/=nf90_noerr) call handle_err(status)
       
       status = nf90_close(ncid)
@@ -179,7 +179,7 @@ module io_mod
       
       !phit
       varid  = phit_id
-      varout = phi + zsc(ids:ide,jds:jde,ifs:ife) * gravity
+      varout = phi + ghsC(ids:ide,jds:jde,ifs:ife)
       status = nf90_put_var(ncid, varid, varout, start=(/1,1,1,time_slot_num/),count=(/Nx,Ny,Nf,1/))
       
       ! zonal_wind

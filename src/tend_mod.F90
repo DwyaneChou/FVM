@@ -17,7 +17,8 @@ module tend_mod
     allocate( tend(-nIntegralSubSteps:1) )
     
     do iT = -nIntegralSubSteps, 1
-      allocate(tend(iT)%q(nVar,ims:ime,jms:jme,ifs:ife))
+      !allocate(tend(iT)%q(nVar,ims:ime,jms:jme,ifs:ife))
+      allocate(tend(iT)%q(nVar,ids:ide,jds:jde,ifs:ife))
       tend(iT)%q = 0.
     enddo
     
