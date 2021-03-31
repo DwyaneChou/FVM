@@ -21,7 +21,7 @@ nPointsOnEdge        = 3,
 &dynamic_opt
 reconstruct_scheme = 'Polynomial' ! Choose from 'WLS-ENO', 'Polynomial', 'WENO'
 epsilon            = 1.e-2! Coefficient for avioding divide 0 in WLS-ENO
-stencil_width      = 5,
+stencil_width      = 7,
 quad_opt           = 1, ! 1 for square gaussian quadratrue, 2 for triangular quaduature
 nQuadOrder         = 25,
 /

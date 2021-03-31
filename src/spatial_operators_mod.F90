@@ -662,19 +662,22 @@ module spatial_operators_mod
       
       call fill_halo(stat%q,qQ(1,:,:,:,:))
       
-      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jms,jme
-          do i = ims,ime
-            if(.not.inDomain(i,j,iPatch))then
-              qQ(1,:,i,j,iPatch) = qQ(1,:,i,j,iPatch) + sqrtG(cqs:cqe,i,j,iPatch) * ghs(cqs:cqe,i,j,iPatch)
-            endif
-            qC(:,i,j,iPatch) = stat%q(:,i,j,iPatch)
-            qC(1,i,j,iPatch) = qC(1,i,j,iPatch) + sqrtGC(i,j,iPatch) * ghsC(i,j,iPatch)
+      qC = stat%q
+              
+      if(case_num==5)then
+        !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jms,jme
+            do i = ims,ime
+              if(.not.inDomain(i,j,iPatch))then
+                qQ(1,:,i,j,iPatch) = qQ(1,:,i,j,iPatch) + sqrtG(cqs:cqe,i,j,iPatch) * ghs(cqs:cqe,i,j,iPatch)
+              endif
+              qC(1,i,j,iPatch) = qC(1,i,j,iPatch) + sqrtGC(i,j,iPatch) * ghsC(i,j,iPatch)
+            enddo
           enddo
         enddo
-      enddo
-      !$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
+      endif
       
       do iVar = 1,nVar
         call reconstruction(qC(iVar,:,:,:  ),&
@@ -685,50 +688,52 @@ module spatial_operators_mod
                             qQ(iVar,:,:,:,:))
       enddo
       
-      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jdsm1,jdep1
-          do i = idsm1,idep1
-            qL(1,:,i,j,iPatch) = qL(1,:,i,j,iPatch) - sqrtGL(:,i,j,iPatch) * ghsL(:,i,j,iPatch)
-            qR(1,:,i,j,iPatch) = qR(1,:,i,j,iPatch) - sqrtGR(:,i,j,iPatch) * ghsR(:,i,j,iPatch)
-            qB(1,:,i,j,iPatch) = qB(1,:,i,j,iPatch) - sqrtGB(:,i,j,iPatch) * ghsB(:,i,j,iPatch)
-            qT(1,:,i,j,iPatch) = qT(1,:,i,j,iPatch) - sqrtGT(:,i,j,iPatch) * ghsT(:,i,j,iPatch)
+      if(case_num==5)then
+        !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jdsm1,jdep1
+            do i = idsm1,idep1
+              qL(1,:,i,j,iPatch) = qL(1,:,i,j,iPatch) - sqrtGL(:,i,j,iPatch) * ghsL(:,i,j,iPatch)
+              qR(1,:,i,j,iPatch) = qR(1,:,i,j,iPatch) - sqrtGR(:,i,j,iPatch) * ghsR(:,i,j,iPatch)
+              qB(1,:,i,j,iPatch) = qB(1,:,i,j,iPatch) - sqrtGB(:,i,j,iPatch) * ghsB(:,i,j,iPatch)
+              qT(1,:,i,j,iPatch) = qT(1,:,i,j,iPatch) - sqrtGT(:,i,j,iPatch) * ghsT(:,i,j,iPatch)
+            enddo
           enddo
         enddo
-      enddo
-      !$OMP END PARALLEL DO
-            
-      qQ(1,:,:,:,:) = qQ(1,:,:,:,:) - sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
-      
-      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      do iPatch = ifs,ife
-        do j = jms,jme
-          do i = ims,ime
-            phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
-            phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
+        !$OMP END PARALLEL DO
+              
+        qQ(1,:,:,:,:) = qQ(1,:,:,:,:) - sqrtG(cqs:cqe,:,:,:) * ghs(cqs:cqe,:,:,:)
+        
+        !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jms,jme
+            do i = ims,ime
+              phit(:,i,j,iPatch) = qQ(1,:,i,j,iPatch) / sqrtG(cqs:cqe,i,j,iPatch) + ghs(cqs:cqe,i,j,iPatch)
+              phitC(i,j,iPatch) = cell_quadrature(phit(:,i,j,iPatch))
+            enddo
           enddo
         enddo
-      enddo
-      !$OMP END PARALLEL DO
-      
-      call reconstruction(phitC       ,&
-                          dqdx=dphitdx,&
-                          dqdy=dphitdy)
-      
-      !!$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-      !do iPatch = ifs,ife
-      !  do j = jds,jde
-      !    do i = ids,ide
-      !      !! 4th order
-      !      !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
-      !      !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
-      !      ! 6th order
-      !      dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
-      !      dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
-      !    enddo
-      !  enddo
-      !enddo
-      !!$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
+        
+        call reconstruction(phitC       ,&
+                            dqdx=dphitdx,&
+                            dqdy=dphitdy)
+        
+        !!$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+        !do iPatch = ifs,ife
+        !  do j = jds,jde
+        !    do i = ids,ide
+        !      !! 4th order
+        !      !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
+        !      !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
+        !      ! 6th order
+        !      dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
+        !      dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
+        !    enddo
+        !  enddo
+        !enddo
+        !!$OMP END PARALLEL DO
+      endif
       
       call fill_bdy_flux(qL,qR,qB,qT)
       
