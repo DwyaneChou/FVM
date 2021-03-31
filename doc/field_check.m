@@ -5,8 +5,9 @@
 % var_name = 'phi';
 % var_name = 'phit';
 % var_name = 'zonal_wind';
-var_name = 'meridional_wind';
-it       = 15;
+% var_name = 'meridional_wind';
+var_name = 'vorticity';
+it       = 121;
 
 gravity = 9.80616;
 
@@ -48,6 +49,11 @@ if(case_num==5)
     if(strcmp(var_name,'phit'))
         coef = 1 / gravity;
     end
+elseif(case_num==8)
+    lon(lon<-270) = 360 - lon(lon<-270);
+    lon(lon>90) = lon(lon>90) - 360;
+    xs = -270;
+    xe = 90;
 else
     lon(lon<0) = 360 + lon((lon<0));
     xs = 0;

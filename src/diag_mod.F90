@@ -3,6 +3,7 @@ MODULE diag_mod
   use mesh_mod
   use parameters_mod
   use stat_mod
+  use spatial_operators_mod
   
   implicit none
   
@@ -63,5 +64,53 @@ MODULE diag_mod
       
       total_energy = sum(energyOnCell)
     end subroutine calc_total_energy
+    
+    subroutine calc_relative_vorticity(vorticity,stat)
+      real(r_kind), dimension(ids:ide,jds:jde,ifs:ife), intent(out) :: vorticity
+      type(stat_field), intent(in ) :: stat
+      
+      integer i,j,iPatch
+      
+      real(r_kind), dimension(:,:,:  ), allocatable :: u 
+      real(r_kind), dimension(:,:,:  ), allocatable :: v 
+      real(r_kind), dimension(:,:,:  ), allocatable :: uc
+      real(r_kind), dimension(:,:,:  ), allocatable :: vc
+      real(r_kind), dimension(:,:,:,:), allocatable :: dudy
+      real(r_kind), dimension(:,:,:,:), allocatable :: dvdx
+      
+      allocate( u   (                  ims:ime,jms:jme,ifs:ife) )
+      allocate( v   (                  ims:ime,jms:jme,ifs:ife) )
+      allocate( uc  (                  ims:ime,jms:jme,ifs:ife) )
+      allocate( vc  (                  ims:ime,jms:jme,ifs:ife) )
+      allocate( dudy(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife) )
+      allocate( dvdx(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife) )
+      
+      qC = stat%q
+      
+      call fill_halo(qC)
+      
+      do iPatch = ifs, ife
+        do j = jms,jme
+          do i = ims,ime
+            uc(i,j,iPatch) = qC(2,i,j,iPatch) / qC(1,i,j,iPatch)
+            vc(i,j,iPatch) = qC(3,i,j,iPatch) / qC(1,i,j,iPatch)
+            call contrav2cov(u(i,j,iPatch),v(i,j,iPatch),uc(i,j,iPatch),vc(i,j,iPatch),matrixG(:,:,cc,i,j,iPatch))
+          enddo
+        enddo
+      enddo
+      
+      call reconstruction(v,dqdx=dvdx)
+      call reconstruction(u,dqdy=dudy)
+      
+      do iPatch = ifs, ife
+        do j = jds,jde
+          do i = ids,ide
+            vorticity(i,j,iPatch) = cell_quadrature( ( dvdx(:,i,j,iPatch) - dudy(:,i,j,iPatch) ) / sqrtG(cqs:cqe,i,j,iPatch) )
+          enddo
+        enddo
+      enddo
+      
+    end subroutine calc_relative_vorticity
+    
 END MODULE diag_mod
 

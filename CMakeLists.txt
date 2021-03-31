@@ -57,6 +57,7 @@ set(source_files
   src/spatial_operators_mod.F90
   src/temporal_mod.F90
   src/diag_mod.F90
+  src/quadpack.F90
 )
 
 add_library(fvm ${source_files})

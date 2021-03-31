@@ -24,16 +24,20 @@ module test_case_mod
     
     if(case_num == 2)then
       print*,''
-      print*,'test case 2 is selected'
+      print*,'test case 2 Steady-state geostrophically balanced flow is selected'
       call case2(stat(0))
     elseif(case_num==5)then
       print*,''
-      print*,'test case 5 is selected'
+      print*,'test case 5 Zonal flow over an isolated mountain is selected'
       call case5(stat(0))
     elseif(case_num == 6)then
       print*,''
-      print*,'test case 6 is selected'
+      print*,'test case 6 Rossby¨CHaurwitz wave is selected'
       call case6(stat(0))
+    elseif(case_num == 8)then
+      print*,''
+      print*,'test case 8 is Barotropic instability selected'
+      call case8(stat(0))
     endif
     
     ! Check fields and calculate ghs on cell
@@ -331,6 +335,115 @@ module test_case_mod
     ghs  = 0
     ghsC = 0
   end subroutine case6
+  
+  ! Barotropic instability
+  subroutine case8(stat)
+    type(stat_field), intent(inout) :: stat
+    
+    real(r_kind),dimension(nPointsOnCell,ims:ime,jms:jme,ifs:ife) :: longitude
+    
+    real(r_kind),dimension(:,:,:,:), allocatable :: phi
+    real(r_kind),dimension(:,:,:,:), allocatable :: u
+    real(r_kind),dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: uc
+    real(r_kind),dimension(:,:,:,:), allocatable :: vc
+    
+    integer(i_kind) :: neval, ierr
+    real   (r_kind) :: abserr
+    
+    real(r_kind), parameter :: gh0 = gravity * 1.0e4
+    real(r_kind), parameter :: ghd = gravity * 120
+    real(r_kind), parameter :: lat2 = pi / 4.0
+    real(r_kind), parameter :: alpha = 1.0 / 3.0
+    real(r_kind), parameter :: beta = 1.0 / 15.0
+    
+    integer :: i,j,iPatch,iPOC
+    
+    allocate(phi (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(u   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(v   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(uc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(vc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    
+    longitude = lon
+    where(longitude> pi) longitude = longitude - 2. * pi
+    where(longitude<-pi) longitude = 2. * pi + longitude
+    
+    do iPatch = ifs,ife
+      do j = jms,jme
+        do i = ims,ime
+          do iPOC = 1,nPointsOnCell
+            u(iPOC,i,j,iPatch) = u_function(lat(iPOC,i,j,iPatch))
+            v(iPOC,i,j,iPatch) = 0.
+            call qags(gh_integrand, -0.5*pi, lat(iPOC,i,j,iPatch), 1.0e-15, 1.0e-10, phi(iPOC,i,j,iPatch), abserr, neval, ierr)
+            phi(iPOC,i,j,iPatch) = gh0 - phi(iPOC,i,j,iPatch)
+            phi(iPOC,i,j,iPatch) = phi(iPOC,i,j,iPatch) + ghd * cos(lat(iPOC,i,j,iPatch)) * exp(-(longitude(iPOC,i,j,iPatch) / alpha)**2) * exp(-((lat2 - lat(iPOC,i,j,iPatch)) / beta)**2)
+          enddo
+        enddo
+      enddo
+    enddo
+
+    do iPatch = ifs, ife
+      do j = jms, jme
+        do i = ims, ime
+          do iPOC = 1,nPointsOnCell
+            call contravProjSphere2Plane(uc(iPOC,i,j,iPatch), vc(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
+          enddo
+        enddo
+      enddo
+    enddo
+    
+    phi = sqrtG * phi
+    uc  = phi * uc
+    vc  = phi * vc
+    
+    do iPatch = ifs, ife
+      do j = jms, jme
+        do i = ims, ime
+          stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(uc (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(vc (cqs:cqe,i,j,iPatch))
+        enddo
+      enddo
+    enddo
+    
+    deallocate(phi )
+    deallocate(u   )
+    deallocate(v   )
+    deallocate(uc  )
+    deallocate(vc  )
+    
+    ghs  = 0
+    ghsC = 0
+  end subroutine case8
+  
+  real(r_kind) function gh_integrand(lat) result(res)
+
+    real(r_kind), intent(in) :: lat
+
+    real(r_kind) u, f
+
+    u = u_function(lat)
+    f = 2. * omega * sin(lat)
+    res = radius * u * (f + tan(lat) / radius * u)
+
+  end function gh_integrand
+
+  real(r_kind) function u_function(lat) result(res)
+    real(r_kind), intent(in) :: lat
+
+    real(r_kind), parameter :: lat0  = pi / 7.0
+    real(r_kind), parameter :: lat1  = pi / 2.0 - lat0
+    real(r_kind), parameter :: u_max = 80.0
+    real(r_kind), parameter :: en    = exp(-4.0 / (lat1 - lat0)**2)
+
+    if (lat <= lat0 .or. lat >= lat1) then
+      res = 0.
+    else
+      res = u_max / en * exp(1.0 / (lat - lat0) / (lat - lat1))
+    end if
+
+  end function u_function
   
 end module test_case_mod
     

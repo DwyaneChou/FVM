@@ -13,6 +13,8 @@ module spatial_operators_mod
   
   public init_spatial_operator,spatial_operator
   
+  public qC, fill_halo, reconstruction ! just for diag
+  
   integer(i_kind), dimension(:,:,:), allocatable :: iCenCell ! center cell index on reconstruction stencil
   
   integer(i_kind), dimension(:,:,:,:), allocatable :: iRecCell ! x index of reconstruction cells
@@ -791,8 +793,8 @@ module spatial_operators_mod
     end subroutine spatial_operator
     
     subroutine fill_halo(q,qQ)
-      real(r_kind), dimension(             nVar,ims:ime,jms:jme,ifs:ife), intent(inout) :: q
-      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(inout) :: qQ
+      real(r_kind), dimension(             nVar,ims:ime,jms:jme,ifs:ife), intent(inout)          :: q
+      real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(inout),optional :: qQ
       
       real(r_kind), dimension(nVar,maxGhostPointsOnCell,ims:ime,jms:jme,ifs:ife) :: qg
       real(r_kind), dimension(nVar,nQuadPointsOnCell   ,ims:ime,jms:jme,ifs:ife) :: tgq ! value on triangle gaussian quadrature points
@@ -861,7 +863,7 @@ module spatial_operators_mod
               do iVar = 1,nVar
                 q(iVar,i,j,iPatch) = cell_quadrature( tgq(iVar,:,i,j,iPatch) )
               enddo
-              qQ(:,i,j,iPatch) = tgq(1,:,i,j,iPatch)
+              if(present(qQ)) qQ(:,i,j,iPatch) = tgq(1,:,i,j,iPatch)
             endif
           enddo
         enddo
