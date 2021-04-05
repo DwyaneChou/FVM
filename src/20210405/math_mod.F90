@@ -110,56 +110,126 @@
       
     end subroutine  calc_polynomial_square_integration
     
-    subroutine calc_rectangle_poly_matrix(nx,ny,m,xi,eta,A)
-      integer(i_kind), intent(in ) :: nx ! number of points on x direction for reconstruction
-      integer(i_kind), intent(in ) :: ny ! number of points on y direction for reconstruction
-      integer(i_kind), intent(in ) :: m  ! number of unkonwn point values
-      real   (r_kind), intent(in ) :: xi (m)
-      real   (r_kind), intent(in ) :: eta(m)
-      real   (r_kind), intent(out) :: A  (m,nx*ny)
+    subroutine calc_rectangle_poly_matrix(nx,ny,m,xi,eta,A,existPolyTerm)
+      integer(i_kind), intent(in   ) :: nx ! number of points on x direction for reconstruction
+      integer(i_kind), intent(in   ) :: ny ! number of points on y direction for reconstruction
+      integer(i_kind), intent(in   ) :: m  ! number of unkonwn point values
+      real   (r_kind), intent(in   ) :: xi (m)
+      real   (r_kind), intent(in   ) :: eta(m)
+      real   (r_kind), intent(inout) :: A  (:,:)
+      real   (r_kind), intent(in   ),optional :: existPolyTerm(nx*ny)
+      
+      real   (r_kind) :: ext(nx*ny)
       
       real   (r_kind) :: x
       real   (r_kind) :: y
       integer(i_kind) :: iPOC
-      integer(i_kind)  :: i,j,k
+      integer(i_kind)  :: i,j,k,iCOS
+      
+      ext = 1
+      if(present(existPolyTerm))ext = existPolyTerm
       
       do iPOC = 1,m
         x = xi (iPOC)
         y = eta(iPOC)
         
         k = 0
+        iCOS = 0
         do j = 0,ny-1
           do i = 0,nx-1
             k = k + 1
-            A(iPOC,k) = x**real(i,r_kind) * y**real(j,r_kind)
+            if(ext(k)>0)then
+              iCOS = iCOS + 1
+              A(iPOC,iCOS) = x**real(i,r_kind) * y**real(j,r_kind)
+            endif
           enddo
         enddo
       enddo
   
     end subroutine calc_rectangle_poly_matrix
     
-    subroutine calc_rectangle_poly_integration(nx,ny,x_min,x_max,y_min,y_max,c)
-      integer(i_kind), intent(in ) :: nx ! number of points on x direction
-      integer(i_kind), intent(in ) :: ny ! number of points on y direction
-      real   (r_kind), intent(in ) :: x_min
-      real   (r_kind), intent(in ) :: x_max
-      real   (r_kind), intent(in ) :: y_min
-      real   (r_kind), intent(in ) :: y_max
-      real   (r_kind), intent(out) :: c(nx*ny)
+    subroutine calc_rectangle_poly_integration(nx,ny,x_min,x_max,y_min,y_max,c,existPolyTerm)
+      integer(i_kind), intent(in   ) :: nx  ! number of points on x direction
+      integer(i_kind), intent(in   ) :: ny  ! number of points on y direction
+      real   (r_kind), intent(in   ) :: x_min
+      real   (r_kind), intent(in   ) :: x_max
+      real   (r_kind), intent(in   ) :: y_min
+      real   (r_kind), intent(in   ) :: y_max
+      real   (r_kind), intent(inout) :: c(:)
+      real   (r_kind), intent(in   ),optional :: existPolyTerm(nx*ny)
       
-      integer(i_kind) :: i,j,k
+      real   (r_kind) :: ext(nx*ny)
+      integer(i_kind) :: i,j,k,iCOS
       
-      k = 0
-      c = 0
+      ext = 1
+      if(present(existPolyTerm))ext = existPolyTerm
+              
+      k    = 0
+      c    = 0
+      iCOS = 0
       do j = 0,ny-1
         do i = 0,nx-1
           k = k + 1
-          c(k) = ( x_max**(i+1) - x_min**(i+1) ) * ( y_max**(j+1) - y_min**(j+1) ) / real( ( i + 1 ) * ( j + 1 ), r_kind )
+          if(ext(k)>0)then
+            iCOS = iCOS + 1
+            c(iCOS) = ( x_max**(i+1) - x_min**(i+1) ) * ( y_max**(j+1) - y_min**(j+1) ) / real( ( i + 1 ) * ( j + 1 ), r_kind )
+          endif
         enddo
       enddo
       
     end subroutine  calc_rectangle_poly_integration
     
+    subroutine calc_rectangle_poly_deriv_matrix(nx,ny,m,xi,eta,dpdx,dpdy,existPolyTerm)
+      integer(i_kind), intent(in   ) :: nx ! number of points on x direction for reconstruction
+      integer(i_kind), intent(in   ) :: ny ! number of points on y direction for reconstruction
+      integer(i_kind), intent(in   ) :: m  ! number of unkonwn point values
+      real   (r_kind), intent(in   ) :: xi (m)
+      real   (r_kind), intent(in   ) :: eta(m)
+      real   (r_kind), intent(inout) :: dpdx(:,:)
+      real   (r_kind), intent(inout) :: dpdy(:,:)
+      real   (r_kind), intent(in   ),optional :: existPolyTerm(nx*ny)
+      
+      real   (r_kind) :: ext(nx*ny)
+      
+      real   (r_kind) :: x
+      real   (r_kind) :: y
+      integer(i_kind) :: iPOC
+      integer(i_kind)  :: i,j,k,iCOS
+      
+      ext = 1
+      if(present(existPolyTerm))ext = existPolyTerm
+      
+      dpdx = 0
+      dpdy = 0
+      do iPOC = 1,m
+        x = xi (iPOC)
+        y = eta(iPOC)
+        
+        k = 0
+        iCOS = 0
+        do j = 0,ny-1
+          do i = 0,nx-1
+            k = k + 1
+            if(ext(k)>0)then
+              iCOS = iCOS + 1
+              dpdx(iPOC,iCOS) = merge(0.,real(i,r_kind),i-1<0) * x**merge(0,i-1,i-1<0) * y**j
+              dpdy(iPOC,iCOS) = merge(0.,real(j,r_kind),j-1<0) * x**i * y**merge(0,j-1,j-1<0)
+            endif
+          enddo
+        enddo
+      enddo
+  
+    end subroutine calc_rectangle_poly_deriv_matrix
+    
+    ! spherical distance on unit sphere
+    function spherical_distance(lat1,lon1,lat2,lon2,r)
+      real(r_kind) :: spherical_distance
+      real(r_kind),intent(in) :: lat1,lon1,lat2,lon2
+      real(r_kind),intent(in) :: r
+      
+      spherical_distance = r * acos( sin(lat1)*sin(lat2) + cos(lat1)*cos(lat2)*cos(lon1-lon2) )
+    end function spherical_distance
+  
     function nchoosek(n,k) ! same as nchoosek in matlab
       real   (r_kind) :: nchoosek
       integer(i_kind) :: n

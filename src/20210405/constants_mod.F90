@@ -1,7 +1,6 @@
 MODULE constants_mod
     
   implicit none
-  integer  ,parameter :: nVar = 3
   
   integer  ,parameter :: i2  = 2
   integer  ,parameter :: i4  = 4

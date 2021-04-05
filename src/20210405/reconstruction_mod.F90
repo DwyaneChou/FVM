@@ -32,21 +32,50 @@
       subroutine init_reconstruction
         integer(i_kind) :: i,j,k
         
+        integer(i_kind) :: n
+        
         real(r_kind), dimension(:,:), allocatable :: quad_wts_tmp_1d
         real(r_kind), dimension(:,:), allocatable :: quad_wts_tmp_2d
         
-        allocate(quad_pos_1d(nPointsOnEdge    ))
-        allocate(quad_wts_1d(nPointsOnEdge    ))
-        allocate(quad_wts_2d(nQuadPointsOnCell))
+        real(r_kind), dimension(:,:), allocatable :: quad_wts_tri_tmp_1d
+        real(r_kind), dimension(:,:), allocatable :: quad_wts_tri_tmp_2d
+        
+        real   (r_kind), dimension(:  ), allocatable :: quad_pos_tri_1d
+        real   (r_kind), dimension(:  ), allocatable :: quad_wts_tri_1d
+        real   (r_kind), dimension(:,:), allocatable :: quad_pos_tri_2d
+        real   (r_kind), dimension(:  ), allocatable :: quad_wts_tri_2d
+      
+        maxRecCells = stencil_width**2
+        maxRecTerms = maxRecCells
+        
+        n = nint( sqrt(real(nQuadOrder,r_kind)) )
+        
+        allocate(quad_pos_1d(nPointsOnEdge   ))
+        allocate(quad_wts_1d(nPointsOnEdge   ))
+        allocate(quad_wts_2d(nPointsOnEdge**2))
         
         allocate(triQuad_pos(nQuadOrder,3))
         allocate(triQuad_wts(nQuadOrder  ))
         
+        allocate(quad_pos_tri_1d(n   ))
+        allocate(quad_wts_tri_1d(n   ))
+        allocate(quad_pos_tri_2d(2,nQuadOrder))
+        allocate(quad_wts_tri_2d(  nQuadOrder))
+        
         allocate(quad_wts_tmp_1d(nPointsOnEdge,1            ))
         allocate(quad_wts_tmp_2d(nPointsOnEdge,nPointsOnEdge))
         
-        call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
+        allocate(quad_wts_tri_tmp_1d(n,1))
+        allocate(quad_wts_tri_tmp_2d(n,n))
         
+        if(nPointsOnEdge>1)then
+          call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
+        elseif(nPointsOnEdge==1)then
+          quad_pos_1d = 0
+          quad_wts_1d = 2
+        endif
+        
+        ! Square quadrature
         quad_pos_1d = ( quad_pos_1d + 1. ) / 2.
         quad_wts_1d = quad_wts_1d / 2.
         
@@ -62,8 +91,44 @@
           enddo
         enddo
         
-        maxRecCells = stencil_width**2
-        maxRecTerms = maxRecCells
+        ! Triangle quadrature from square quadratrue
+        if(nQuadOrder==1)then
+          ! Order 1
+          triQuad_pos(1,:) = (/ 1./3., 1./3., 1./3. /)
+          
+          triQuad_wts      = (/ 1 /)
+        else
+          call Gaussian_Legendre(n, quad_pos_tri_1d, quad_wts_tri_1d)
+          
+          quad_pos_tri_1d = ( quad_pos_tri_1d + 1. ) / 2.
+          quad_wts_tri_1d = quad_wts_tri_1d / 2.
+          
+          quad_wts_tri_tmp_1d(:,1) = quad_wts_tri_1d
+          quad_wts_tri_tmp_2d = matmul(quad_wts_tri_tmp_1d,transpose(quad_wts_tri_tmp_1d))
+          
+          k = 0
+          do j = 1,n
+            do i = 1,n
+              k = k + 1
+              quad_pos_tri_2d(1,k) = quad_pos_tri_1d(i)
+              quad_pos_tri_2d(2,k) = quad_pos_tri_1d(j)
+              
+              quad_wts_tri_2d(  k) = quad_wts_tri_tmp_2d(i,j) * ( 1. - quad_pos_tri_2d(1,k) )
+              
+              triQuad_pos(k,2) = quad_pos_tri_2d(1,k)
+              triQuad_pos(k,3) = ( 1. - quad_pos_tri_2d(1,k) ) * quad_pos_tri_2d(2,k)
+              triQuad_pos(k,1) = 1. - quad_pos_tri_2d(1,k) - ( 1. - quad_pos_tri_2d(1,k) ) * quad_pos_tri_2d(2,k)
+              
+              triQuad_wts(k) = quad_wts_tri_2d(  k) * 2.
+              
+              !print*,k
+              !print*,quad_wts_tri_2d(  k)
+              !print*,triQuad_pos(k,:)
+              !print*,''
+            enddo
+          enddo
+          !stop
+        endif
         
         allocate(nRecCells   (ids:ide,jds:jde,ifs:ife))
         allocate(nGstRecCells(ids:ide,jds:jde,ifs:ife))
@@ -72,12 +137,6 @@
         allocate(locPolyDegree(ids:ide,jds:jde,ifs:ife))
         
         allocate(polyCoordCoef(maxRecCells,maxRecTerms,ids:ide,jds:jde,ifs:ife))
-        
-        triQuad_pos(1,:) = (/ 2./3., 1./6., 1./6. /)
-        triQuad_pos(2,:) = (/ 1./6., 2./3., 1./6. /)
-        triQuad_pos(3,:) = (/ 1./6., 1./6., 2./3. /)
-        
-        triQuad_wts      = (/ 1./3., 1./3., 1./3. /)
         
       end subroutine init_reconstruction
       
@@ -91,7 +150,7 @@
       
       function Gaussian_quadrature_2d(q)
         real(r_kind) :: Gaussian_quadrature_2d
-        real(r_kind) :: q(nQuadPointsOnCell)
+        real(r_kind) :: q(nPointsOnEdge**2)
         
         Gaussian_quadrature_2d = dot_product(quad_wts_2d,q)
         
@@ -105,13 +164,18 @@
         integer(i_kind) :: iT
         integer(i_kind) :: is,ie
         
-        cell_quadrature = 0
-        do iT = 1,nEdgesOnCell
-          is = 1 + ( it - 1 ) * nQuadOrder
-          ie = it * nQuadOrder
-          cell_quadrature = cell_quadrature + dot_product( triQuad_wts,q(is:ie) )
-        enddo
-        cell_quadrature = cell_quadrature / real(nEdgesOnCell,r_kind)
+        if(quad_opt==1)then
+          cell_quadrature = Gaussian_quadrature_2d(q)
+        elseif(quad_opt==2)then
+          cell_quadrature = 0
+          do iT = 1,nEdgesOnCell
+            is = 1 + ( it - 1 ) * nQuadOrder
+            ie = it * nQuadOrder
+            cell_quadrature = cell_quadrature + dot_product( triQuad_wts,q(is:ie) )
+          enddo
+          cell_quadrature = cell_quadrature / real(nEdgesOnCell,r_kind)
+        endif
+    
       end function cell_quadrature
     
       function WLS_ENO(A,u,h,m,n,ic,x0)
@@ -123,7 +187,7 @@
         ! u       : vector of known values
         ! h       : average edge length of cell
         ! m       : number of known values (volumn integration value on cell, or in other words, number of cells in a stencil)
-        ! n       : number of coeficients of reconstruction polynomial
+        ! n       : number of coefficients of reconstruction polynomial
         ! ic      : index of center cell on stencil
         ! x0      : initial value for Conjugate Gradient Method
         real   (r_kind), dimension(n  )             :: WLS_ENO
@@ -131,38 +195,54 @@
         integer(i_kind)                , intent(in) :: n
         real   (r_kind), dimension(m,n), intent(in) :: A
         real   (r_kind), dimension(m  ), intent(in) :: u
-        real   (r_kind)                , intent(in) :: h
+        real   (r_kind), dimension(m  ), intent(in) :: h
         integer(i_kind)                , intent(in) :: ic
         
         real   (r_kind), dimension(n  ), intent(in),optional :: x0
         
-        real(r_kind),parameter :: alpha   = 10
-        real(r_kind),parameter :: epsilon = 1.e-2
+        real(r_kind),parameter :: alpha   = 1.5
+        !real(r_kind),parameter :: epsilon = 1.e-2 ! 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
         
         real(r_kind), dimension(m,n) :: WA
         real(r_kind), dimension(m  ) :: Wu
         real(r_kind), dimension(m  ) :: W ! weights on each cells
         real(r_kind), dimension(m  ) :: beta
-        
+
         real(r_kind), dimension(m  ) :: u_bar
         real(r_kind)                 :: u_avg
-        
+
         !  For LAPACK only
         real   (r_kind), dimension(m+n) :: work
         integer(i_kind) :: INFO
         
         integer(i_kind) :: i,j,k
         
-        u_avg = sum( u ) / m
-        if(u_avg/=0) u_bar = u / u_avg
+        u_bar = u
+        u_avg = sum( abs(u) ) / m
+        if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
         
+        !u_bar = std(u,m)
+
         do j = 1,m
-          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h*h
+          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h(j)**2
         enddo
-        beta(ic) = minval(beta,abs(beta)>1.e-15)
+        beta(ic) = minval(beta,beta>0)
         
         W = 1./beta
         W(ic) = alpha * W(ic)
+        W = W / sum(W)
+        
+        !print*,'u_bar'
+        !write(*,'(5e)')u_bar
+        !print*,'W'
+        !write(*,'(5e)')W
+        !print*,'h'
+        !write(*,'(5e)')h
+        !print*,'diff u'
+        !write(*,'(5e)')( u_bar - u_bar(ic) )**2
+        !print*,'eps*h**2'
+        !write(*,'(5e)')epsilon * h**2
+        !print*,''
         
         do j = 1,m
           WA(j,:) = W(j) * A(j,:)
@@ -171,6 +251,7 @@
         
         ! Solver by Tsinghua
         call qr_solver(M,N,WA,Wu,WLS_ENO)
+        
         !if(present(x0))then
         !  call qr_solver(M,N,WA,Wu,WLS_ENO,x0)
         !else
@@ -180,7 +261,26 @@
         !! Solver by LAPACK DGELS
         !call DGELS( 'N', M, N, 1, WA, M, Wu, M, WORK, M+N, INFO )
         !WLS_ENO = Wu
+        
       end function WLS_ENO
+      
+      function std(q,m)
+        integer(i_kind) :: m
+        real(r_kind), dimension(m) :: std
+        real(r_kind), dimension(m) :: q
+        
+        real   (r_kind) :: avg
+        real   (r_kind) :: n
+        
+        n = real(m,r_kind)
+        
+        avg = sum(q) / n
+        
+        std = sqrt( sum( ( q - avg )**2 ) / n )
+        
+        std = ( q - avg ) / std
+        
+      end function std
       
       subroutine WENO_limiter(Qrec,Q,dir)
         real   (r_kind)              , intent(out) :: Qrec

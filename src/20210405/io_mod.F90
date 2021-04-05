@@ -5,6 +5,7 @@ module io_mod
   use mesh_mod
   use stat_mod
   use projection_mod
+  use diag_mod
   implicit none
     
     character(13) :: ncFile = 'output.nc'
@@ -26,6 +27,7 @@ module io_mod
       integer phis_id
       integer phit_id
       integer zonal_wind_id,meridional_wind_id
+      integer vorticity_id
       
       status = nf90_create(ncFile, NF90_CLOBBER + NF90_64BIT_OFFSET , ncid)
       if(status/=nf90_noerr) call handle_err(status)
@@ -45,6 +47,7 @@ module io_mod
       status = nf90_def_var(ncid,'phit'           ,NF90_DOUBLE,(/x_dim_id,y_dim_id,patch_dim_id,time_dim_id/),phit_id           )
       status = nf90_def_var(ncid,'zonal_wind'     ,NF90_DOUBLE,(/x_dim_id,y_dim_id,patch_dim_id,time_dim_id/),zonal_wind_id     )
       status = nf90_def_var(ncid,'meridional_wind',NF90_DOUBLE,(/x_dim_id,y_dim_id,patch_dim_id,time_dim_id/),meridional_wind_id)
+      status = nf90_def_var(ncid,'vorticity      ',NF90_DOUBLE,(/x_dim_id,y_dim_id,patch_dim_id,time_dim_id/),vorticity_id      )
       if(status/=nf90_noerr) call handle_err(status)
       
       !print*,'nf90_put_att'
@@ -74,6 +77,7 @@ module io_mod
       status = nf90_put_att(ncid,phit_id           ,'units'    ,'m^2/s^2'     )
       status = nf90_put_att(ncid,zonal_wind_id     ,'units'    ,'m/s'         )
       status = nf90_put_att(ncid,meridional_wind_id,'units'    ,'m/s'         )
+      status = nf90_put_att(ncid,vorticity_id      ,'units'    ,'m/s^2'       )
       
       status = nf90_put_att(ncid,lon_id            ,'long_name','longitude on sphere coordinate for Cells' )
       status = nf90_put_att(ncid,lat_id            ,'long_name','latitude on sphere coordinate for Cells'  )
@@ -84,6 +88,7 @@ module io_mod
       status = nf90_put_att(ncid,phit_id           ,'long_name','total geopotential height on points'      )
       status = nf90_put_att(ncid,zonal_wind_id     ,'long_name','zonal wind'                               )
       status = nf90_put_att(ncid,meridional_wind_id,'long_name','meridional wind'                          )
+      status = nf90_put_att(ncid,vorticity_id      ,'long_name','relative vorticity'                       )
       
       ! Define coordinates
       status = nf90_put_att(ncid, x_id              ,'_CoordinateAxisTypes','lon lat nPatch')
@@ -96,12 +101,14 @@ module io_mod
       status = nf90_put_att(ncid, areaCell_id       ,'_CoordinateAxisTypes','lon lat nPatch time')
       status = nf90_put_att(ncid, zonal_wind_id     ,'_CoordinateAxisTypes','lon lat nPatch time')
       status = nf90_put_att(ncid, meridional_wind_id,'_CoordinateAxisTypes','lon lat nPatch time')
+      status = nf90_put_att(ncid, vorticity_id      ,'_CoordinateAxisTypes','lon lat nPatch time')
       
       status = nf90_put_att(ncid,phi_id            ,'_FillValue',real(FillValue,r8))
       status = nf90_put_att(ncid,phis_id           ,'_FillValue',real(FillValue,r8))
       status = nf90_put_att(ncid,phit_id           ,'_FillValue',real(FillValue,r8))
       status = nf90_put_att(ncid,zonal_wind_id     ,'_FillValue',real(FillValue,r8))
       status = nf90_put_att(ncid,meridional_wind_id,'_FillValue',real(FillValue,r8))
+      status = nf90_put_att(ncid,vorticity_id      ,'_FillValue',real(FillValue,r8))
       if(status/=nf90_noerr) call handle_err(status)
       
       status = nf90_enddef(ncid)
@@ -110,7 +117,7 @@ module io_mod
       status = nf90_put_var(ncid,lon_id     , real(lon     (cc,ids:ide,jds:jde,ifs:ife)*R2D, r8) )
       status = nf90_put_var(ncid,lat_id     , real(lat     (cc,ids:ide,jds:jde,ifs:ife)*R2D, r8) )
       status = nf90_put_var(ncid,areaCell_id, real(areaCell(   ids:ide,jds:jde,ifs:ife), r8))
-      status = nf90_put_var(ncid,phis_id    , real(zsc     (   ids:ide,jds:jde,ifs:ife) * gravity, r8) )
+      status = nf90_put_var(ncid,phis_id    , real(ghsC    (   ids:ide,jds:jde,ifs:ife) / gravity, r8) )
       if(status/=nf90_noerr) call handle_err(status)
       
       status = nf90_close(ncid)
@@ -130,10 +137,12 @@ module io_mod
       integer phi_id
       integer phit_id
       integer zonal_wind_id,meridional_wind_id
+      integer vorticity_id
       
       real(r_kind), dimension(:,:,:), allocatable :: phi
       real(r_kind), dimension(:,:,:), allocatable :: u
       real(r_kind), dimension(:,:,:), allocatable :: v
+      real(r_kind), dimension(:,:,:), allocatable :: vor
       
       integer :: varid
       real(r8), dimension(ids:ide,jds:jde,ifs:ife) :: varout
@@ -145,6 +154,7 @@ module io_mod
       allocate(phi(ids:ide,jds:jde,ifs:ife))
       allocate(u  (ids:ide,jds:jde,ifs:ife))
       allocate(v  (ids:ide,jds:jde,ifs:ife))
+      allocate(vor(ids:ide,jds:jde,ifs:ife))
       
       do iPatch = ifs,ife
         do j = jds,jde
@@ -157,6 +167,8 @@ module io_mod
         enddo
       enddo
       
+      call calc_relative_vorticity(vor,stat)
+      
       time(1) = time_slot_num
       !print*,'nf90_open'
       status = nf90_open(ncFile,NF90_WRITE,ncid)
@@ -168,6 +180,7 @@ module io_mod
       status = nf90_inq_varid(ncid,'phit'           , phit_id           )
       status = nf90_inq_varid(ncid,'zonal_wind'     , zonal_wind_id     )
       status = nf90_inq_varid(ncid,'meridional_wind', meridional_wind_id)
+      status = nf90_inq_varid(ncid,'vorticity'      , vorticity_id      )
       if(status/=nf90_noerr) call handle_err(status)
       
       status = nf90_put_var(ncid, time_id, time, start=(/time_slot_num/),count=(/1/))
@@ -179,7 +192,7 @@ module io_mod
       
       !phit
       varid  = phit_id
-      varout = phi + zsc(ids:ide,jds:jde,ifs:ife) * gravity
+      varout = phi + ghsC(ids:ide,jds:jde,ifs:ife)
       status = nf90_put_var(ncid, varid, varout, start=(/1,1,1,time_slot_num/),count=(/Nx,Ny,Nf,1/))
       
       ! zonal_wind
@@ -190,6 +203,12 @@ module io_mod
       ! meridional_wind
       varid  = meridional_wind_id
       varout = v
+      status = nf90_put_var(ncid, varid, varout, start=(/1,1,1,time_slot_num/),count=(/Nx,Ny,Nf,1/))
+      if(status/=nf90_noerr) call handle_err(status)
+      
+      ! vorticity
+      varid  = vorticity_id
+      varout = vor
       status = nf90_put_var(ncid, varid, varout, start=(/1,1,1,time_slot_num/),count=(/Nx,Ny,Nf,1/))
       if(status/=nf90_noerr) call handle_err(status)
       

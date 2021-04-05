@@ -221,6 +221,63 @@
   
     end subroutine calc_rectangle_poly_deriv_matrix
     
+    ! calculate nth derivative for rectangular polynomial
+    subroutine calc_rectangle_poly_deriv_n_matrix(nx,ny,m,xi,eta,dp,existPolyTerm)
+      integer(i_kind), intent(in   ) :: nx ! number of points on x direction for reconstruction
+      integer(i_kind), intent(in   ) :: ny ! number of points on y direction for reconstruction
+      integer(i_kind), intent(in   ) :: m  ! number of unkonwn point values
+      real   (r_kind), intent(in   ) :: xi (m)
+      real   (r_kind), intent(in   ) :: eta(m)
+      real   (r_kind), intent(inout) :: dp(0:nx-1,0:ny-1,m,nx*ny)
+      real   (r_kind), intent(in   ),optional :: existPolyTerm(nx*ny)
+      
+      real   (r_kind) :: ext(nx*ny)
+      
+      real   (r_kind) :: x
+      real   (r_kind) :: y
+      integer(i_kind) :: iPOC
+      integer(i_kind) :: id,jd
+      integer(i_kind) :: i,j,k,iCOS
+      
+      real   (r_kind) :: cx(nx)
+      real   (r_kind) :: cy(ny)
+      
+      do i = 1,nx
+        cx(i) = i
+      enddo
+      do j = 1,ny
+        cy(j) = j
+      enddo
+      
+      ext = 1
+      if(present(existPolyTerm))ext = existPolyTerm
+      
+      dp = 0
+      do iPOC = 1,m
+        x = xi (iPOC)
+        y = eta(iPOC)
+        
+        k = 0
+        iCOS = 0
+        do j = 0,ny-1
+          do i = 0,nx-1
+            k = k + 1
+            if(ext(k)>0)then
+              iCOS = iCOS + 1
+              do jd = 0,ny-1
+                do id = 0,nx-1
+                  dp(id,jd,iPOC,iCOS) = merge( 1., merge(0.,product(cx(nx-1:nx-id:-1)),i-id<0), id==0 ) * x**merge(0,i-id,i-id<0) &
+                                      * merge( 1., merge(0.,product(cy(ny-1:ny-jd:-1)),j-jd<0), jd==0 ) * y**merge(0,j-jd,j-jd<0) &
+                                      * existPolyTerm(k)
+                enddo
+              enddo
+            endif
+          enddo
+        enddo
+      enddo
+  
+    end subroutine calc_rectangle_poly_deriv_n_matrix
+    
     ! spherical distance on unit sphere
     function spherical_distance(lat1,lon1,lat2,lon2,r)
       real(r_kind) :: spherical_distance

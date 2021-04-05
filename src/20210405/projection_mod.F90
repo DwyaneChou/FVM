@@ -25,15 +25,15 @@ contains
       lambda=lon
     endif
     
-    if(lambda >   -pi/4. .and. lambda<= 1.*pi/4.) iPatch=1
+    if(lambda >=  -pi/4. .and. lambda<= 1.*pi/4.) iPatch=1
     if(lambda >    pi/4. .and. lambda<= 3.*pi/4.) iPatch=2
     if(lambda > 3.*pi/4. .and. lambda<= 5.*pi/4.) iPatch=3
     if(lambda > 5.*pi/4. .and. lambda<= 7.*pi/4.) iPatch=4
     
     call pointProjSphere2Plane(x,y,lambda,theta,iPatch)
 
-    if(y < -pi/4.)then; iPatch=6; call pointProjSphere2Plane(x,y,lambda,theta,iPatch); endif
-    if(y >  pi/4.)then; iPatch=5; call pointProjSphere2Plane(x,y,lambda,theta,iPatch); endif
+    if(y <= -pi/4.)then; iPatch=6; call pointProjSphere2Plane(x,y,lambda,theta,iPatch); endif
+    if(y >=  pi/4.)then; iPatch=5; call pointProjSphere2Plane(x,y,lambda,theta,iPatch); endif
 
   end subroutine psp2ploc
 

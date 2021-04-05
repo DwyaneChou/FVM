@@ -15,14 +15,6 @@
       integer(i_kind) :: maxRecCells
       integer(i_kind) :: maxRecTerms
       
-      integer(i_kind),dimension(:,:,:), allocatable :: nRecCells ! number of cells for reconstruction
-      integer(i_kind),dimension(:,:,:), allocatable :: nGstRecCells ! number of cells for ghost point reconstruction
-      integer(i_kind),dimension(:,:,:), allocatable :: nRecTerms
-      
-      integer(i_kind),dimension(:,:,:), allocatable :: locPolyDegree ! degree of local reconstruction polynomial
-      
-      real   (r_kind), dimension(:,:,:,:,:), allocatable :: polyCoordCoef
-      
       real   (r_kind) :: recCoef
       real   (r_kind) :: recdx
       real   (r_kind) :: recdy
@@ -129,14 +121,6 @@
           enddo
           !stop
         endif
-        
-        allocate(nRecCells   (ids:ide,jds:jde,ifs:ife))
-        allocate(nGstRecCells(ids:ide,jds:jde,ifs:ife))
-        allocate(nRecTerms   (ids:ide,jds:jde,ifs:ife))
-        
-        allocate(locPolyDegree(ids:ide,jds:jde,ifs:ife))
-        
-        allocate(polyCoordCoef(maxRecCells,maxRecTerms,ids:ide,jds:jde,ifs:ife))
         
       end subroutine init_reconstruction
       

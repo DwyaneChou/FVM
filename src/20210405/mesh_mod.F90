@@ -56,7 +56,7 @@ MODULE mesh_mod
   ! For cube boundary !
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: Coriolis ! Coriolis parameter
-  real(r_kind), dimension(:,:,:,:    ), allocatable :: delta    ! sqrt( 1 + x**2 + y**2 )
+  real(r_kind), dimension(:,:,:,:    ), allocatable :: delta    ! sqrt( 1 + tanx**2 + tany**2 )
   
   real(r_kind), dimension(:,:,:,:    ), allocatable :: sinlon  ! sin(longitude)
   real(r_kind), dimension(:,:,:,:    ), allocatable :: coslon  ! cos(longitude)
@@ -85,12 +85,18 @@ MODULE mesh_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_p
   integer(i_kind), dimension(:,:,:,:), allocatable :: ghost_n
   
-  real(r_kind), dimension(:,:,:,:    ), allocatable :: zs    ! surface height
-  real(r_kind), dimension(:,:,:      ), allocatable :: zsc   ! surface height on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghs    ! surface height
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsL   ! surface height on left bondary on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsR   ! surface height on right bondary on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsB   ! surface height on bottom bondary on cell
+  real(r_kind), dimension(:,:,:,:), allocatable :: ghsT   ! surface height on top bondary on cell
+  real(r_kind), dimension(:,:,:  ), allocatable :: ghsC   ! surface height on cell
   
   real(r_kind), dimension(:,:,:    ), allocatable :: areaCell
   
   logical, dimension(:,:,:), allocatable :: inDomain
+  logical, dimension(:,:,:), allocatable :: inCorner
+  logical, dimension(:,:,:), allocatable :: noCorner
       
   contains
   
@@ -158,23 +164,23 @@ MODULE mesh_mod
     allocate( Coriolis (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( delta    (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
-    allocate( sinlon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( coslon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( sinlat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( coslat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( sinlon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( coslon   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( sinlat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( coslat   (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
-    allocate( sinx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cosx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( sinx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cosx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( tanx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cotx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( secx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cscx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( siny     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cosy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cotx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( secx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cscx     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( siny     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cosy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( tany     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( coty     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( secy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( cscy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( coty     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( secy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    !allocate( cscy     (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
     allocate( ghost_x (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( ghost_y (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
@@ -183,15 +189,33 @@ MODULE mesh_mod
     allocate( ghost_p (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     allocate( ghost_n (nQuadPointsOnCell, ims:ime, jms:jme, ifs:ife) )
     
-    allocate( zs       (      nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
-    allocate( zsc      (                     ims:ime, jms:jme, ifs:ife) )
+    allocate( ghs (nPointsOnCell, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsL(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsR(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsB(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsT(nPointsOnEdge, ims:ime, jms:jme, ifs:ife) )
+    allocate( ghsC(               ims:ime, jms:jme, ifs:ife) )
     
     allocate( areaCell (      ids:ide, jds:jde, ifs:ife) )
     
     allocate(inDomain  (ims:ime,jms:jme,ifs:ife))
-      
+    allocate(inCorner  (ims:ime,jms:jme,ifs:ife))
+    allocate(noCorner  (ims:ime,jms:jme,ifs:ife))
+    
     inDomain(ims:ime,jms:jme,ifs:ife) = .false. 
     inDomain(ids:ide,jds:jde,ifs:ife) = .true.
+    
+    inCorner(ims:ime,jms:jme,ifs:ife) = .false. 
+    inCorner(ims:ids-1,jms:jds-1,ifs:ife) = .true. ! low left
+    inCorner(ide+1:ime,jms:jds-1,ifs:ife) = .true. ! low right
+    inCorner(ims:ids-1,jde+1:jme,ifs:ife) = .true. ! up left
+    inCorner(ide+1:ime,jde+1:jme,ifs:ife) = .true. ! up right
+    
+    noCorner = .true.
+    noCorner(ims:ids+recBdy-1,jms:jds+recBdy-1,ifs:ife) = .false.
+    noCorner(ide-recBdy+1:ime,jms:jds+recBdy-1,ifs:ife) = .false.
+    noCorner(ims:ids+recBdy-1,jde-recBdy+1:jme,ifs:ife) = .false.
+    noCorner(ide-recBdy+1:ime,jde-recBdy+1:jme,ifs:ife) = .false.
     
     ! Init arrays
     ghost_i = 0
@@ -201,7 +225,7 @@ MODULE mesh_mod
     
     nGhostPointsOnCell = 0
     
-    !$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
+    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,jQP,iQP,verticesCoord,iTOC,iVertex1,iVertex2,iPOC) COLLAPSE(3)
     do iPatch = ifs,ife
       do j = jms,jme
         do i = ims,ime
@@ -236,46 +260,61 @@ MODULE mesh_mod
           x(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = x(ccs+0,i,j,iPatch)
           y(cbs+3*nPointsOnEdge:cbs+4*nPointsOnEdge-1,i,j,iPatch) = y(ccs+0,i,j,iPatch) + quad_pos_1d * dy
           
-          ! Triangle quadrature points
-          countQP = 0
-          verticesCoord(3,:) = (/x(cc,i,j,iPatch), y(cc,i,j,iPatch)/)
-          ! Loop 4 triangles on cell
-          do iTOC = 1,nEdgesOnCell
-            iVertex1 = ccs+iTOC-1
-            iVertex2 = ccs+iTOC
-            if(iTOC==nEdgesOnCell)iVertex2 = ccs
-            verticesCoord(1,:) = (/x(iVertex1,i,j,iPatch), y(iVertex1,i,j,iPatch)/)
-            verticesCoord(2,:) = (/x(iVertex2,i,j,iPatch), y(iVertex2,i,j,iPatch)/)
-            do iQP = 1,nQuadOrder
-              x(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,1), triQuad_pos(iQP,:) )
-              y(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
-              countQP = countQP + 1
+          if(quad_opt==1)then
+            ! Square Gaussian quadrature points
+            countQP = 0
+            do jQP = 1,nPointsOnEdge
+              do iQP = 1,nPointsOnEdge
+                x(cqs+countQP,i,j,iPatch) = x(ccs,i,j,iPatch) + dx * quad_pos_1d(iQP)
+                y(cqs+countQP,i,j,iPatch) = y(ccs,i,j,iPatch) + dy * quad_pos_1d(jQP)
+                !print*,i,j,iPatch,iQP,jQP,dx*R2D,quad_opt
+                !print*,x(cqs+countQP,i,j,iPatch)*R2D,x(ccs,i,j,iPatch)*R2D
+                !print*,y(cqs+countQP,i,j,iPatch)*R2D,y(ccs,i,j,iPatch)*R2D
+                countQP = countQP + 1
+              enddo
             enddo
-          enddo
+          elseif(quad_opt==2)then
+            ! Triangular quadrature points
+            countQP = 0
+            verticesCoord(1,:) = (/x(cc,i,j,iPatch), y(cc,i,j,iPatch)/)
+            ! Loop 4 triangles on cell
+            do iTOC = 1,nEdgesOnCell
+              iVertex1 = ccs+iTOC-1
+              iVertex2 = ccs+iTOC
+              if(iTOC==nEdgesOnCell)iVertex2 = ccs
+              verticesCoord(2,:) = (/x(iVertex1,i,j,iPatch), y(iVertex1,i,j,iPatch)/)
+              verticesCoord(3,:) = (/x(iVertex2,i,j,iPatch), y(iVertex2,i,j,iPatch)/)
+              do iQP = 1,nQuadOrder
+                x(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,1), triQuad_pos(iQP,:) )
+                y(cqs+countQP,i,j,iPatch) = dot_product( verticesCoord(:,2), triQuad_pos(iQP,:) )
+                countQP = countQP + 1
+              enddo
+            enddo
+          endif
           
           ! Calculate parameters on each points on this cell
           do iPOC = cc,cqe
             call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
                                        x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
             
-            sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
-            coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
+            !sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
+            !coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
             
-            sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
-            coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
+            !sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
+            !coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
             
-            sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
-            cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
+            !sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
+            !cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
             tanx(iPOC,i,j,iPatch) = tan(x(iPOC,i,j,iPatch))
-            cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
-            secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
-            cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
-            siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
-            cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
+            !cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
+            !secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
+            !cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
+            !siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
+            !cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
             tany(iPOC,i,j,iPatch) = tan(y(iPOC,i,j,iPatch))
-            coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
-            secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
-            cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
+            !coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
+            !secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
+            !cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
             
             call calc_matrixG (matrixG (:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
             call calc_matrixIG(matrixIG(:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
@@ -283,159 +322,92 @@ MODULE mesh_mod
             call calc_matrixIA(matrixIA(:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
             call calc_Jacobian(sqrtG   (      iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
             
-            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
+            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sin(lat(iPOC,i,j,iPatch))
           enddo
           sqrtGC(i,j,iPatch) = cell_quadrature(sqrtG(cqs:cqe,i,j,iPatch))
         enddo
       enddo
     enddo
-    !$OMP END PARALLEL DO
+    !!$OMP END PARALLEL DO
     
     ! Calculate ghost position
-    !$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
+    !!$OMP PARALLEL DO PRIVATE(j,i,countQP,iQP,ig,jg,pg,ng)
     do iPatch = ifs,ife
-      ! Bottom
-      do j = jms,jds-1
+      do j = jms,jme
         do i = ims,ime
-          countQP = 0
-          do iQP = cqs,cqe
-            countQP = countQP + 1
-            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
-                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
-            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
-            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+          if( .not.inDomain(i,j,iPatch) )then
+            countQP = 0
+            do iQP = cqs,cqe
+              countQP = countQP + 1
+              call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
+                            lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
+              ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
+              ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
+              
+              if( ghost_i(countQP,i,j,iPatch)==ids-1 ) ghost_i(countQP,i,j,iPatch) = ids
+              if( ghost_j(countQP,i,j,iPatch)==jds-1 ) ghost_j(countQP,i,j,iPatch) = jds
+              if( ghost_i(countQP,i,j,iPatch)==ide+1 ) ghost_i(countQP,i,j,iPatch) = ide
+              if( ghost_j(countQP,i,j,iPatch)==jde+1 ) ghost_j(countQP,i,j,iPatch) = jde
+              
+              ! Set ghost points for interpolation
+              ig = ghost_i(countQP,i,j,iPatch)
+              jg = ghost_j(countQP,i,j,iPatch)
+              pg = ghost_p(countQP,i,j,iPatch)
+              nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
+              ng = nGhostPointsOnCell(ig,jg,pg)
+              x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
+              y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
             
-            ! Set ghost points for interpolation
-            ig = ghost_i(countQP,i,j,iPatch)
-            jg = ghost_j(countQP,i,j,iPatch)
-            pg = ghost_p(countQP,i,j,iPatch)
-            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
-            ng = nGhostPointsOnCell(ig,jg,pg)
-            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
-            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
-
-            ghost_n(countQP,i,j,iPatch) = ng
-          enddo
+              ghost_n(countQP,i,j,iPatch) = ng
+            enddo
+          endif
         enddo
       enddo
-      
-      ! Top
-      do j = jde+1,jme
-        do i = ims,ime
-          countQP = 0
-          do iQP = cqs,cqe
-            countQP = countQP + 1
-            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
-                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
-            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
-            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
-            
-            ! Set ghost points for interpolation
-            ig = ghost_i(countQP,i,j,iPatch)
-            jg = ghost_j(countQP,i,j,iPatch)
-            pg = ghost_p(countQP,i,j,iPatch)
-            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
-            ng = nGhostPointsOnCell(ig,jg,pg)
-            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
-            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
-
-            ghost_n(countQP,i,j,iPatch) = ng
-          enddo
-        enddo
-      enddo
-      
-      ! Left
-      do j = jds,jde
-        do i = ims,ids-1
-          countQP = 0
-          do iQP = cqs,cqe
-            countQP = countQP + 1
-            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
-                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
-            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
-            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
-            
-            ! Set ghost points for interpolation
-            ig = ghost_i(countQP,i,j,iPatch)
-            jg = ghost_j(countQP,i,j,iPatch)
-            pg = ghost_p(countQP,i,j,iPatch)
-            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
-            ng = nGhostPointsOnCell(ig,jg,pg)
-            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
-            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
-
-            ghost_n(countQP,i,j,iPatch) = ng
-          enddo
-        enddo
-      enddo
-      
-      ! Right
-      do j = jds,jde
-        do i = ide+1,ime
-          countQP = 0
-          do iQP = cqs,cqe
-            countQP = countQP + 1
-            call psp2ploc(ghost_x(countQP,i,j,iPatch),ghost_y(countQP,i,j,iPatch),ghost_p(countQP,i,j,iPatch),&
-                          lon(iQP,i,j,iPatch),lat(iQP,i,j,iPatch))
-            ghost_i(countQP,i,j,iPatch) = floor( ( ghost_x(countQP,i,j,iPatch) - x_min ) / dx ) + 1
-            ghost_j(countQP,i,j,iPatch) = floor( ( ghost_y(countQP,i,j,iPatch) - y_min ) / dy ) + 1
-            
-            ! Set ghost points for interpolation
-            ig = ghost_i(countQP,i,j,iPatch)
-            jg = ghost_j(countQP,i,j,iPatch)
-            pg = ghost_p(countQP,i,j,iPatch)
-            nGhostPointsOnCell(ig,jg,pg) = nGhostPointsOnCell(ig,jg,pg) + 1
-            ng = nGhostPointsOnCell(ig,jg,pg)
-            x(cgs+ng-1,ig,jg,pg) = ghost_x(countQP,i,j,iPatch)
-            y(cgs+ng-1,ig,jg,pg) = ghost_y(countQP,i,j,iPatch)
-
-            ghost_n(countQP,i,j,iPatch) = ng
-          enddo
-        enddo
-      enddo
-      
     enddo
-    !$OMP END PARALLEL DO
+    !!$OMP END PARALLEL DO
     
     print*,''
     print*,'Actual max ghost points',maxval(nGhostPointsOnCell)
     
-    ! Calculate mesh parameters on ghost points on halo cells
+    ! Calculate mesh parameters on ghost points on in-domain cells
     do iPatch = ifs,ife
-      do j = jms,jme
-        do i = ims,ime
-          ! Calculate parameters on each points on this cell
-          do iPOC = cgs,cge
-            call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
-                                       x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
-            
-            sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
-            coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
-            
-            sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
-            coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
-            
-            sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
-            cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
-            tanx(iPOC,i,j,iPatch) = tan(x(iPOC,i,j,iPatch))
-            cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
-            secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
-            cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
-            siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
-            cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
-            tany(iPOC,i,j,iPatch) = tan(y(iPOC,i,j,iPatch))
-            coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
-            secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
-            cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
-            
-            call calc_matrixG (matrixG (:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
-            call calc_matrixIG(matrixIG(:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
-            call calc_matrixA (matrixA (:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
-            call calc_matrixIA(matrixIA(:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
-            call calc_Jacobian(sqrtG   (      iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
-            
-            Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sinlat(iPOC,i,j,iPatch)
-          enddo
+      do j = jds,jde
+        do i = ids,ide
+          ng = nGhostPointsOnCell(i,j,iPatch)
+          if(ng>0)then
+            ! Calculate parameters on each points on this cell
+            do iPOC = cgs,cgs+ng-1
+              call pointProjPlane2Sphere(lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), &
+                                         x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch), iPatch)
+              
+              !sinlon(iPOC,i,j,iPatch) = sin(lon(iPOC,i,j,iPatch))
+              !coslon(iPOC,i,j,iPatch) = cos(lon(iPOC,i,j,iPatch))
+              
+              !sinlat(iPOC,i,j,iPatch) = sin(lat(iPOC,i,j,iPatch))
+              !coslat(iPOC,i,j,iPatch) = cos(lat(iPOC,i,j,iPatch))
+              
+              !sinx(iPOC,i,j,iPatch) = sin(x(iPOC,i,j,iPatch))
+              !cosx(iPOC,i,j,iPatch) = cos(x(iPOC,i,j,iPatch))
+              tanx(iPOC,i,j,iPatch) = tan(x(iPOC,i,j,iPatch))
+              !cotx(iPOC,i,j,iPatch) = 1. / tanx(iPOC,i,j,iPatch)
+              !secx(iPOC,i,j,iPatch) = 1. / cosx(iPOC,i,j,iPatch)
+              !cscx(iPOC,i,j,iPatch) = 1. / sinx(iPOC,i,j,iPatch)
+              !siny(iPOC,i,j,iPatch) = sin(y(iPOC,i,j,iPatch))
+              !cosy(iPOC,i,j,iPatch) = cos(y(iPOC,i,j,iPatch))
+              tany(iPOC,i,j,iPatch) = tan(y(iPOC,i,j,iPatch))
+              !coty(iPOC,i,j,iPatch) = 1. / tany(iPOC,i,j,iPatch)
+              !secy(iPOC,i,j,iPatch) = 1. / cosy(iPOC,i,j,iPatch)
+              !cscy(iPOC,i,j,iPatch) = 1. / siny(iPOC,i,j,iPatch)
+              
+              call calc_matrixG (matrixG (:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
+              call calc_matrixIG(matrixIG(:, :, iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
+              call calc_matrixA (matrixA (:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
+              call calc_matrixIA(matrixIA(:, :, iPOC,i,j,iPatch), lon(iPOC,i,j,iPatch), lat(iPOC,i,j,iPatch), iPatch)
+              call calc_Jacobian(sqrtG   (      iPOC,i,j,iPatch), x  (iPOC,i,j,iPatch), y  (iPOC,i,j,iPatch))
+              
+              Coriolis(iPOC,i,j,iPatch) = 2. * Omega * sin(lat(iPOC,i,j,iPatch))
+            enddo
+          endif
         enddo
       enddo
     enddo
@@ -491,6 +463,21 @@ MODULE mesh_mod
     
     print*,''
     print*,'max areaCell sqrtGC diff ratio',maxval(abs(sqrtGC(ids:ide,jds:jde,ifs:ife)*dx*dy-areaCell(ids:ide,jds:jde,ifs:ife))/areaCell(ids:ide,jds:jde,ifs:ife))
+    
+    deallocate( ghost_x )
+    deallocate( ghost_y )
+    !deallocate( sinx )
+    !deallocate( cosx )
+    !deallocate( tanx )
+    !deallocate( cotx )
+    !deallocate( secx )
+    !deallocate( cscx )
+    !deallocate( siny )
+    !deallocate( cosy )
+    !deallocate( tany )
+    !deallocate( coty )
+    !deallocate( secy )
+    !deallocate( cscy )
     
   end subroutine init_mesh
   
