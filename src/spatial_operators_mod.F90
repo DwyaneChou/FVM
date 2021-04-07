@@ -38,6 +38,8 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: WENOPoly ! polynomial coefficients for WENO
   real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: invWENOPoly ! polynomial coefficients for WENO
   
+  real   (r_kind), dimension(:,:,:,:,:,:,:,:), allocatable :: dp
+  
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixL
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixR
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixB
@@ -187,6 +189,8 @@ module spatial_operators_mod
         
         allocate(WENOPoly   (nStencil,maxRecCells,maxRecCells,ims:ime,jms:jme,ifs:ife))
         allocate(invWENOPoly(nStencil,maxRecCells,maxRecCells,ims:ime,jms:jme,ifs:ife))
+        
+        allocate(dp(nStencil,0:stencil_width-1,0:stencil_width-1,nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       endif
       
       allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -237,8 +241,8 @@ module spatial_operators_mod
       allocate(existPolyTerm(maxRecCells))
       
       dV = dx * dy
-    
-      ! set reconstruction cells on each stencil
+      
+      print*,''
       print*,'Set reconstruction cells on each stencil'
       print*,''
       
@@ -380,7 +384,7 @@ module spatial_operators_mod
             enddo
           enddo
         enddo
-      
+        
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -426,7 +430,7 @@ module spatial_operators_mod
                       call calc_rectangle_poly_integration(nxp,nyp,&
                                                            xRelWENO(iStencil,1,iCOS,i,j,iPatch),xRelWENO(iStencil,2,iCOS,i,j,iPatch),&
                                                            yRelWENO(iStencil,1,iCOS,i,j,iPatch),yRelWENO(iStencil,4,iCOS,i,j,iPatch),&
-                                                           WENOPoly(iStencil,iCOS,1:nRC,i,j,iPatch),existPolyTerm)
+                                                           WENOPoly(iStencil,iCOS,1:nRC,i,j,iPatch),existPolyTerm(1:nxp*nyp))
                     endif
                   enddo
                 enddo
@@ -438,6 +442,17 @@ module spatial_operators_mod
                   print*,i,j,iPatch,nRC,nxp,nyp
                   stop 'Check BRINV for Special treamtment on boundary cells'
                 endif
+              
+                do iPOC = 1,nQuadPointsOncell
+                  xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
+                  yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
+                enddo
+                
+                call calc_rectangle_poly_deriv_n_matrix(nxp,nyp,nQuadPointsOnCell,xq,yq,dp(iStencil,:,:,:,1:nxp*nyp,i,j,iPatch),existPolyTerm(1:nxp*nyp))
+                
+                print*,''
+                print*,iStencil,i,j,iPatch
+                print*,dp(iStencil,1,0,1,1:nxp*nyp,i,j,iPatch)
               enddo
             enddo
           enddo
