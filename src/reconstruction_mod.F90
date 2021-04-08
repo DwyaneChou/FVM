@@ -112,14 +112,8 @@
               triQuad_pos(k,1) = 1. - quad_pos_tri_2d(1,k) - ( 1. - quad_pos_tri_2d(1,k) ) * quad_pos_tri_2d(2,k)
               
               triQuad_wts(k) = quad_wts_tri_2d(  k) * 2.
-              
-              !print*,k
-              !print*,quad_wts_tri_2d(  k)
-              !print*,triQuad_pos(k,:)
-              !print*,''
             enddo
           enddo
-          !stop
         endif
         
       end subroutine init_reconstruction
