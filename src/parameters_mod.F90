@@ -41,7 +41,8 @@ module parameters_mod
   integer(i_kind) :: recBdy        = 2
   real   (r_kind) :: epsilon       = 1.e-2 ! Coefficient for avioding divide 0 in WLS-ENO, 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
                                            ! or in other words, increasing by finer grid
-  integer(i_kind) :: nStencil ! number of weno 2d stencil
+  integer(i_kind) :: nStencil  ! number of high oder WENO 2d stencil
+  integer(i_kind) :: nStencil1 ! number of 1st order weno 2d stencil
   
   ! Index parameter
   integer(i_kind) :: ids      ! The starting index in the x-direction (Physical domain)
@@ -176,7 +177,8 @@ module parameters_mod
     xhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
     yhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
     
-    nStencil = recBdy + 1
+    nStencil1 = 4
+    nStencil  = nStencil1 + recBdy + 1 ! 4 1st order stencil + high order stencils
     
     ! Calculate starting and ending index for physical domain
     ids  = 1
