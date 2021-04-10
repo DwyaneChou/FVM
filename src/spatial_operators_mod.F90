@@ -193,6 +193,12 @@ module spatial_operators_mod
         allocate(invWENOPoly(nStencil,maxRecCells,maxRecCells,ims:ime,jms:jme,ifs:ife))
       
         allocate(existWENOTerm(nStencil,maxRecCells))
+        
+        allocate(polyMatrixL(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixR(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixB(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixT(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixQ(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       endif
       
       allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -426,6 +432,8 @@ module spatial_operators_mod
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
+              
+              ! Calculate WENO polynomial coefficient matrices
               do iStencil = 1,nStencil1
                 nRC = nWENOCells(iStencil,i,j,iPatch)
                 do iCOS = 1,nRC
@@ -472,7 +480,7 @@ module spatial_operators_mod
                     enddo
                   enddo
                 else
-                  existWENOTerm = 1
+                  existWENOTerm(iStencil,:) = 1
                 endif
                 
                 k    = 0
@@ -498,6 +506,28 @@ module spatial_operators_mod
                   stop 'Check BRINV for Special treamtment on boundary cells'
                 endif
               enddo
+              
+              ! Calculate reconstruction matrix on edge
+              nRC = stencil_width**2
+              nxp = stencil_width
+              nyp = stencil_width
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL*recdx,yL*recdy,polyMatrixL(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR*recdx,yR*recdy,polyMatrixR(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB*recdx,yB*recdy,polyMatrixB(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT*recdx,yT*recdy,polyMatrixT(:,1:nRC,i,j,iPatch))
+              
+              do iPOC = 1,nQuadPointsOncell
+                xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
+                yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
+              enddo
+              call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,polyMatrixQ(:,1:nRC,i,j,iPatch))
+              
+              ! Calculate derivative matrix on quadrature points on cell
+              !xq = 0
+              !yq = 0
+              call calc_rectangle_poly_deriv_matrix(nxp,nyp,nQuadPointsOnCell,xq,yq,&
+                                                    recMatrixDx(:,1:nRC,i,j,iPatch),&
+                                                    recMatrixDy(:,1:nRC,i,j,iPatch))
             enddo
           enddo
         enddo
@@ -1074,7 +1104,10 @@ module spatial_operators_mod
       real(r_kind), dimension(maxRecCells,maxRecTerms) :: coordMtx
       real(r_kind), dimension(            maxRecTerms) :: polyCoef
       
-      integer(i_kind) :: iVar,i,j,iPatch,iCOS
+      ! For WENO 2D
+      real(r_kind), dimension(nStencil ) :: beta ! smooth indicator for each stencil
+      
+      integer(i_kind) :: iVar,i,j,iPatch,iCOS,iStencil
       integer(i_kind) :: iRec,jRec
       integer(i_kind) :: ic
       integer(i_kind) :: m,n
@@ -1151,6 +1184,56 @@ module spatial_operators_mod
           enddo
         enddo
         !$OMP END PARALLEL DO
+      elseif(trim(reconstruct_scheme)=='WENO2D')then
+        !!$OMP PARALLEL DO PRIVATE(j,i,m,iCOS,iRec,jRec,u) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jds,jde
+            do i = ids,ide
+              do iStencil = 1,nStencil
+                m = nWENOCells(iStencil,i,j,iPatch)
+                do iCOS = 1,m
+                  iRec = iWENOCell(iStencil,iCOS,i,j,iPatch)
+                  jRec = jWENOCell(iStencil,iCOS,i,j,iPatch)
+                  
+                  u(iCOS) = q(iRec,jRec,iPatch)
+                enddo
+                
+                polyCoef(1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),u)
+                if(iStencil<=nStencil1)then
+                  beta(iStencil) = WENO_smooth_indicator_1(polyCoef(1:m))
+                elseif(iStencil==nStencil1+1)then
+                  beta(iStencil) = sum( beta(1:nStencil1) ) / nStencil1
+                elseif(iStencil==nStencil1+2)then
+                  beta(iStencil) = WENO_smooth_indicator_3(polyCoef(1:m)*existWENOTerm(iStencil,1:m))
+                elseif(iStencil==nStencil1+3)then
+                  beta(iStencil) = WENO_smooth_indicator_5(polyCoef(1:m)*existWENOTerm(iStencil,1:m))
+                elseif(iStencil==nStencil1+4)then
+                  beta(iStencil) = WENO_smooth_indicator_7(polyCoef(1:m)*existWENOTerm(iStencil,1:m))
+                endif
+                
+                if(m==49.or.m==25.or.m==9)then
+                  !print*,iStencil,i,j,iPatch
+                  !print*,polyCoef(1:m)
+                  !print*,''
+                  print*,m,beta(iStencil)
+                  print*,''
+                endif
+                !if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,1:m,i,j,iPatch),u(1:m))
+                !if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,1:m,i,j,iPatch),u(1:m))
+                !if(present(qB  )) qB(:,i,j,iPatch) = matmul(polyMatrixB (:,1:m,i,j,iPatch),u(1:m))
+                !if(present(qT  )) qT(:,i,j,iPatch) = matmul(polyMatrixT (:,1:m,i,j,iPatch),u(1:m))
+                !
+                !if(present(qQ  )) qQ(:,i,j,iPatch) = matmul(polyMatrixQ (:,1:m,i,j,iPatch),u(1:m))
+                !
+                !if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,1:m,i,j,iPatch),u(1:m))
+                !if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:m,i,j,iPatch),u(1:m))
+              enddo
+              
+               !stop 'reconstruction WENO2D'
+            enddo
+          enddo
+        enddo
+        !!$OMP END PARALLEL DO
       endif
       
     end subroutine reconstruction
