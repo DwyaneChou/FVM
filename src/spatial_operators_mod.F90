@@ -1105,9 +1105,14 @@ module spatial_operators_mod
       real(r_kind), dimension(            maxRecTerms) :: polyCoef
       
       ! For WENO 2D
-      real(r_kind), dimension(nStencil ) :: beta ! smooth indicator for each stencil
+      real(r_kind), dimension(nStencil   ) :: beta    ! smooth indicator for each stencil
+      real(r_kind), dimension(nStencil   ) :: tau
+      real(r_kind), dimension(nStencil1  ) :: sigma
+      real(r_kind), dimension(maxRecTerms) :: a       ! polynomial coefficients after rematch
+      real(r_kind) :: sigma_sum
+      real(r_kind), parameter :: eps = 1.e-15
       
-      integer(i_kind) :: iVar,i,j,iPatch,iCOS,iStencil
+      integer(i_kind) :: iVar,i,j,iPatch,iCOS,iStencil,iExist
       integer(i_kind) :: iRec,jRec
       integer(i_kind) :: ic
       integer(i_kind) :: m,n
@@ -1199,25 +1204,70 @@ module spatial_operators_mod
                 enddo
                 
                 polyCoef(1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),u)
+                
                 if(iStencil<=nStencil1)then
                   beta(iStencil) = WENO_smooth_indicator_1(polyCoef(1:m))
                 elseif(iStencil==nStencil1+1)then
-                  beta(iStencil) = sum( beta(1:nStencil1) ) / nStencil1
+                  do iCOS = 1,nStencil1
+                    sigma(iCOS) = ( 1. + ( abs(beta(1)-beta(2)) + abs(beta(2)-beta(3)) + abs(beta(3)-beta(1)) )**2 / ( beta(iCOS) + eps ) ) / nStencil1
+                  enddo
+                  sigma_sum = sum(sigma)
+                  sigma = sigma / sigma_sum
+                  beta(iStencil) = sum( beta(1:nStencil1) * sigma )
                 elseif(iStencil==nStencil1+2)then
-                  beta(iStencil) = WENO_smooth_indicator_3(polyCoef(1:m)*existWENOTerm(iStencil,1:m))
+                  ! Rematch array for calculating smooth indicator for 3rd order stencil
+                  iCOS   = 0
+                  iExist = 0
+                  a      = 0
+                  do jRec = 1,3
+                    do iRec = 1,3
+                      iCOS = iCOS + 1
+                      if(existWENOTerm(iStencil,iCOS)==1)then
+                        iExist = iExist + 1
+                        a(iCOS) = polyCoef(iExist)
+                      endif
+                    enddo
+                  enddo
+                  beta(iStencil) = WENO_smooth_indicator_3(a(1:iCOS))
                 elseif(iStencil==nStencil1+3)then
-                  beta(iStencil) = WENO_smooth_indicator_5(polyCoef(1:m)*existWENOTerm(iStencil,1:m))
+                  ! Rematch array for calculating smooth indicator for 5th order stencil
+                  iCOS   = 0
+                  iExist = 0
+                  a      = 0
+                  do jRec = 1,5
+                    do iRec = 1,5
+                      iCOS = iCOS + 1
+                      if(existWENOTerm(iStencil,iCOS)==1)then
+                        iExist = iExist + 1
+                        a(iCOS) = polyCoef(iExist)
+                      endif
+                    enddo
+                  enddo
+                  beta(iStencil) = WENO_smooth_indicator_5(a(1:iCOS))
                 elseif(iStencil==nStencil1+4)then
-                  beta(iStencil) = WENO_smooth_indicator_7(polyCoef(1:m)*existWENOTerm(iStencil,1:m))
+                  ! Rematch array for calculating smooth indicator for 7th order stencil
+                  iCOS   = 0
+                  iExist = 0
+                  a      = 0
+                  do jRec = 1,7
+                    do iRec = 1,7
+                      iCOS = iCOS + 1
+                      if(existWENOTerm(iStencil,iCOS)==1)then
+                        iExist = iExist + 1
+                        a(iCOS) = polyCoef(iExist)
+                      endif
+                    enddo
+                  enddo
+                  beta(iStencil) = WENO_smooth_indicator_7(a(1:iCOS))
                 endif
                 
-                if(m==49.or.m==25.or.m==9)then
+                !if(m==49.or.m==25.or.m==9)then
                   !print*,iStencil,i,j,iPatch
                   !print*,polyCoef(1:m)
                   !print*,''
                   print*,m,beta(iStencil)
                   print*,''
-                endif
+                !endif
                 !if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,1:m,i,j,iPatch),u(1:m))
                 !if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,1:m,i,j,iPatch),u(1:m))
                 !if(present(qB  )) qB(:,i,j,iPatch) = matmul(polyMatrixB (:,1:m,i,j,iPatch),u(1:m))
@@ -1229,7 +1279,7 @@ module spatial_operators_mod
                 !if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,1:m,i,j,iPatch),u(1:m))
               enddo
               
-               !stop 'reconstruction WENO2D'
+              !stop 'reconstruction WENO2D'
             enddo
           enddo
         enddo
