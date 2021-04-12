@@ -554,6 +554,8 @@ module spatial_operators_mod
               call calc_rectangle_poly_deriv_matrix(nxp,nyp,nQuadPointsOnCell,xq,yq,&
                                                     recMatrixDx(:,1:nRC,i,j,iPatch),&
                                                     recMatrixDy(:,1:nRC,i,j,iPatch))
+              recMatrixDx(:,1:nRC,i,j,iPatch) = recMatrixDx(:,1:nRC,i,j,iPatch) / dx
+              recMatrixDy(:,1:nRC,i,j,iPatch) = recMatrixDy(:,1:nRC,i,j,iPatch) / dy
             enddo
           enddo
         enddo
@@ -583,11 +585,13 @@ module spatial_operators_mod
           enddo
         enddo
         
+        r = 0
         do jStencil = 1,nStencil
           do iStencil = 1,jStencil
             r(iStencil,jStencil) = 10**(2*iStencil-1)
+            !r(iStencil,jStencil) = 10**(1*iStencil-1)
           enddo
-          r(:,jStencil) = r(:,jStencil) / sum(r(:,jStencil))
+          r(:,jStencil) = r(:,jStencil) / sum(r(1:jStencil,jStencil))
         enddo
       endif
       
@@ -1308,7 +1312,7 @@ module spatial_operators_mod
                   p1         = a1
                   p1_on_3    = 0
                   p1_on_3(1) = p1(1)
-                  p3 = a3 / r(2,2) - p1_on_3 * r(1,2) / r(2,2)
+                  p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
                   
                   beta(2) = WENO_smooth_indicator_3(p3)
                 elseif(iStencil==nStencil1+3)then
@@ -1350,14 +1354,6 @@ module spatial_operators_mod
                   
                   beta(4) = WENO_smooth_indicator_7(p7)
                 endif
-                
-                !if(iStencil>nStencil1)then
-                !  !print*,iStencil,i,j,iPatch
-                !  !print*,polyCoef(1:m)
-                !  !print*,''
-                !  print*,m,beta(iStencil-nStencil1)
-                !  print*,''
-                !endif
               enddo
               
               tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1 ) )**2
@@ -1365,6 +1361,8 @@ module spatial_operators_mod
               do iStencil = 1,nStencil
                 alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
               enddo
+              
+              !alpha = r(:,nStencil) / ( beta + eps )
               
               w = alpha / sum(alpha)
               

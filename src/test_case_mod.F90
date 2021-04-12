@@ -38,6 +38,10 @@ module test_case_mod
       print*,''
       print*,'test case 8 is Barotropic instability selected'
       call case8(stat(0))
+    elseif(case_num == 9)then
+      print*,''
+      print*,'test case 9 is Shock wave selected'
+      call case9(stat(0))
     endif
     
     ! Check fields and calculate ghs on cell
@@ -416,6 +420,91 @@ module test_case_mod
     ghs  = 0
     ghsC = 0
   end subroutine case8
+  
+  ! Shock wave
+  subroutine case9(stat)
+    type(stat_field), intent(inout) :: stat
+    
+    real(r_kind),dimension(:,:,:,:), allocatable :: phi
+    real(r_kind),dimension(:,:,:,:), allocatable :: u
+    real(r_kind),dimension(:,:,:,:), allocatable :: v
+    real(r_kind),dimension(:,:,:,:), allocatable :: uc
+    real(r_kind),dimension(:,:,:,:), allocatable :: vc
+    
+    real(r_kind),dimension(:,:,:,:), allocatable :: longitude
+    
+    real(r_kind)    :: u0
+    real(r_kind)    :: gh0 = 30000.
+    real(r_kind)    :: gh
+    real(r_kind)    :: alpha = 0! pi/4.
+    
+    integer :: i,j,iPatch,iPOC
+    
+    allocate(phi (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(u   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(v   (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(uc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(vc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    
+    allocate(longitude (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    
+    longitude = lon
+    where(longitude<0) longitude = 2. * pi + longitude
+    
+    do iPatch = ifs, ife
+      do j = jms, jme
+        do i = ims, ime
+          do iPOC = 1,nPointsOnCell
+            phi(iPOC,i,j,iPatch) = gh0
+            if(     longitude(iPOC,i,j,iPatch) > (180-30) * D2R &
+              .and. longitude(iPOC,i,j,iPatch) < (180+30) * D2R &
+              .and. lat      (iPOC,i,j,iPatch) > (0  -30) * D2R & 
+              .and. lat      (iPOC,i,j,iPatch) < (0  +30) * D2R )then
+              phi(iPOC,i,j,iPatch) = phi(iPOC,i,j,iPatch) + 30000
+            endif
+            
+            u  (iPOC,i,j,iPatch) = 0
+            v  (iPOC,i,j,iPatch) = 0
+            
+            Coriolis(iPOC,i,j,iPatch) = 0
+          enddo
+        enddo
+      enddo
+    enddo
+    
+    do iPatch = ifs, ife
+      do j = jms, jme
+        do i = ims, ime
+          do iPOC = 1,nPointsOnCell
+            call contravProjSphere2Plane(uc(iPOC,i,j,iPatch), vc(iPOC,i,j,iPatch), u(iPOC,i,j,iPatch), v(iPOC,i,j,iPatch), matrixIA(:,:,iPOC,i,j,iPatch))
+          enddo
+        enddo
+      enddo
+    enddo
+    
+    phi = sqrtG * phi
+    uc  = phi * uc
+    vc  = phi * vc
+    
+    do iPatch = ifs, ife
+      do j = jms, jme
+        do i = ims, ime
+          stat%q(1,i,j,iPatch) = cell_quadrature(phi(cqs:cqe,i,j,iPatch))
+          stat%q(2,i,j,iPatch) = cell_quadrature(uc (cqs:cqe,i,j,iPatch))
+          stat%q(3,i,j,iPatch) = cell_quadrature(vc (cqs:cqe,i,j,iPatch))
+        enddo
+      enddo
+    enddo
+    
+    deallocate(phi )
+    deallocate(u   )
+    deallocate(v   )
+    deallocate(uc  )
+    deallocate(vc  )
+    
+    ghs  = 0
+    ghsC = 0
+  end subroutine case9
   
   real(r_kind) function gh_integrand(lat) result(res)
 

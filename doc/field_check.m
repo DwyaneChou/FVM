@@ -7,13 +7,11 @@ var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 91;
+it       = 6;
 
 gravity = 9.80616;
 
-% nc_file = '..\run\output.nc';
-% nc_file = '..\run\case6_5th\output_RH_5th_1p0.nc';
-nc_file = '..\run\case6_7th\output_RH_7th_1p0.nc';
+nc_file = '..\run\output.nc';
 
 dx         = ncreadatt(nc_file,'/','dx');
 ids        = ncreadatt(nc_file,'/','ids');
