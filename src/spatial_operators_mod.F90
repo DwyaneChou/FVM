@@ -1300,7 +1300,7 @@ module spatial_operators_mod
                   sigma_sum = sum(sigma)
                   sigma = sigma / sigma_sum
                   a1 = polyCoef(1:m)
-                  beta(1) = sum( beta1(1:nStencil1) * sigma )
+                  beta(1) = sum( beta1 * sigma )
                 elseif(iStencil==nStencil1+2)then
                   ! Rematch array for calculating smooth indicator for 3rd order stencil
                   a3 = 0
@@ -1368,6 +1368,7 @@ module spatial_operators_mod
               
               if(nStencil==1)p = p1
               if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
+              !if(nStencil==2)p = 1./11 * p1_on_3 + 10./11. * p3
               if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
               if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
               
