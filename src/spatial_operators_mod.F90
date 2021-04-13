@@ -1275,8 +1275,8 @@ module spatial_operators_mod
         enddo
         !$OMP END PARALLEL DO
       elseif(trim(reconstruct_scheme)=='WENO2D')then
-        !!$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,u,polyCoef,beta1,beta,sigma,sigma_sum,a1,a3,a5,a7, &
-        !!$OMP                     p1,p3,p5,p7,p1_on_3,p1_on_5,p1_on_7,p3_on_5,p3_on_7,p5_on_7,tau,alpha,w,p) COLLAPSE(3) ! COLLAPSE must be 3 or less, iStencil cannot be parallelled
+        !$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,u,polyCoef,beta1,beta,sigma,sigma_sum,a1,a3,a5,a7, &
+        !$OMP                     p1,p3,p5,p7,p1_on_3,p1_on_5,p1_on_7,p3_on_5,p3_on_7,p5_on_7,tau,alpha,w,p) COLLAPSE(3) ! COLLAPSE must be 3 or less, iStencil cannot be parallelled
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -1356,23 +1356,15 @@ module spatial_operators_mod
                 endif
               enddo
               
-              !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
-              tau = sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. )
+              tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
+              !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**( 2 * nStencil - 1 )
+              !tau = sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. )
               
               do iStencil = 1,nStencil
                 alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
               enddo
               
               w = alpha / sum(alpha)
-              
-              if(maxval(abs(p3))>0)then
-                print*,i,j,iPatch
-                print*,w
-                print*,p1_on_3
-                print*,p3
-                print*,a3
-                print*,''
-              endif
               
               if(nStencil==1)p = p1
               if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
@@ -1392,7 +1384,7 @@ module spatial_operators_mod
             enddo
           enddo
         enddo
-        !!$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
       endif
       
     end subroutine reconstruction

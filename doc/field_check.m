@@ -77,8 +77,9 @@ y   = -90:res:90;
 var_plot = griddata(lon1d,lat1d,var1d,lon2d,lat2d,'linear');
 
 figure
-pcolor(lon2d,lat2d,var_plot*coef)
-shading interp
+plt = pcolor(lon2d,lat2d,var_plot*coef);
+% shading interp
+set(plt,'EdgeColor','None')
 % set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
 % set(gca,'CLim',[ 4.9e4,5.9e4])
 % set(gca,'CLim',[ 3e4,5e4])
