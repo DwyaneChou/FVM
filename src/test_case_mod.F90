@@ -430,13 +430,15 @@ module test_case_mod
     real(r_kind),dimension(:,:,:,:), allocatable :: v
     real(r_kind),dimension(:,:,:,:), allocatable :: uc
     real(r_kind),dimension(:,:,:,:), allocatable :: vc
-    
+
     real(r_kind),dimension(:,:,:,:), allocatable :: longitude
-    
-    real(r_kind)    :: u0
-    real(r_kind)    :: gh0 = 30000.
-    real(r_kind)    :: gh
-    real(r_kind)    :: alpha = 0! pi/4.
+    real(r_kind),dimension(:,:,:,:), allocatable :: latitude
+    real(r_kind),dimension(:,:,:,:), allocatable :: r
+         
+    real(r_kind) :: rr
+    real(r_kind) :: labmda_c
+    real(r_kind) :: theta_c
+    real(r_kind) :: gh0 = 30000.
     
     integer :: i,j,iPatch,iPOC
     
@@ -447,21 +449,31 @@ module test_case_mod
     allocate(vc  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
     
     allocate(longitude (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(latitude  (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    allocate(r         (nPointsOnCell,ims:ime,jms:jme,ifs:ife))
+    
+    rr       = pi/9.
+    labmda_c = 180 * D2R
+    theta_c  = 0
     
     longitude = lon
+    latitude  = lat
+    
     where(longitude<0) longitude = 2. * pi + longitude
     
     do iPatch = ifs, ife
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
-            phi(iPOC,i,j,iPatch) = gh0
-            if(     longitude(iPOC,i,j,iPatch) > (180-30) * D2R &
-              .and. longitude(iPOC,i,j,iPatch) < (180+30) * D2R &
-              .and. lat      (iPOC,i,j,iPatch) > (0  -30) * D2R & 
-              .and. lat      (iPOC,i,j,iPatch) < (0  +30) * D2R )then
-              phi(iPOC,i,j,iPatch) = phi(iPOC,i,j,iPatch) + 30000
-            endif
+            r(iPOC,i,j,iPatch) = sqrt( (longitude(iPOC,i,j,iPatch)-labmda_c)**2 + (latitude(iPOC,i,j,iPatch)-theta_c)**2 )
+            if(r(iPOC,i,j,iPatch)<=rr)phi(iPOC,i,j,iPatch) = 2. * gh0
+            if(r(iPOC,i,j,iPatch)> rr)phi(iPOC,i,j,iPatch) = gh0
+            !if(     longitude(iPOC,i,j,iPatch) > (180-30) * D2R &
+            !  .and. longitude(iPOC,i,j,iPatch) < (180+30) * D2R &
+            !  .and. lat      (iPOC,i,j,iPatch) > (0  -30) * D2R & 
+            !  .and. lat      (iPOC,i,j,iPatch) < (0  +30) * D2R )then
+            !  phi(iPOC,i,j,iPatch) = phi(iPOC,i,j,iPatch) + 30000
+            !endif
             
             u  (iPOC,i,j,iPatch) = 0
             v  (iPOC,i,j,iPatch) = 0

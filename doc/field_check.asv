@@ -11,10 +11,8 @@ it       = 2;
 
 gravity = 9.80616;
 
-nc_file = '..\run\output.nc';
-% nc_file = '..\run\output_poly.nc';
-% nc_file = '..\run\output_WENO.nc';
-% nc_file = '..\run\output_WENO2D.nc';
+% nc_file = '..\run\output.nc';
+nc_file = '..\run\output_poly.nc';
 
 dx         = ncreadatt(nc_file,'/','dx');
 ids        = ncreadatt(nc_file,'/','ids');
@@ -81,7 +79,7 @@ pcolor(lon2d,lat2d,var_plot*coef)
 shading interp
 % set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
 % set(gca,'CLim',[ 4.9e4,5.9e4])
-% set(gca,'CLim',[ 3e4,5e4])
+set(gca,'CLim',[ 3e4,5e4])
 colormap(jet)
 
 if(case_num==5)
