@@ -11,8 +11,10 @@ it       = 2;
 
 gravity = 9.80616;
 
-% nc_file = '..\run\output.nc';
-nc_file = '..\run\output_poly.nc';
+nc_file = '..\run\output.nc';
+% nc_file = '..\run\output_poly.nc';
+% nc_file = '..\run\output_WENO.nc';
+% nc_file = '..\run\output_WENO2D.nc';
 
 dx         = ncreadatt(nc_file,'/','dx');
 ids        = ncreadatt(nc_file,'/','ids');
@@ -75,26 +77,21 @@ y   = -90:res:90;
 var_plot = griddata(lon1d,lat1d,var1d,lon2d,lat2d,'linear');
 
 figure
-pcolor(lon2d,lat2d,var_plot*coef)
-shading interp
+plt = pcolor(lon2d,lat2d,var_plot*coef);
+% shading interp
+set(plt,'EdgeColor','None')
 % set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
 % set(gca,'CLim',[ 4.9e4,5.9e4])
-set(gca,'CLim',[ 3e4,5e4])
+% set(gca,'CLim',[ 3e4,5e4])
 colormap(jet)
 
-if(case_num==5)
-    if(strcmp(var_name,'phit'))
-        hold on
-        LevelList = 5050:50:5950;
-        plt=contour(lon2d,lat2d,var_plot*coef,'LevelList',LevelList,'LineColor','k');
-        %     plt=contour(lon2d,lat2d,var_plot,'LevelList',LevelList,'LineColor','k','ShowText','on');
-    elseif(strcmp(var_name,'zonal_wind'))
-        hold on
-        LevelList = -30:10:60;
-        plt=contour(lon2d,lat2d,var_plot,'LevelList',LevelList,'LineColor','k');
-    elseif(strcmp(var_name,'meridional_wind'))
-        hold on
-        LevelList = -30:10:30;
-        plt=contour(lon2d,lat2d,var_plot,'LevelList',LevelList,'LineColor','k');
-    end
+if(case_num==9)
+    figure
+    plot(var(:,Ny/2,3))
 end
+
+% hold on
+% plot(p_WENO2D(:,Ny/2,3),'r','LineWidth',1.5)
+% plot(p_WENO  (:,Ny/2,3),'k','LineWidth',1.5)
+% plot(p_poly  (:,Ny/2,3),'b','LineWidth',1.5)
+% plot(p_WLS   (:,Ny/2,3),'g','LineWidth',1.5)

@@ -45,7 +45,6 @@ module spatial_operators_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_3_to_3
   integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_5_to_5
   integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_7_to_7
-  integer(i_kind), dimension(:      ), allocatable :: rematch_idx_2_to_3
   integer(i_kind), dimension(:      ), allocatable :: rematch_idx_3_to_5
   integer(i_kind), dimension(:      ), allocatable :: rematch_idx_5_to_7
   
@@ -208,7 +207,6 @@ module spatial_operators_mod
         allocate(rematch_idx_3_to_3(9 ,ids:ide,jds:jde,ifs:ife))
         allocate(rematch_idx_5_to_5(25,ids:ide,jds:jde,ifs:ife))
         allocate(rematch_idx_7_to_7(49,ids:ide,jds:jde,ifs:ife))
-        allocate(rematch_idx_2_to_3(3 ))
         allocate(rematch_idx_3_to_5(9 ))
         allocate(rematch_idx_5_to_7(25))
         
@@ -562,18 +560,6 @@ module spatial_operators_mod
           enddo
         enddo
         !$OMP END PARALLEL DO
-        
-        k    = 0
-        iCOS = 0
-        do jRec = 1,3
-          do iRec = 1,3
-            k = k + 1
-            if( iRec<=2 .and. jRec<=2 .and. (iRec+jRec)<=3 )then
-              iCOS = iCOS + 1
-              rematch_idx_2_to_3(iCOS) = k
-            endif
-          enddo
-        enddo
         
         k    = 0
         iCOS = 0
@@ -1201,12 +1187,9 @@ module spatial_operators_mod
       real(r_kind), dimension(maxRecTerms) :: p
       
       real(r_kind), dimension(9 ) :: p1_on_3
-      real(r_kind), dimension(9 ) :: p2_on_3
       real(r_kind), dimension(25) :: p1_on_5
-      real(r_kind), dimension(25) :: p2_on_5
       real(r_kind), dimension(25) :: p3_on_5
       real(r_kind), dimension(49) :: p1_on_7
-      real(r_kind), dimension(49) :: p2_on_7
       real(r_kind), dimension(49) :: p3_on_7
       real(r_kind), dimension(49) :: p5_on_7
       
