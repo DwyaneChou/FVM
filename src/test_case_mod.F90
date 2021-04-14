@@ -465,9 +465,13 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
+            ! Cycle
             r(iPOC,i,j,iPatch) = sqrt( (longitude(iPOC,i,j,iPatch)-labmda_c)**2 + (latitude(iPOC,i,j,iPatch)-theta_c)**2 )
             if(r(iPOC,i,j,iPatch)<=rr)phi(iPOC,i,j,iPatch) = 2. * gh0
             if(r(iPOC,i,j,iPatch)> rr)phi(iPOC,i,j,iPatch) = gh0
+            
+            !! Square
+            !phi(iPOC,i,j,iPatch) = gh0
             !if(     longitude(iPOC,i,j,iPatch) > (180-30) * D2R &
             !  .and. longitude(iPOC,i,j,iPatch) < (180+30) * D2R &
             !  .and. lat      (iPOC,i,j,iPatch) > (0  -30) * D2R & 
