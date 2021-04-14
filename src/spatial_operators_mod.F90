@@ -1444,9 +1444,14 @@ module spatial_operators_mod
               !endif
               
               if(nStencil==1)p = p1
-              if(nStencil==2)p = w(1) * p2_on_3 + w(2) * p3
-              if(nStencil==3)p = w(1) * p2_on_5 + w(2) * p3_on_5 + w(3) * p5
-              if(nStencil==4)p = w(1) * p2_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
+              if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
+              if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
+              if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
+              
+              !if(nStencil==1)p = p1
+              !if(nStencil==2)p = w(1) * p2_on_3 + w(2) * p3
+              !if(nStencil==3)p = w(1) * p2_on_5 + w(2) * p3_on_5 + w(3) * p5
+              !if(nStencil==4)p = w(1) * p2_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
               
               if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,:,i,j,iPatch),p) !* u(ic)
               if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,:,i,j,iPatch),p) !* u(ic)
