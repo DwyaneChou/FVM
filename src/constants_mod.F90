@@ -14,12 +14,12 @@ MODULE constants_mod
   integer  ,parameter :: i_kind = i4
   integer  ,parameter :: r_kind = r8
   
-  real(r_kind),parameter    :: gravity   = 9.80616
-  real(r_kind),parameter    :: pi        = 2.*asin(1.)
-  real(r_kind),parameter    :: radius    = 6371220.
-  real(r_kind),parameter    :: D2R       = PI/180.    ! convert degree into radian
-  real(r_kind),parameter    :: R2D       = 180./PI    ! convert radian into degree
+  real(r_kind),parameter    :: gravity   = 9.80616_r16
+  real(r_kind),parameter    :: pi        = 2._r16*asin(1._r16)
+  real(r_kind),parameter    :: radius    = 6371220._r16
+  real(r_kind),parameter    :: D2R       = PI/180._r16    ! convert degree into radian
+  real(r_kind),parameter    :: R2D       = 180._r16/PI    ! convert radian into degree
   real(r_kind),parameter    :: Omega     = 7.292E-5
-  real(r_kind),parameter    :: FillValue = -9999999999999999.
+  real(r_kind),parameter    :: FillValue = -9999999999999999._r16
   real(r_kind),parameter    :: Inf       = huge(Inf)
 END MODULE constants_mod

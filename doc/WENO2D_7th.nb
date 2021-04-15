@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[    160331,       4712]
-NotebookOptionsPosition[    159852,       4694]
-NotebookOutlinePosition[    160241,       4711]
-CellTagsIndexPosition[    160198,       4708]
+NotebookDataLength[    160576,       4722]
+NotebookOptionsPosition[    160096,       4704]
+NotebookOutlinePosition[    160486,       4721]
+CellTagsIndexPosition[    160443,       4718]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -101,15 +101,19 @@ Cell[BoxData[{
        RowBox[{"beta", "+", 
         RowBox[{"Integrate", "[", 
          RowBox[{
-          RowBox[{"Integrate", "[", 
-           RowBox[{
-            RowBox[{
-             RowBox[{"dpoly", "[", 
-              RowBox[{"di", ",", "dj"}], "]"}], "^", "2"}], ",", 
-            RowBox[{"{", 
-             RowBox[{"x", ",", "0", ",", "1"}], "}"}]}], "]"}], ",", 
+          RowBox[{
+           RowBox[{"dpoly", "[", 
+            RowBox[{"di", ",", "dj"}], "]"}], "^", "2"}], ",", 
           RowBox[{"{", 
-           RowBox[{"y", ",", "0", ",", "1"}], "}"}]}], "]"}]}]}], ";"}]}], 
+           RowBox[{"x", ",", 
+            RowBox[{
+             RowBox[{"-", "1"}], "/", "2"}], ",", 
+            RowBox[{"1", "/", "2"}]}], "}"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"y", ",", 
+            RowBox[{
+             RowBox[{"-", "1"}], "/", "2"}], ",", 
+            RowBox[{"1", "/", "2"}]}], "}"}]}], "]"}]}]}], ";"}]}], 
     "\[IndentingNewLine]", "]"}]}], "]"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{"dj", "=", "0"}], ";"}], "\[IndentingNewLine]", 
@@ -120,15 +124,19 @@ Cell[BoxData[{
    RowBox[{"beta", "-", 
     RowBox[{"Integrate", "[", 
      RowBox[{
-      RowBox[{"Integrate", "[", 
-       RowBox[{
-        RowBox[{
-         RowBox[{"dpoly", "[", 
-          RowBox[{"di", ",", "dj"}], "]"}], "^", "2"}], ",", 
-        RowBox[{"{", 
-         RowBox[{"x", ",", "0", ",", "1"}], "}"}]}], "]"}], ",", 
+      RowBox[{
+       RowBox[{"dpoly", "[", 
+        RowBox[{"di", ",", "dj"}], "]"}], "^", "2"}], ",", 
       RowBox[{"{", 
-       RowBox[{"y", ",", "0", ",", "1"}], "}"}]}], "]"}]}]}], 
+       RowBox[{"x", ",", 
+        RowBox[{
+         RowBox[{"-", "1"}], "/", "2"}], ",", 
+        RowBox[{"1", "/", "2"}]}], "}"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"y", ",", 
+        RowBox[{
+         RowBox[{"-", "1"}], "/", "2"}], ",", 
+        RowBox[{"1", "/", "2"}]}], "}"}]}], "]"}]}]}], 
   ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{"Print", "[", 
@@ -293,8 +301,10 @@ Cell[BoxData[{
    3.82694275579624*^9, 3.8269427596242723`*^9}, {3.826943188159326*^9, 
    3.8269431885243607`*^9}, {3.8269434212769537`*^9, 3.826943427395955*^9}, {
    3.8269436237409525`*^9, 3.8269436440159516`*^9}, {3.8269444383479548`*^9, 
-   3.826944505781954*^9}, {3.8274166789048223`*^9, 3.827416683742807*^9}},
- CellLabel->"In[53]:=",ExpressionUUID->"8944afd6-016e-43c8-88bf-617cf9e79f92"],
+   3.826944505781954*^9}, {3.8274166789048223`*^9, 3.827416683742807*^9}, 
+   3.827453135704211*^9, 
+   3.8274538269625263`*^9},ExpressionUUID->"8944afd6-016e-43c8-88bf-\
+617cf9e79f92"],
 
 Cell[BoxData[
  RowBox[{
@@ -4692,8 +4702,8 @@ Cell[BoxData[
 18ffeae82e4d"]
 }, Open  ]]
 },
-WindowSize->{1366, 1002},
-WindowMargins->{{Automatic, 413}, {69, Automatic}},
+WindowSize->{1366, 805},
+WindowMargins->{{Automatic, -363}, {Automatic, 129}},
 Magnification:>0.9 Inherited,
 FrontEndVersion->"11.3 for Microsoft Windows (64-bit) (2018\:5e743\:670828\
 \:65e5)",
@@ -4711,8 +4721,8 @@ CellTagsIndex->{}
 (*NotebookFileOutline
 Notebook[{
 Cell[CellGroupData[{
-Cell[580, 22, 15888, 274, 735, "Input",ExpressionUUID->"8944afd6-016e-43c8-88bf-617cf9e79f92"],
-Cell[16471, 298, 143365, 4393, 3973, "Print",ExpressionUUID->"a6bf2698-7c31-4f52-a868-18ffeae82e4d"]
+Cell[580, 22, 16132, 284, 735, "Input",ExpressionUUID->"8944afd6-016e-43c8-88bf-617cf9e79f92"],
+Cell[16715, 308, 143365, 4393, 3973, "Print",ExpressionUUID->"a6bf2698-7c31-4f52-a868-18ffeae82e4d"]
 }, Open  ]]
 }
 ]

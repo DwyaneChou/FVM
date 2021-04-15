@@ -476,7 +476,7 @@ module test_case_mod
             !  .and. longitude(iPOC,i,j,iPatch) < (180+30) * D2R &
             !  .and. lat      (iPOC,i,j,iPatch) > (0  -30) * D2R & 
             !  .and. lat      (iPOC,i,j,iPatch) < (0  +30) * D2R )then
-            !  phi(iPOC,i,j,iPatch) = phi(iPOC,i,j,iPatch) + 30000
+            !  phi(iPOC,i,j,iPatch) = phi(iPOC,i,j,iPatch) + gh0
             !endif
             
             u  (iPOC,i,j,iPatch) = 0

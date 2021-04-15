@@ -2,23 +2,28 @@ clc
 clear
 
 time_start = 1;
-time_end   = 289;
+time_end   = 2;
 
-% history_path = '..\run';
-history_path = '..\run\case2_5th';
+history_path = '..\run';
 
 % res_nc{1} = [history_path,'\','output.nc'];
+
+% res_nc{1} = [history_path,'\','output_3rd_2p0.nc'];
+% res_nc{2} = [history_path,'\','output_3rd_1p0.nc'];
+
+res_nc{1} = [history_path,'\','output_5th_2p0.nc'];
+res_nc{2} = [history_path,'\','output_5th_1p0.nc'];
 
 % res_nc{1} = [history_path,'\','output_7th_4p5.nc'];
 % res_nc{2} = [history_path,'\','output_7th_2p0.nc'];
 % res_nc{3} = [history_path,'\','output_7th_1p0.nc'];
 % res_nc{4} = [history_path,'\','output_7th_0p5.nc'];
 
-res_nc{1} = [history_path,'\','output_5th_4p5.nc'];
-res_nc{2} = [history_path,'\','output_5th_2p0.nc'];
-res_nc{3} = [history_path,'\','output_5th_1p0.nc'];
-res_nc{4} = [history_path,'\','output_5th_0p5.nc'];
-res_nc{5} = [history_path,'\','output_5th_0p25.nc'];
+% res_nc{1} = [history_path,'\','output_5th_4p5.nc'];
+% res_nc{2} = [history_path,'\','output_5th_2p0.nc'];
+% res_nc{3} = [history_path,'\','output_5th_1p0.nc'];
+% res_nc{4} = [history_path,'\','output_5th_0p5.nc'];
+% res_nc{5} = [history_path,'\','output_5th_0p25.nc'];
 
 res_num = size(res_nc,2);
 

@@ -195,7 +195,7 @@ module spatial_operators_mod
       
         allocate(existPolyTerm(maxRecCells))
       elseif(trim(reconstruct_scheme)=='WENO2D')then
-        allocate(iCenWENO    (nStencil_all,ids:ide,jds:jde,ifs:ife))
+        !allocate(iCenWENO    (nStencil_all,ids:ide,jds:jde,ifs:ife))
         allocate(nWENOCells  (nStencil_all,ids:ide,jds:jde,ifs:ife))
       
         allocate(iWENOCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
@@ -458,7 +458,7 @@ module spatial_operators_mod
             do i = ids,ide
               ! Calculate WENO polynomial coefficient matrices
               do iStencil = 1,nStencil1
-                iCenWENO(iStencil,i,j,iPatch) = 2
+                !iCenWENO(iStencil,i,j,iPatch) = 2
                 
                 nRC = nWENOCells(iStencil,i,j,iPatch)
                 do iCOS = 1,nRC
@@ -516,9 +516,9 @@ module spatial_operators_mod
                     if(existWENOTerm(iStencil,k)>0)then
                       iCOS = iCOS + 1
                       
-                      iRec = ( nxp + 1 ) / 2
-                      jRec = ( nyp + 1 ) / 2
-                      if(iRec==iR.and.jRec==jR)iCenWENO(iStencil,i,j,iPatch) = iCOS
+                      !iRec = ( nxp + 1 ) / 2
+                      !jRec = ( nyp + 1 ) / 2
+                      !if(iRec==iR.and.jRec==jR)iCenWENO(iStencil,i,j,iPatch) = iCOS
                       
                       call calc_rectangle_poly_integration(nxp,nyp,&
                                                            xRelWENO(iStencil,1,iCOS,i,j,iPatch),xRelWENO(iStencil,2,iCOS,i,j,iPatch),&
@@ -1191,39 +1191,7 @@ module spatial_operators_mod
       real(r_kind), dimension(            maxRecTerms) :: polyCoef
       
       ! For WENO 2D
-      real(r_kind), dimension(nStencil1) :: beta1     ! smooth indicator for 1st order stencil
-      real(r_kind), dimension(nStencil1) :: sigma
-      real(r_kind), dimension(nStencil ) :: beta      ! smooth indicator for high order stencil
-      real(r_kind), dimension(nStencil ) :: alpha
-      real(r_kind), dimension(nStencil ) :: w
-      
-      real(r_kind), dimension(1 ) :: a1         ! polynomial coefficients after rematch
-      real(r_kind), dimension(9 ) :: a3         ! polynomial coefficients after rematch
-      real(r_kind), dimension(25) :: a5         ! polynomial coefficients after rematch
-      real(r_kind), dimension(49) :: a7         ! polynomial coefficients after rematch
-      
-      real(r_kind), dimension(            1 ) :: p1
-      real(r_kind), dimension(0:nStencil1,3 ) :: p2
-      real(r_kind), dimension(            9 ) :: p3
-      real(r_kind), dimension(            25) :: p5
-      real(r_kind), dimension(            49) :: p7
-      
       real(r_kind), dimension(maxRecTerms) :: p
-      
-      real(r_kind), dimension(9 ) :: p1_on_3
-      real(r_kind), dimension(9 ) :: p2_on_3
-      real(r_kind), dimension(25) :: p1_on_5
-      real(r_kind), dimension(25) :: p2_on_5
-      real(r_kind), dimension(25) :: p3_on_5
-      real(r_kind), dimension(49) :: p1_on_7
-      real(r_kind), dimension(49) :: p2_on_7
-      real(r_kind), dimension(49) :: p3_on_7
-      real(r_kind), dimension(49) :: p5_on_7
-      
-      real(r_kind) :: tau
-      real(r_kind) :: sigma_sum
-      real(r_kind), parameter :: eps = 1.e-6
-      
       
       integer(i_kind) :: iVar,i,j,iPatch,iCOS,iStencil
       integer(i_kind) :: iRec,jRec
@@ -1317,16 +1285,8 @@ module spatial_operators_mod
                   
                   u(iCOS) = q(iRec,jRec,iPatch)
                 enddo
-                !ic = iCenWENO(iStencil,i,j,iPatch)
-                !u(1:m) = u(1:m) / u(ic)
                 
                 polyCoef(1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),u(1:m))
-                
-                !if( ( i==26.or.i==65 ) .and. j==45 .and. iPatch==3 .and. iStencil==nStencil1+2 )then
-                !  print*,i,j,iPatch
-                !  print*,u(1:m)
-                !  print*,''
-                !endif
                 
                 if(iStencil<=nStencil1)then
                   p2(iStencil,:) = polyCoef(1:m)
@@ -1348,6 +1308,7 @@ module spatial_operators_mod
                     p2(0,iCOS) = dot_product( sigma, p2(1:nStencil1,iCOS) )
                   enddo
                   beta(1) = WENO_smooth_indicator_2(p2(0,:))
+                  !beta(1) = sum( beta1 * sigma )
                 elseif(iStencil==nStencil1+2)then
                   ! Rematch array for calculating smooth indicator for 3rd order stencil
                   a3 = 0
@@ -1430,19 +1391,6 @@ module spatial_operators_mod
               
               w = alpha / sum(alpha)
               
-              !if( ( i==26.or.i==65 ) .and. j==45 .and. iPatch==3 )then
-              !  print*,i
-              !  !print*,beta1
-              !  print*,'beta   ',beta
-              !  print*,'a3     ',a3
-              !  !print*,'p1_on_3',p1_on_3
-              !  !print*,'p3     ',p3
-              !  !print*,alpha
-              !  !print*,w
-              !  !print*,r
-              !  print*,''
-              !endif
-              
               if(nStencil==1)p = p1
               if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
               if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
@@ -1453,15 +1401,15 @@ module spatial_operators_mod
               !if(nStencil==3)p = w(1) * p2_on_5 + w(2) * p3_on_5 + w(3) * p5
               !if(nStencil==4)p = w(1) * p2_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
               
-              if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,:,i,j,iPatch),p) !* u(ic)
-              if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,:,i,j,iPatch),p) !* u(ic)
-              if(present(qB  )) qB(:,i,j,iPatch) = matmul(polyMatrixB (:,:,i,j,iPatch),p) !* u(ic)
-              if(present(qT  )) qT(:,i,j,iPatch) = matmul(polyMatrixT (:,:,i,j,iPatch),p) !* u(ic)
+              if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,:,i,j,iPatch),p)
+              if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,:,i,j,iPatch),p)
+              if(present(qB  )) qB(:,i,j,iPatch) = matmul(polyMatrixB (:,:,i,j,iPatch),p)
+              if(present(qT  )) qT(:,i,j,iPatch) = matmul(polyMatrixT (:,:,i,j,iPatch),p)
               
-              if(present(qQ  )) qQ(:,i,j,iPatch) = matmul(polyMatrixQ (:,:,i,j,iPatch),p) !* u(ic)
+              if(present(qQ  )) qQ(:,i,j,iPatch) = matmul(polyMatrixQ (:,:,i,j,iPatch),p)
               
-              if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,:,i,j,iPatch),p) !* u(ic)
-              if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,:,i,j,iPatch),p) !* u(ic)
+              if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,:,i,j,iPatch),p)
+              if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,:,i,j,iPatch),p)
             enddo
           enddo
         enddo
