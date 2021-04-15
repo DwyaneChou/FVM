@@ -20,6 +20,16 @@
       real   (r_kind) :: recdy
       real   (r_kind) :: recdV
       
+      ! For WENO 2D
+      integer(i_kind), dimension(:,:,:,:), allocatable :: iCenWENO           ! center cell index on reconstruction stencil for WENO2D
+      real   (r_kind), dimension(:,:    ), allocatable :: r                  ! optimal coefficients for WENO 2D
+      integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_3_to_3
+      integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_5_to_5
+      integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_7_to_7
+      integer(i_kind), dimension(:      ), allocatable :: rematch_idx_2_to_3
+      integer(i_kind), dimension(:      ), allocatable :: rematch_idx_3_to_5
+      integer(i_kind), dimension(:      ), allocatable :: rematch_idx_5_to_7
+      
     contains
       subroutine init_reconstruction
         integer(i_kind) :: i,j,k
@@ -453,9 +463,13 @@
         
       end subroutine WENO3
       
-      subroutine WENO2D(polyCoef,p)
-        real(r_kind),dimension(:,:),intent(in ) :: polyCoef
-        real(r_kind),dimension(:  ),intent(out) :: p
+      subroutine WENO2D(polyCoef,nCellsOnStencil,rematch_idx_3_to_3,rematch_idx_5_to_5,rematch_idx_7_to_7,p)
+        real   (r_kind),dimension(:,:),intent(in ) :: polyCoef
+        integer(i_kind),dimension(:  ),intent(in ) :: nCellsOnStencil    ! nWENOCells
+        integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_3_to_3
+        integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_5_to_5
+        integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_7_to_7
+        real   (r_kind),dimension(:  ),intent(out) :: p
         
         real(r_kind), dimension(nStencil1) :: beta1     ! smooth indicator for 1st order stencil
         real(r_kind), dimension(nStencil1) :: sigma
@@ -486,151 +500,126 @@
       
         real(r_kind) :: tau
         real(r_kind) :: sigma_sum
-        real(r_kind), parameter :: eps = 1.e-6
-      
-        !$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,u,polyCoef,beta1,beta,sigma,sigma_sum,a1,a3,a5,a7,        &
-        !$OMP                     p1,p2,p3,p5,p7,p1_on_3,p1_on_5,p1_on_7,p2_on_3,p2_on_5,p2_on_7,p3_on_5,p3_on_7,p5_on_7, &
-        !$OMP                     tau,alpha,w,p) COLLAPSE(3) ! COLLAPSE must less than 3, iStencil cannot be parallelled
-        do iPatch = ifs,ife
-          do j = jds,jde
-            do i = ids,ide
-              do iStencil = 1,nStencil_all
-                m = nWENOCells(iStencil,i,j,iPatch)
-                do iCOS = 1,m
-                  iRec = iWENOCell(iStencil,iCOS,i,j,iPatch)
-                  jRec = jWENOCell(iStencil,iCOS,i,j,iPatch)
-                  
-                  u(iCOS) = q(iRec,jRec,iPatch)
-                enddo
-                
-                polyCoef(1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),u(1:m))
-                
-                if(iStencil<=nStencil1)then
-                  p2(iStencil,:) = polyCoef(1:m)
-                  beta1(iStencil) = WENO_smooth_indicator_2(polyCoef(1:m))
-                elseif(iStencil==nStencil1+1)then
-                  do iCOS = 1,nStencil1
-                    sigma(iCOS) = ( 1. + ( ( abs(beta1(1)-beta1(2)) + abs(beta1(1)-beta1(3)) &
-                                           + abs(beta1(1)-beta1(4)) + abs(beta1(2)-beta1(3)) &
-                                           + abs(beta1(2)-beta1(4)) + abs(beta1(3)-beta1(4)) ) / 6. )**2 / ( beta1(iCOS) + eps ) ) / nStencil1
-                    !sigma(iCOS) = 0.25 / ( beta1(iStencil) + eps )**2
-                  enddo
-                  sigma_sum = sum(sigma)
-                  sigma = sigma / sigma_sum
-                  
-                  a1 = polyCoef(1:m)
-                  p1 = a1
-                  
-                  do iCOS = 1,3
-                    p2(0,iCOS) = dot_product( sigma, p2(1:nStencil1,iCOS) )
-                  enddo
-                  beta(1) = WENO_smooth_indicator_2(p2(0,:))
-                  !beta(1) = sum( beta1 * sigma )
-                elseif(iStencil==nStencil1+2)then
-                  ! Rematch array for calculating smooth indicator for 3rd order stencil
-                  a3 = 0
-                  do iCOS = 1,m
-                    a3( rematch_idx_3_to_3(iCOS,i,j,iPatch) ) = polyCoef(iCOS)
-                  enddo
-                  
-                  ! Rematch polynomial coefficients and calculate 3rd order polynomial
-                  p1         = a1
-                  p1_on_3    = 0
-                  p1_on_3(1) = p1(1)
-                  p2_on_3    = 0
-                  do iCOS = 1,3
-                    p2_on_3( rematch_idx_2_to_3(iCOS) ) = p2(0,iCOS)
-                  enddo
-                  p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
-                  !p3 = ( a3 - p2_on_3 * r(1,2) ) / r(2,2)
-                  
-                  beta(2) = WENO_smooth_indicator_3(p3)
-                elseif(iStencil==nStencil1+3)then
-                  ! Rematch array for calculating smooth indicator for 5th order stencil
-                  a5 = 0
-                  do iCOS = 1,m
-                    a5( rematch_idx_5_to_5(iCOS,i,j,iPatch) ) =  polyCoef(iCOS)
-                  enddo
-                  
-                  ! Rematch polynomial coefficients and calculate 5th order polynomial
-                  p1_on_5    = 0
-                  p1_on_5(1) = p1(1)
-                  p2_on_5    = 0
-                  do iCOS = 1,9
-                    p2_on_5( rematch_idx_3_to_5(iCOS) ) = p2_on_3(iCOS)
-                  enddo
-                  p3_on_5    = 0
-                  do iCOS = 1,9
-                    p3_on_5( rematch_idx_3_to_5(iCOS) ) = p3(iCOS)
-                  enddo
-                  p5 = ( a5 - p1_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
-                  !p5 = ( a5 - p2_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
-                  
-                  beta(3) = WENO_smooth_indicator_5(p5)
-                elseif(iStencil==nStencil1+4)then
-                  ! Rematch array for calculating smooth indicator for 7th order stencil
-                  a7 = 0
-                  do iCOS = 1,m
-                    a7( rematch_idx_7_to_7(iCOS,i,j,iPatch) ) =  polyCoef(iCOS)
-                  enddo
-                  
-                  ! Rematch polynomial coefficients and calculate 7th order polynomial
-                  p1_on_7    = 0
-                  p1_on_7(1) = p1(1)
-                  p2_on_7    = 0
-                  do iCOS = 1,25
-                    p2_on_7( rematch_idx_5_to_7(iCOS) ) = p2_on_5(iCOS)
-                  enddo
-                  p3_on_7    = 0
-                  do iCOS = 1,25
-                    p3_on_7( rematch_idx_5_to_7(iCOS) ) = p3_on_5(iCOS)
-                  enddo
-                  p5_on_7 = 0
-                  do iCOS = 1,25
-                    p5_on_7( rematch_idx_5_to_7(iCOS) ) = p5(iCOS)
-                  enddo
-                  p7 = ( a7 - p1_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
-                  !p7 = ( a7 - p2_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
-                  
-                  beta(4) = WENO_smooth_indicator_7(p7)
-                endif
-              enddo
-              
-              tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
-              
-              do iStencil = 1,nStencil
-                alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
-              enddo
-              
-              !do iStencil = 1,nStencil
-              !  alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
-              !enddo
-              
-              w = alpha / sum(alpha)
-              
-              if(nStencil==1)p = p1
-              if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
-              if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
-              if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
-              
-              !if(nStencil==1)p = p1
-              !if(nStencil==2)p = w(1) * p2_on_3 + w(2) * p3
-              !if(nStencil==3)p = w(1) * p2_on_5 + w(2) * p3_on_5 + w(3) * p5
-              !if(nStencil==4)p = w(1) * p2_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
-              
-              if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,:,i,j,iPatch),p)
-              if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,:,i,j,iPatch),p)
-              if(present(qB  )) qB(:,i,j,iPatch) = matmul(polyMatrixB (:,:,i,j,iPatch),p)
-              if(present(qT  )) qT(:,i,j,iPatch) = matmul(polyMatrixT (:,:,i,j,iPatch),p)
-              
-              if(present(qQ  )) qQ(:,i,j,iPatch) = matmul(polyMatrixQ (:,:,i,j,iPatch),p)
-              
-              if(present(dqdx)) dqdx(:,i,j,iPatch) = matmul(recMatrixDx(:,:,i,j,iPatch),p)
-              if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,:,i,j,iPatch),p)
+        real(r_kind), parameter :: eps = 1.e-15
+        
+        integer(i_kind) :: iCOS,iStencil
+        integer(i_kind) :: m
+        
+        do iStencil = 1,nStencil_all
+          m = nCellsOnStencil(iStencil)
+          if(iStencil<=nStencil1)then
+            p2(iStencil,:) = polyCoef(iStencil,1:m)
+            beta1(iStencil) = WENO_smooth_indicator_2(polyCoef(iStencil,1:m))
+          elseif(iStencil==nStencil1+1)then
+            do iCOS = 1,nStencil1
+              sigma(iCOS) = ( 1. + ( ( abs(beta1(1)-beta1(2)) + abs(beta1(1)-beta1(3)) &
+                                     + abs(beta1(1)-beta1(4)) + abs(beta1(2)-beta1(3)) &
+                                     + abs(beta1(2)-beta1(4)) + abs(beta1(3)-beta1(4)) ) / 6. )**2 / ( beta1(iCOS) + eps ) ) / nStencil1
+              !sigma(iCOS) = 0.25 / ( beta1(iStencil) + eps )**2
             enddo
-          enddo
+            sigma_sum = sum(sigma)
+            sigma = sigma / sigma_sum
+            
+            a1 = polyCoef(iStencil,1:m)
+            p1 = a1
+            
+            do iCOS = 1,3
+              p2(0,iCOS) = dot_product( sigma, p2(1:nStencil1,iCOS) )
+            enddo
+            beta(1) = WENO_smooth_indicator_2(p2(0,:))
+            !beta(1) = sum( beta1 * sigma )
+          elseif(iStencil==nStencil1+2)then
+            ! Rematch array for calculating smooth indicator for 3rd order stencil
+            a3 = 0
+            do iCOS = 1,m
+              a3( rematch_idx_3_to_3(iCOS) ) = polyCoef(iStencil,iCOS)
+            enddo
+            
+            ! Rematch polynomial coefficients and calculate 3rd order polynomial
+            p1         = a1
+            p1_on_3    = 0
+            p1_on_3(1) = p1(1)
+            p2_on_3    = 0
+            do iCOS = 1,3
+              p2_on_3( rematch_idx_2_to_3(iCOS) ) = p2(0,iCOS)
+            enddo
+            p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
+            !p3 = ( a3 - p2_on_3 * r(1,2) ) / r(2,2)
+            
+            beta(2) = WENO_smooth_indicator_3(p3)
+          elseif(iStencil==nStencil1+3)then
+            ! Rematch array for calculating smooth indicator for 5th order stencil
+            a5 = 0
+            do iCOS = 1,m
+              a5( rematch_idx_5_to_5(iCOS) ) =  polyCoef(iStencil,iCOS)
+            enddo
+            
+            ! Rematch polynomial coefficients and calculate 5th order polynomial
+            p1_on_5    = 0
+            p1_on_5(1) = p1(1)
+            p2_on_5    = 0
+            do iCOS = 1,9
+              p2_on_5( rematch_idx_3_to_5(iCOS) ) = p2_on_3(iCOS)
+            enddo
+            p3_on_5    = 0
+            do iCOS = 1,9
+              p3_on_5( rematch_idx_3_to_5(iCOS) ) = p3(iCOS)
+            enddo
+            p5 = ( a5 - p1_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
+            !p5 = ( a5 - p2_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
+            
+            beta(3) = WENO_smooth_indicator_5(p5)
+          elseif(iStencil==nStencil1+4)then
+            ! Rematch array for calculating smooth indicator for 7th order stencil
+            a7 = 0
+            do iCOS = 1,m
+              a7( rematch_idx_7_to_7(iCOS) ) =  polyCoef(iStencil,iCOS)
+            enddo
+            
+            ! Rematch polynomial coefficients and calculate 7th order polynomial
+            p1_on_7    = 0
+            p1_on_7(1) = p1(1)
+            p2_on_7    = 0
+            do iCOS = 1,25
+              p2_on_7( rematch_idx_5_to_7(iCOS) ) = p2_on_5(iCOS)
+            enddo
+            p3_on_7    = 0
+            do iCOS = 1,25
+              p3_on_7( rematch_idx_5_to_7(iCOS) ) = p3_on_5(iCOS)
+            enddo
+            p5_on_7 = 0
+            do iCOS = 1,25
+              p5_on_7( rematch_idx_5_to_7(iCOS) ) = p5(iCOS)
+            enddo
+            p7 = ( a7 - p1_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
+            !p7 = ( a7 - p2_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
+            
+            beta(4) = WENO_smooth_indicator_7(p7)
+          endif
         enddo
-        !$OMP END PARALLEL DO
+        
+        !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
+        !
+        !do iStencil = 1,nStencil
+        !  alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
+        !enddo
+        
+        do iStencil = 1,nStencil
+          alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
+        enddo
+        
+        w = alpha / sum(alpha)
+        
+        if(nStencil==1)p = p1
+        if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
+        if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
+        if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
+        
+        !if(nStencil==1)p = p1
+        !if(nStencil==2)p = w(1) * p2_on_3 + w(2) * p3
+        !if(nStencil==3)p = w(1) * p2_on_5 + w(2) * p3_on_5 + w(3) * p5
+        !if(nStencil==4)p = w(1) * p2_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
+        
       end subroutine WENO2D
       
       ! Reconstruct on the left most boundary
