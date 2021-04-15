@@ -598,15 +598,22 @@
           endif
         enddo
         
-        !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
-        !
-        !do iStencil = 1,nStencil
-        !  alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
-        !enddo
+        tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )!**2
+        
+        print*,beta
+        print*,tau
+        print*,tau / ( beta(1) + eps )
+        print*,tau / ( beta(2) + eps )
+        print*,tau / ( beta(3) + eps )
+        print*,''
         
         do iStencil = 1,nStencil
-          alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
+          alpha(iStencil) = r(iStencil,nStencil) * ( 1. + ( tau / ( beta(iStencil) + eps ) )**2 )
         enddo
+        
+        !do iStencil = 1,nStencil
+        !  alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
+        !enddo
         
         w = alpha / sum(alpha)
         

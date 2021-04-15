@@ -1262,7 +1262,7 @@ module spatial_operators_mod
         enddo
         !$OMP END PARALLEL DO
       elseif(trim(reconstruct_scheme)=='WENO2D')then
-        !$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,uWENO,polyWENO,p) COLLAPSE(3)
+        !!$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,uWENO,polyWENO,p) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -1295,7 +1295,7 @@ module spatial_operators_mod
             enddo
           enddo
         enddo
-        !$OMP END PARALLEL DO
+        !!$OMP END PARALLEL DO
       endif
       
     end subroutine reconstruction
