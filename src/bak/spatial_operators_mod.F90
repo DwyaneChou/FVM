@@ -38,15 +38,7 @@ module spatial_operators_mod
   real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: WENOPoly ! polynomial coefficients for WENO
   real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: invWENOPoly ! polynomial coefficients for WENO
   
-  real   (r_kind), dimension(:,:), allocatable :: r ! optimal coefficients for WENO 2D
-  
   real   (r_kind), dimension(:,:), allocatable :: existWENOTerm
-  
-  integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_3_to_3
-  integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_5_to_5
-  integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_7_to_7
-  integer(i_kind), dimension(:      ), allocatable :: rematch_idx_3_to_5
-  integer(i_kind), dimension(:      ), allocatable :: rematch_idx_5_to_7
   
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixL
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: recMatrixR
@@ -192,6 +184,7 @@ module spatial_operators_mod
       
         allocate(existPolyTerm(maxRecCells))
       elseif(trim(reconstruct_scheme)=='WENO2D')then
+        !allocate(iCenWENO    (nStencil_all,ids:ide,jds:jde,ifs:ife))
         allocate(nWENOCells  (nStencil_all,ids:ide,jds:jde,ifs:ife))
       
         allocate(iWENOCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
@@ -207,6 +200,7 @@ module spatial_operators_mod
         allocate(rematch_idx_3_to_3(9 ,ids:ide,jds:jde,ifs:ife))
         allocate(rematch_idx_5_to_5(25,ids:ide,jds:jde,ifs:ife))
         allocate(rematch_idx_7_to_7(49,ids:ide,jds:jde,ifs:ife))
+        allocate(rematch_idx_2_to_3(3 ))
         allocate(rematch_idx_3_to_5(9 ))
         allocate(rematch_idx_5_to_7(25))
         
@@ -453,6 +447,8 @@ module spatial_operators_mod
             do i = ids,ide
               ! Calculate WENO polynomial coefficient matrices
               do iStencil = 1,nStencil1
+                !iCenWENO(iStencil,i,j,iPatch) = 2
+                
                 nRC = nWENOCells(iStencil,i,j,iPatch)
                 do iCOS = 1,nRC
                   call calc_polynomial_square_integration(1,xRelWENO(iStencil,1,iCOS,i,j,iPatch),xRelWENO(iStencil,2,iCOS,i,j,iPatch),&
@@ -475,31 +471,27 @@ module spatial_operators_mod
                 nyp = maxval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) + 1
                 
                 ! Pick the cells that not in corner for reconstruction
-                if(.not.noCorner(i,j,iPatch))then
-                  iidx = minloc( abs( x(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
-                  jidx = minloc( abs( y(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
-                  
-                  xdir = 1
-                  ydir = 1
-                  if(iWENOCell(iStencil,iidx(1),i,j,iPatch)>iWENOCell(iStencil,1,i,j,iPatch))xdir=-1
-                  if(jWENOCell(iStencil,jidx(2),i,j,iPatch)>jWENOCell(iStencil,1,i,j,iPatch))ydir=-1
-                  
-                  k = 0
-                  do jR = 0,nyp-1
-                    do iR = 0,nxp-1
-                      k = k + 1
-                      iRec = iWENOCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
-                      jRec = jWENOCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
-                      if( .not.inCorner(iRec,jRec,iPatch) )then
-                        existWENOTerm(iStencil,k) = 1
-                      else
-                        existWENOTerm(iStencil,k) = 0
-                      endif
-                    enddo
+                iidx = minloc( abs( x(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                jidx = minloc( abs( y(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                
+                xdir = 1
+                ydir = 1
+                if(iWENOCell(iStencil,iidx(1),i,j,iPatch)>iWENOCell(iStencil,1,i,j,iPatch))xdir=-1
+                if(jWENOCell(iStencil,jidx(2),i,j,iPatch)>jWENOCell(iStencil,1,i,j,iPatch))ydir=-1
+                
+                k = 0
+                do jR = 0,nyp-1
+                  do iR = 0,nxp-1
+                    k = k + 1
+                    iRec = iWENOCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
+                    jRec = jWENOCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
+                    if( .not.inCorner(iRec,jRec,iPatch) )then
+                      existWENOTerm(iStencil,k) = 1
+                    else
+                      existWENOTerm(iStencil,k) = 0
+                    endif
                   enddo
-                else
-                  existWENOTerm(iStencil,:) = 1
-                endif
+                enddo
                 
                 k    = 0
                 iCOS = 0
@@ -508,6 +500,11 @@ module spatial_operators_mod
                     k = k + 1
                     if(existWENOTerm(iStencil,k)>0)then
                       iCOS = iCOS + 1
+                      
+                      !iRec = ( nxp + 1 ) / 2
+                      !jRec = ( nyp + 1 ) / 2
+                      !if(iRec==iR.and.jRec==jR)iCenWENO(iStencil,i,j,iPatch) = iCOS
+                      
                       call calc_rectangle_poly_integration(nxp,nyp,&
                                                            xRelWENO(iStencil,1,iCOS,i,j,iPatch),xRelWENO(iStencil,2,iCOS,i,j,iPatch),&
                                                            yRelWENO(iStencil,1,iCOS,i,j,iPatch),yRelWENO(iStencil,4,iCOS,i,j,iPatch),&
@@ -560,6 +557,18 @@ module spatial_operators_mod
           enddo
         enddo
         !$OMP END PARALLEL DO
+        
+        k    = 0
+        iCOS = 0
+        do jRec = 1,3
+          do iRec = 1,3
+            k = k + 1
+            if( iRec<=2 .and. jRec<=2 .and. (iRec+jRec)<=3 )then
+              iCOS = iCOS + 1
+              rematch_idx_2_to_3(iCOS) = k
+            endif
+          enddo
+        enddo
         
         k    = 0
         iCOS = 0
@@ -655,31 +664,27 @@ module spatial_operators_mod
               nyp = maxval(jRecCell(1:nRC,i,j,iPatch)) - minval(jRecCell(1:nRC,i,j,iPatch)) + 1
               
               ! Pick the cells that not in corner for reconstruction
-              if(.not.noCorner(i,j,iPatch))then
-                iidx = minloc( abs( x(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
-                jidx = minloc( abs( y(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
-                
-                xdir = 1
-                ydir = 1
-                if(iRecCell(iidx(1),i,j,iPatch)>iRecCell(1,i,j,iPatch))xdir=-1
-                if(jRecCell(jidx(2),i,j,iPatch)>jRecCell(1,i,j,iPatch))ydir=-1
-                
-                k = 0
-                do jR = 0,nyp-1
-                  do iR = 0,nxp-1
-                    k = k + 1
-                    iRec = iRecCell(iidx(1),i,j,iPatch) + xdir * iR
-                    jRec = jRecCell(jidx(2),i,j,iPatch) + ydir * jR
-                    if( .not.inCorner(iRec,jRec,iPatch) )then
-                      existPolyTerm(k) = 1
-                    else
-                      existPolyTerm(k) = 0
-                    endif
-                  enddo
+              iidx = minloc( abs( x(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
+              jidx = minloc( abs( y(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
+              
+              xdir = 1
+              ydir = 1
+              if(iRecCell(iidx(1),i,j,iPatch)>iRecCell(1,i,j,iPatch))xdir=-1
+              if(jRecCell(jidx(2),i,j,iPatch)>jRecCell(1,i,j,iPatch))ydir=-1
+              
+              k = 0
+              do jR = 0,nyp-1
+                do iR = 0,nxp-1
+                  k = k + 1
+                  iRec = iRecCell(iidx(1),i,j,iPatch) + xdir * iR
+                  jRec = jRecCell(jidx(2),i,j,iPatch) + ydir * jR
+                  if( .not.inCorner(iRec,jRec,iPatch) )then
+                    existPolyTerm(k) = 1
+                  else
+                    existPolyTerm(k) = 0
+                  endif
                 enddo
-              else
-                existPolyTerm = 1
-              endif
+              enddo
               
               k    = 0
               iCOS = 0
@@ -1162,41 +1167,14 @@ module spatial_operators_mod
       real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(  out),optional :: dqdx ! x derivative on quadrature points
       real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(  out),optional :: dqdy ! y derivative on quadrature points
       
-      real(r_kind), dimension(maxRecCells            ) :: u
-      real(r_kind), dimension(maxRecCells,maxRecTerms) :: coordMtx
-      real(r_kind), dimension(            maxRecTerms) :: polyCoef
+      real(r_kind), dimension(maxRecCells             ) :: u
+      real(r_kind), dimension(maxRecCells ,maxRecTerms) :: coordMtx
+      real(r_kind), dimension(             maxRecTerms) :: polyCoef
+      real(r_kind), dimension(nStencil_all,maxRecCells) :: uWENO
+      real(r_kind), dimension(nStencil_all,maxRecTerms) :: polyWENO
       
       ! For WENO 2D
-      real(r_kind), dimension(nStencil1) :: beta1     ! smooth indicator for 1st order stencil
-      real(r_kind), dimension(nStencil1) :: sigma
-      real(r_kind), dimension(nStencil ) :: beta      ! smooth indicator for high order stencil
-      real(r_kind), dimension(nStencil ) :: alpha
-      real(r_kind), dimension(nStencil ) :: w
-      
-      real(r_kind), dimension(1 ) :: a1         ! polynomial coefficients after rematch
-      real(r_kind), dimension(9 ) :: a3         ! polynomial coefficients after rematch
-      real(r_kind), dimension(25) :: a5         ! polynomial coefficients after rematch
-      real(r_kind), dimension(49) :: a7         ! polynomial coefficients after rematch
-      
-      real(r_kind), dimension(            1 ) :: p1
-      real(r_kind), dimension(0:nStencil1,3 ) :: p2
-      real(r_kind), dimension(            9 ) :: p3
-      real(r_kind), dimension(            25) :: p5
-      real(r_kind), dimension(            49) :: p7
-      
       real(r_kind), dimension(maxRecTerms) :: p
-      
-      real(r_kind), dimension(9 ) :: p1_on_3
-      real(r_kind), dimension(25) :: p1_on_5
-      real(r_kind), dimension(25) :: p3_on_5
-      real(r_kind), dimension(49) :: p1_on_7
-      real(r_kind), dimension(49) :: p3_on_7
-      real(r_kind), dimension(49) :: p5_on_7
-      
-      real(r_kind) :: tau
-      real(r_kind) :: sigma_sum
-      real(r_kind), parameter :: eps = 1.e-15
-      
       
       integer(i_kind) :: iVar,i,j,iPatch,iCOS,iStencil
       integer(i_kind) :: iRec,jRec
@@ -1276,8 +1254,7 @@ module spatial_operators_mod
         enddo
         !$OMP END PARALLEL DO
       elseif(trim(reconstruct_scheme)=='WENO2D')then
-        !$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,u,polyCoef,beta1,beta,sigma,sigma_sum,a1,a3,a5,a7, &
-        !$OMP                     p1,p3,p5,p7,p2,p1_on_3,p1_on_5,p1_on_7,p3_on_5,p3_on_7,p5_on_7,tau,alpha,w,p) COLLAPSE(3) ! COLLAPSE must less than 3, iStencil cannot be parallelled
+        !!$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,uWENO,polyWENO,p) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -1287,99 +1264,16 @@ module spatial_operators_mod
                   iRec = iWENOCell(iStencil,iCOS,i,j,iPatch)
                   jRec = jWENOCell(iStencil,iCOS,i,j,iPatch)
                   
-                  u(iCOS) = q(iRec,jRec,iPatch)
+                  uWENO(iStencil,iCOS) = q(iRec,jRec,iPatch)
                 enddo
                 
-                polyCoef(1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),u(1:m))
-                
-                if(iStencil<=nStencil1)then
-                  p2(iStencil,:) = polyCoef(1:m)
-                  beta1(iStencil) = WENO_smooth_indicator_1(polyCoef(1:m))
-                elseif(iStencil==nStencil1+1)then
-                  do iCOS = 1,nStencil1
-                    sigma(iCOS) = ( 1. + ( ( abs(beta1(1)-beta1(2)) + abs(beta1(1)-beta1(3)) + abs(beta1(1)-beta1(4)) + abs(beta1(2)-beta1(3)) + abs(beta1(2)-beta1(4)) + abs(beta1(3)-beta1(4)) ) / 6. )**2 / ( beta1(iCOS) + eps ) ) / nStencil1
-                  enddo
-                  sigma_sum = sum(sigma)
-                  sigma = sigma / sigma_sum
-                  
-                  a1 = polyCoef(1:m)
-                  p1 = a1
-                  
-                  do iCOS = 1,3
-                    p2(0,iCOS) = dot_product( sigma, p2(1:nStencil1,iCOS) )
-                  enddo
-                  beta(1) = WENO_smooth_indicator_1(p2(0,:))
-                elseif(iStencil==nStencil1+2)then
-                  ! Rematch array for calculating smooth indicator for 3rd order stencil
-                  a3 = 0
-                  do iCOS = 1,m
-                    a3( rematch_idx_3_to_3(iCOS,i,j,iPatch) ) = polyCoef(iCOS)
-                  enddo
-                  
-                  ! Rematch polynomial coefficients and calculate 3rd order polynomial
-                  p1         = a1
-                  p1_on_3    = 0
-                  p1_on_3(1) = p1(1)
-                  p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
-                  
-                  beta(2) = WENO_smooth_indicator_3(p3)
-                elseif(iStencil==nStencil1+3)then
-                  ! Rematch array for calculating smooth indicator for 5th order stencil
-                  a5 = 0
-                  do iCOS = 1,m
-                    a5( rematch_idx_5_to_5(iCOS,i,j,iPatch) ) =  polyCoef(iCOS)
-                  enddo
-                  
-                  ! Rematch polynomial coefficients and calculate 5th order polynomial
-                  p1_on_5    = 0
-                  p1_on_5(1) = p1(1)
-                  p3_on_5    = 0
-                  do iCOS = 1,9
-                    p3_on_5( rematch_idx_3_to_5(iCOS) ) = p3(iCOS)
-                  enddo
-                  p5 = ( a5 - p1_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
-                  
-                  beta(3) = WENO_smooth_indicator_5(p5)
-                elseif(iStencil==nStencil1+4)then
-                  ! Rematch array for calculating smooth indicator for 7th order stencil
-                  a7 = 0
-                  do iCOS = 1,m
-                    a7( rematch_idx_7_to_7(iCOS,i,j,iPatch) ) =  polyCoef(iCOS)
-                  enddo
-                  
-                  ! Rematch polynomial coefficients and calculate 7th order polynomial
-                  p1_on_7    = 0
-                  p1_on_7(1) = p1(1)
-                  p3_on_7    = 0
-                  do iCOS = 1,25
-                    p3_on_7( rematch_idx_5_to_7(iCOS) ) = p3_on_5(iCOS)
-                  enddo
-                  p5_on_7 = 0
-                  do iCOS = 1,25
-                    p5_on_7( rematch_idx_5_to_7(iCOS) ) = p5(iCOS)
-                  enddo
-                  p7 = ( a7 - p1_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
-                  
-                  beta(4) = WENO_smooth_indicator_7(p7)
-                endif
+                polyWENO(iStencil,1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),uWENO(iStencil,1:m))
               enddo
               
-              tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
-              
-              do iStencil = 1,nStencil
-                alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
-              enddo
-              
-              !do iStencil = 1,nStencil
-              !  alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
-              !enddo
-              
-              w = alpha / sum(alpha)
-              
-              if(nStencil==1)p = p1
-              if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
-              if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
-              if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
+              call WENO2D(polyWENO,nWENOCells(:,i,j,iPatch),&
+                         rematch_idx_3_to_3(:,i,j,iPatch)  ,&
+                         rematch_idx_5_to_5(:,i,j,iPatch)  ,&
+                         rematch_idx_7_to_7(:,i,j,iPatch)  ,p,i,j,iPatch)
               
               if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,:,i,j,iPatch),p)
               if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,:,i,j,iPatch),p)
@@ -1392,8 +1286,9 @@ module spatial_operators_mod
               if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,:,i,j,iPatch),p)
             enddo
           enddo
+          stop 'Check WENO2D in spatial_operator'
         enddo
-        !$OMP END PARALLEL DO
+        !!$OMP END PARALLEL DO
       endif
       
     end subroutine reconstruction

@@ -463,13 +463,14 @@
         
       end subroutine WENO3
       
-      subroutine WENO2D(polyCoef,nCellsOnStencil,rematch_idx_3_to_3,rematch_idx_5_to_5,rematch_idx_7_to_7,p)
+      subroutine WENO2D(polyCoef,nCellsOnStencil,rematch_idx_3_to_3,rematch_idx_5_to_5,rematch_idx_7_to_7,p,i,j,iPatch)
         real   (r_kind),dimension(:,:),intent(in ) :: polyCoef
         integer(i_kind),dimension(:  ),intent(in ) :: nCellsOnStencil    ! nWENOCells
         integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_3_to_3
         integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_5_to_5
         integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_7_to_7
         real   (r_kind),dimension(:  ),intent(out) :: p
+        integer(i_kind),intent(in) :: i,j,iPatch
         
         real(r_kind), dimension(nStencil1) :: beta1     ! smooth indicator for 1st order stencil
         real(r_kind), dimension(nStencil1) :: sigma
@@ -598,11 +599,25 @@
           endif
         enddo
         
+        if(beta(2)/beta(1)>2)then
+          print*,i,j,iPatch
+          print*,beta(1:2)
+          print*,beta1
+        endif
+        
         tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
         
         do iStencil = 1,nStencil
           alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
         enddo
+        
+        !print*,beta
+        !print*,beta1
+        !print*,tau
+        !print*,tau / ( beta(1) + eps )
+        !print*,tau / ( beta(2) + eps )
+        !print*,tau / ( beta(3) + eps )
+        !print*,''
         
         !do iStencil = 1,nStencil
         !  alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2

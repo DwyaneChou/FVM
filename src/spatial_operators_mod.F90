@@ -471,31 +471,27 @@ module spatial_operators_mod
                 nyp = maxval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) + 1
                 
                 ! Pick the cells that not in corner for reconstruction
-                if(.not.noCorner(i,j,iPatch))then
-                  iidx = minloc( abs( x(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
-                  jidx = minloc( abs( y(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
-                  
-                  xdir = 1
-                  ydir = 1
-                  if(iWENOCell(iStencil,iidx(1),i,j,iPatch)>iWENOCell(iStencil,1,i,j,iPatch))xdir=-1
-                  if(jWENOCell(iStencil,jidx(2),i,j,iPatch)>jWENOCell(iStencil,1,i,j,iPatch))ydir=-1
-                  
-                  k = 0
-                  do jR = 0,nyp-1
-                    do iR = 0,nxp-1
-                      k = k + 1
-                      iRec = iWENOCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
-                      jRec = jWENOCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
-                      if( .not.inCorner(iRec,jRec,iPatch) )then
-                        existWENOTerm(iStencil,k) = 1
-                      else
-                        existWENOTerm(iStencil,k) = 0
-                      endif
-                    enddo
+                iidx = minloc( abs( x(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                jidx = minloc( abs( y(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                
+                xdir = 1
+                ydir = 1
+                if(iWENOCell(iStencil,iidx(1),i,j,iPatch)>iWENOCell(iStencil,1,i,j,iPatch))xdir=-1
+                if(jWENOCell(iStencil,jidx(2),i,j,iPatch)>jWENOCell(iStencil,1,i,j,iPatch))ydir=-1
+                
+                k = 0
+                do jR = 0,nyp-1
+                  do iR = 0,nxp-1
+                    k = k + 1
+                    iRec = iWENOCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
+                    jRec = jWENOCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
+                    if( .not.inCorner(iRec,jRec,iPatch) )then
+                      existWENOTerm(iStencil,k) = 1
+                    else
+                      existWENOTerm(iStencil,k) = 0
+                    endif
                   enddo
-                else
-                  existWENOTerm(iStencil,:) = 1
-                endif
+                enddo
                 
                 k    = 0
                 iCOS = 0
@@ -602,7 +598,6 @@ module spatial_operators_mod
         do jStencil = 1,nStencil
           do iStencil = 1,jStencil
             r(iStencil,jStencil) = 10**(2*(iStencil-1))
-            !r(iStencil,jStencil) = 10**(1*iStencil-1)
           enddo
           r(:,jStencil) = r(:,jStencil) / sum(r(1:jStencil,jStencil))
         enddo
@@ -668,31 +663,27 @@ module spatial_operators_mod
               nyp = maxval(jRecCell(1:nRC,i,j,iPatch)) - minval(jRecCell(1:nRC,i,j,iPatch)) + 1
               
               ! Pick the cells that not in corner for reconstruction
-              if(.not.noCorner(i,j,iPatch))then
-                iidx = minloc( abs( x(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
-                jidx = minloc( abs( y(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
-                
-                xdir = 1
-                ydir = 1
-                if(iRecCell(iidx(1),i,j,iPatch)>iRecCell(1,i,j,iPatch))xdir=-1
-                if(jRecCell(jidx(2),i,j,iPatch)>jRecCell(1,i,j,iPatch))ydir=-1
-                
-                k = 0
-                do jR = 0,nyp-1
-                  do iR = 0,nxp-1
-                    k = k + 1
-                    iRec = iRecCell(iidx(1),i,j,iPatch) + xdir * iR
-                    jRec = jRecCell(jidx(2),i,j,iPatch) + ydir * jR
-                    if( .not.inCorner(iRec,jRec,iPatch) )then
-                      existPolyTerm(k) = 1
-                    else
-                      existPolyTerm(k) = 0
-                    endif
-                  enddo
+              iidx = minloc( abs( x(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
+              jidx = minloc( abs( y(cc,iRecCell(1:nRC,i,j,iPatch),jRecCell(1:nRC,i,j,iPatch),iPatch) ) )
+              
+              xdir = 1
+              ydir = 1
+              if(iRecCell(iidx(1),i,j,iPatch)>iRecCell(1,i,j,iPatch))xdir=-1
+              if(jRecCell(jidx(2),i,j,iPatch)>jRecCell(1,i,j,iPatch))ydir=-1
+              
+              k = 0
+              do jR = 0,nyp-1
+                do iR = 0,nxp-1
+                  k = k + 1
+                  iRec = iRecCell(iidx(1),i,j,iPatch) + xdir * iR
+                  jRec = jRecCell(jidx(2),i,j,iPatch) + ydir * jR
+                  if( .not.inCorner(iRec,jRec,iPatch) )then
+                    existPolyTerm(k) = 1
+                  else
+                    existPolyTerm(k) = 0
+                  endif
                 enddo
-              else
-                existPolyTerm = 1
-              endif
+              enddo
               
               k    = 0
               iCOS = 0
