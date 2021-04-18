@@ -3,23 +3,23 @@ run_days         = 0
 run_hours        = 1
 run_minutes      = 0
 run_seconds      = 0
-dt               = 200 ! 200s for 1 degree
+dt               = 400 ! 200s for 1 degree
 history_interval = 3600
 integral_scheme  = 'RK4' ! Choose from 'RK3_TVD' or 'RK4'
 /
 
 &case_select
-case_num    = 9, ! Choose from 2, 5, 6, 8, 9
+case_num    = 2, ! Choose from 2, 5, 6, 8, 9
 /
 
 &domain
-dx                   = 1,  ! Unit: degree
-dy                   = 1,  ! Unit: degree
+dx                   = 2,  ! Unit: degree
+dy                   = 2,  ! Unit: degree
 nPointsOnEdge        = 3,
 /
 
 &dynamic_opt
-reconstruct_scheme = 'Polynomial' ! Choose from 'WLS-ENO', 'Polynomial', 'WENO', 'WENO2D'
+reconstruct_scheme = 'WENO2D' ! Choose from 'WLS-ENO', 'Polynomial', 'WENO', 'WENO2D'
 epsilon            = 1.e-2! Coefficient for avioding divide 0 in WLS-ENO
 stencil_width      = 5,
 quad_opt           = 1, ! 1 for square gaussian quadratrue, 2 for triangular quaduature
