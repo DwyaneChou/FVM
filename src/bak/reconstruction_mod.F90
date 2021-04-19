@@ -512,14 +512,14 @@
             p2(iStencil,:) = polyCoef(iStencil,1:m)
             beta1(iStencil) = WENO_smooth_indicator_2(polyCoef(iStencil,1:m))
           elseif(iStencil==nStencil1+1)then
-            tau = ( ( abs(beta1(1)-beta1(2)) + abs(beta1(1)-beta1(3)) &
-                    + abs(beta1(1)-beta1(4)) + abs(beta1(2)-beta1(3)) &
-                    + abs(beta1(2)-beta1(4)) + abs(beta1(3)-beta1(4)) ) / 6. )**2
-            do iCOS = 1,nStencil1
-              sigma(iCOS) = ( 1. + tau / ( beta1(iCOS) + eps ) ) / nStencil1
-            enddo
-            sigma_sum = sum(sigma)
-            sigma = sigma / sigma_sum
+            !tau = ( ( abs(beta1(1)-beta1(2)) + abs(beta1(1)-beta1(3)) &
+            !        + abs(beta1(1)-beta1(4)) + abs(beta1(2)-beta1(3)) &
+            !        + abs(beta1(2)-beta1(4)) + abs(beta1(3)-beta1(4)) ) / 6. )**2
+            !do iCOS = 1,nStencil1
+            !  sigma(iCOS) = ( 1. + tau / ( beta1(iCOS) + eps ) ) / nStencil1
+            !enddo
+            !sigma_sum = sum(sigma)
+            !sigma = sigma / sigma_sum
             
             a1 = polyCoef(iStencil,1:m)
             p1 = a1
@@ -527,8 +527,9 @@
             do iCOS = 1,3
               p2(0,iCOS) = dot_product( sigma, p2(1:nStencil1,iCOS) )
             enddo
-            beta(1) = WENO_smooth_indicator_2(p2(0,:))
+            !beta(1) = WENO_smooth_indicator_2(p2(0,:))
             !beta(1) = sum( beta1 * sigma )
+            beta(1) = sum(beta1) / nStencil1
           elseif(iStencil==nStencil1+2)then
             ! Rematch array for calculating smooth indicator for 3rd order stencil
             a3 = 0
@@ -601,15 +602,34 @@
         
         if(beta(2)/beta(1)>2)then
           print*,i,j,iPatch
-          print*,beta(1:2)
+          print*,beta(1:nStencil)
           print*,beta1
+          !print*,p2(4,2)-p2(1,2),p2(3,2)-p2(2,2)
+          !print*,p2(1,3)-p2(2,3),p2(4,3)-p2(3,3)
+          !print*,0.5*( (p2(4,2)-p2(1,2))**2+(p2(3,2)-p2(2,2))**2 ) + 0.5*( (p2(1,3)-p2(2,3))**2+(p2(4,3)-p2(3,3))**2 )
+          !print*,'p2'
+          !print*,p2(1,:)
+          !print*,p2(2,:)
+          !print*,p2(3,:)
+          !print*,p2(4,:)
+          print*,'a3'
+          print*,a3
+          print*,'a5'
+          print*,a5
+          print*,''
         endif
         
-        tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
+        !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
+        !
+        !do iStencil = 1,nStencil
+        !  alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
+        !enddo
         
         do iStencil = 1,nStencil
-          alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
+          alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
         enddo
+        
+        w = alpha / sum(alpha)
         
         !print*,beta
         !print*,beta1
@@ -618,12 +638,6 @@
         !print*,tau / ( beta(2) + eps )
         !print*,tau / ( beta(3) + eps )
         !print*,''
-        
-        !do iStencil = 1,nStencil
-        !  alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
-        !enddo
-        
-        w = alpha / sum(alpha)
         
         if(nStencil==1)p = p1
         if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3

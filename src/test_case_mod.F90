@@ -82,7 +82,7 @@ module test_case_mod
     real(r_kind)    :: u0
     real(r_kind)    :: gh0 = 29400.
     real(r_kind)    :: gh
-    real(r_kind)    :: alpha = 0! pi/4.
+    real(r_kind)    :: alpha =  pi/4.
     
     integer :: i,j,iPatch,iPOC
     

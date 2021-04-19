@@ -526,8 +526,9 @@
             do iCOS = 1,3
               p2(0,iCOS) = dot_product( sigma, p2(1:nStencil1,iCOS) )
             enddo
-            beta(1) = WENO_smooth_indicator_2(p2(0,:))
+            !beta(1) = WENO_smooth_indicator_2(p2(0,:))
             !beta(1) = sum( beta1 * sigma )
+            beta(1) = sum(beta1) / nStencil1
           elseif(iStencil==nStencil1+2)then
             ! Rematch array for calculating smooth indicator for 3rd order stencil
             a3 = 0
