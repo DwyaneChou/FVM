@@ -598,7 +598,6 @@ module spatial_operators_mod
         do jStencil = 1,nStencil
           do iStencil = 1,jStencil
             r(iStencil,jStencil) = 10**(2*(iStencil-1))
-            !r(iStencil,jStencil) = 10**(1*iStencil-1)
           enddo
           r(:,jStencil) = r(:,jStencil) / sum(r(1:jStencil,jStencil))
         enddo
@@ -1254,7 +1253,7 @@ module spatial_operators_mod
         enddo
         !$OMP END PARALLEL DO
       elseif(trim(reconstruct_scheme)=='WENO2D')then
-        !!$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,uWENO,polyWENO,p) COLLAPSE(3)
+        !$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,uWENO,polyWENO,p) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -1273,7 +1272,7 @@ module spatial_operators_mod
               call WENO2D(polyWENO,nWENOCells(:,i,j,iPatch),&
                          rematch_idx_3_to_3(:,i,j,iPatch)  ,&
                          rematch_idx_5_to_5(:,i,j,iPatch)  ,&
-                         rematch_idx_7_to_7(:,i,j,iPatch)  ,p,i,j,iPatch)
+                         rematch_idx_7_to_7(:,i,j,iPatch)  ,p)
               
               if(present(qL  )) qL(:,i,j,iPatch) = matmul(polyMatrixL (:,:,i,j,iPatch),p)
               if(present(qR  )) qR(:,i,j,iPatch) = matmul(polyMatrixR (:,:,i,j,iPatch),p)
@@ -1286,9 +1285,8 @@ module spatial_operators_mod
               if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,:,i,j,iPatch),p)
             enddo
           enddo
-          stop 'Check WENO2D in spatial_operator'
         enddo
-        !!$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
       endif
       
     end subroutine reconstruction

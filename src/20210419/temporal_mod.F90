@@ -55,7 +55,7 @@ module temporal_mod
       call update_stat      (stat(k2), stat_old, tend(k1), dt)
       
       !call history_write_stat(stat(k2),2)
-      stop 'RK3_TVD'
+      !stop 'RK3_TVD'
       
       call spatial_operator (stat(k2), tend(k2))
       call update_stat_RK3_TVD_1(stat(k3), stat_old, stat(k2), tend(k2))
