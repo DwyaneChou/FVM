@@ -180,9 +180,9 @@ module parameters_mod
     xhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
     yhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
     
-    nStencil     = recBdy + 1
+    nStencil     = recBdy
     nStencil1    = 4
-    nStencil_all = nStencil1 + recBdy + 1 ! 4 1st order stencils + high order stencils
+    nStencil_all = nStencil1 + nStencil ! 4 1st order stencils + high order stencils
     
     ! Calculate starting and ending index for physical domain
     ids  = 1

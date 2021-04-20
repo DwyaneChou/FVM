@@ -170,7 +170,7 @@ module io_mod
         enddo
       enddo
       
-      call calc_relative_vorticity(vor,stat)
+      !call calc_relative_vorticity(vor,stat)
       
       time(1) = time_slot_num
       !print*,'nf90_open'

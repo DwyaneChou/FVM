@@ -470,32 +470,25 @@
         integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_5_to_5
         integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_7_to_7
         real   (r_kind),dimension(:  ),intent(out) :: p
-        integer(i_kind), intent(in) :: i,j,iPatch
+        integer(i_kind),intent(in) :: i,j,iPatch
         
         real(r_kind), dimension(nStencil1) :: beta1     ! smooth indicator for 1st order stencil
-        real(r_kind), dimension(nStencil1) :: sigma
+        real(r_kind), dimension(0:nStencil1) :: sigma
         real(r_kind), dimension(nStencil ) :: beta      ! smooth indicator for high order stencil
         real(r_kind), dimension(nStencil ) :: alpha
         real(r_kind), dimension(nStencil ) :: w
         
-        real(r_kind), dimension(1 ) :: a1         ! polynomial coefficients after rematch
         real(r_kind), dimension(9 ) :: a3         ! polynomial coefficients after rematch
         real(r_kind), dimension(25) :: a5         ! polynomial coefficients after rematch
         real(r_kind), dimension(49) :: a7         ! polynomial coefficients after rematch
         
-        real(r_kind), dimension(            1 ) :: p1
         real(r_kind), dimension(0:nStencil1,3 ) :: p2
         real(r_kind), dimension(            9 ) :: p3
         real(r_kind), dimension(            25) :: p5
         real(r_kind), dimension(            49) :: p7
         
-        real(r_kind), dimension(9 ) :: p1_on_3
-        real(r_kind), dimension(9 ) :: p2_on_3
-        real(r_kind), dimension(25) :: p1_on_5
-        real(r_kind), dimension(25) :: p2_on_5
+        real(r_kind), dimension(0:nStencil1,9) :: p2_on_3
         real(r_kind), dimension(25) :: p3_on_5
-        real(r_kind), dimension(49) :: p1_on_7
-        real(r_kind), dimension(49) :: p2_on_7
         real(r_kind), dimension(49) :: p3_on_7
         real(r_kind), dimension(49) :: p5_on_7
       
@@ -503,7 +496,7 @@
         real(r_kind) :: sigma_sum
         real(r_kind), parameter :: eps = 1.e-15
         
-        integer(i_kind) :: iCOS,iStencil
+        integer(i_kind) :: iCOS,iStencil,jStencil
         integer(i_kind) :: m
         
         do iStencil = 1,nStencil_all
@@ -512,23 +505,6 @@
             p2(iStencil,:) = polyCoef(iStencil,1:m)
             beta1(iStencil) = WENO_smooth_indicator_2(polyCoef(iStencil,1:m))
           elseif(iStencil==nStencil1+1)then
-            tau = ( ( abs(beta1(1)-beta1(2)) + abs(beta1(1)-beta1(3)) &
-                    + abs(beta1(1)-beta1(4)) + abs(beta1(2)-beta1(3)) &
-                    + abs(beta1(2)-beta1(4)) + abs(beta1(3)-beta1(4)) ) / 6. )**2
-            do iCOS = 1,nStencil1
-              sigma(iCOS) = ( 1. + tau / ( beta1(iCOS) + eps ) ) / nStencil1
-            enddo
-            sigma_sum = sum(sigma)
-            sigma = sigma / sigma_sum
-            
-            a1 = polyCoef(iStencil,1:m)
-            p1 = a1
-            
-            do iCOS = 1,3
-              p2(0,iCOS) = dot_product( sigma, p2(1:nStencil1,iCOS) )
-            enddo
-            beta(1) = WENO_smooth_indicator_2(p2(0,:))
-          elseif(iStencil==nStencil1+2)then
             ! Rematch array for calculating smooth indicator for 3rd order stencil
             a3 = 0
             do iCOS = 1,m
@@ -536,18 +512,32 @@
             enddo
             
             ! Rematch polynomial coefficients and calculate 3rd order polynomial
-            p1         = a1
-            p1_on_3    = 0
-            p1_on_3(1) = p1(1)
-            p2_on_3    = 0
             do iCOS = 1,3
-              p2_on_3( rematch_idx_2_to_3(iCOS) ) = p2(0,iCOS)
+              p2(0,iCOS) = sum( p2(1:nStencil1,iCOS) )
             enddo
-            p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
-            !p3 = ( a3 - p2_on_3 * r(1,2) ) / r(2,2)
+            p2_on_3 = 0
+            do jStencil = 0,nStencil1
+              do iCOS = 1,3
+                p2_on_3( jStencil, rematch_idx_2_to_3(iCOS) ) = p2(jStencil,iCOS)
+              enddo
+            enddo
+            p3 = 2. * a3 - 0.25 * p2_on_3(0,:)
             
-            beta(2) = WENO_smooth_indicator_3(p3)
-          elseif(iStencil==nStencil1+3)then
+            beta(1) = WENO_smooth_indicator_3(p3)
+            
+            sigma(1:nStencil1) = 0.125 / ( beta1 + eps )**2
+            
+            sigma(0) = 0.5 / ( beta(1) + eps )**2
+            
+            sigma_sum = sum(sigma)
+            sigma = sigma / sigma_sum
+            
+            do iCOS = 1,9
+              p3(iCOS) = sigma(0) * p3(iCOS) + dot_product( sigma(1:nStencil1), p2_on_3(1:nStencil1,iCOS) )
+            enddo
+            
+            beta(1) = WENO_smooth_indicator_3(p3)
+          elseif(iStencil==nStencil1+2)then
             ! Rematch array for calculating smooth indicator for 5th order stencil
             a5 = 0
             do iCOS = 1,m
@@ -555,21 +545,14 @@
             enddo
             
             ! Rematch polynomial coefficients and calculate 5th order polynomial
-            p1_on_5    = 0
-            p1_on_5(1) = p1(1)
-            p2_on_5    = 0
-            do iCOS = 1,9
-              p2_on_5( rematch_idx_3_to_5(iCOS) ) = p2_on_3(iCOS)
-            enddo
             p3_on_5    = 0
             do iCOS = 1,9
               p3_on_5( rematch_idx_3_to_5(iCOS) ) = p3(iCOS)
             enddo
-            p5 = ( a5 - p1_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
-            !p5 = ( a5 - p2_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
+            p5 = ( a5 - p3_on_5 * r(1,2) ) / r(2,2)
             
-            beta(3) = WENO_smooth_indicator_5(p5)
-          elseif(iStencil==nStencil1+4)then
+            beta(2) = WENO_smooth_indicator_5(p5)
+          elseif(iStencil==nStencil1+3)then
             ! Rematch array for calculating smooth indicator for 7th order stencil
             a7 = 0
             do iCOS = 1,m
@@ -577,12 +560,6 @@
             enddo
             
             ! Rematch polynomial coefficients and calculate 7th order polynomial
-            p1_on_7    = 0
-            p1_on_7(1) = p1(1)
-            p2_on_7    = 0
-            do iCOS = 1,25
-              p2_on_7( rematch_idx_5_to_7(iCOS) ) = p2_on_5(iCOS)
-            enddo
             p3_on_7    = 0
             do iCOS = 1,25
               p3_on_7( rematch_idx_5_to_7(iCOS) ) = p3_on_5(iCOS)
@@ -591,44 +568,39 @@
             do iCOS = 1,25
               p5_on_7( rematch_idx_5_to_7(iCOS) ) = p5(iCOS)
             enddo
-            p7 = ( a7 - p1_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
-            !p7 = ( a7 - p2_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
+            p7 = ( a7 - p3_on_7 * r(1,3) - p5_on_7 * r(2,3) ) / r(3,3)
             
-            beta(4) = WENO_smooth_indicator_7(p7)
+            beta(3) = WENO_smooth_indicator_7(p7)
           endif
         enddo
         
-        !if(i==23.and.j==23.and.iPatch==1)then
-        !  print*,a1
-        !  print*,''
-        !  print*,p2_on_5
-        !  print*,''
-        !  print*,a3
-        !  print*,''
-        !  print*,a5
-        !endif
+        if(nStencil>1)then
+          !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil) ) ) / nStencil )**2
+          !
+          !do iStencil = 1,nStencil
+          !  alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
+          !enddo
+          
+          do iStencil = 1,nStencil
+            alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
+          enddo
         
-        !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
-        !
-        !do iStencil = 1,nStencil
-        !  alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
-        !enddo
+          w = alpha / sum(alpha)
+        endif
         
-        do iStencil = 1,nStencil
-          alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
-        enddo
+        !print*,a7
+        !print*,p7
+        !print*,beta
+        !print*,beta1
+        !print*,tau
+        !!print*,tau / ( beta(1) + eps )
+        !!print*,tau / ( beta(2) + eps )
+        !!print*,tau / ( beta(3) + eps )
+        !print*,''
         
-        w = alpha / sum(alpha)
-        
-        if(nStencil==1)p = p1
-        if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
-        if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
-        if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
-        
-        !if(nStencil==1)p = p1
-        !if(nStencil==2)p = w(1) * p2_on_3 + w(2) * p3
-        !if(nStencil==3)p = w(1) * p2_on_5 + w(2) * p3_on_5 + w(3) * p5
-        !if(nStencil==4)p = w(1) * p2_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
+        if(nStencil==1)p = p3
+        if(nStencil==2)p = w(1) * p3_on_5 + w(2) * p5
+        if(nStencil==3)p = w(1) * p3_on_7 + w(2) * p5_on_7 + w(3) * p7
         
       end subroutine WENO2D
       
@@ -773,7 +745,7 @@
                                     a(35)/17920. + a(43)/224. + a(45)/2688. + a(47)/17920. + a(49)/100352) + (12535.*a(3)*a(49))/3612672. + (179019829.*a(5)*a(49))/52985856. + (2309389472701.*a(7)*a(49))/918421504. +                           &
                                   (439.*a(15)*a(49))/3612672. + (277393.*a(17)*a(49))/130056192. + (179173189.*a(19)*a(49))/272498688. + (2309390286157.*a(21)*a(49))/4723310592. + (355.*a(29)*a(49))/7569408. +                                  &
                                   (192133.*a(31)*a(49))/272498688. + (537934207.*a(33)*a(49))/3996647424. + (6928173057815.*a(35)*a(49))/69275222016. + (269.*a(43)*a(49))/18743296. + (137099.*a(45)*a(49))/674758656. +                          &
-                                  (1973870039.*a(47)*a(49))/69275222016. + (25403308874543.*a(49)**2)/2401541029888
+                                  (1973870039.*a(47)*a(49))/69275222016. + (25403308874543.*a(49)**2)/2401541029888._r16
       end function WENO_smooth_indicator_7
       
     end module reconstruction_mod

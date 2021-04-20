@@ -369,8 +369,8 @@ module spatial_operators_mod
                 
               do iStencil = nStencil1+1,nStencil_all
                 iCOS = 0
-                do jRec = -(iStencil-nStencil1)+1,(iStencil-nStencil1)-1
-                  do iRec = -(iStencil-nStencil1)+1,(iStencil-nStencil1)-1
+                do jRec = -(iStencil-nStencil1),(iStencil-nStencil1)
+                  do iRec = -(iStencil-nStencil1),(iStencil-nStencil1)
                     if( .not.inCorner(i+iRec,j+jRec,iPatch) )then
                       iCOS = iCOS + 1
                       iWENOCell(iStencil,iCOS,i,j,iPatch) = i + iRec
@@ -598,6 +598,7 @@ module spatial_operators_mod
         do jStencil = 1,nStencil
           do iStencil = 1,jStencil
             r(iStencil,jStencil) = 10**(2*(iStencil-1))
+            !r(iStencil,jStencil) = 10**(1*iStencil-1)
           enddo
           r(:,jStencil) = r(:,jStencil) / sum(r(1:jStencil,jStencil))
         enddo
@@ -1269,6 +1270,15 @@ module spatial_operators_mod
                 polyWENO(iStencil,1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),uWENO(iStencil,1:m))
               enddo
               
+              !if(i==23.and.j==23.and.iPatch==1)then
+              !  do iStencil = 1,nStencil1
+              !    print*,uWENO(iStencil,1:3)
+              !  enddo
+              !  print*,''
+              !  print*,uWENO(nStencil1+1,1:9)
+              !  stop
+              !endif
+              
               call WENO2D(polyWENO,nWENOCells(:,i,j,iPatch),&
                          rematch_idx_3_to_3(:,i,j,iPatch)  ,&
                          rematch_idx_5_to_5(:,i,j,iPatch)  ,&
@@ -1285,6 +1295,7 @@ module spatial_operators_mod
               if(present(dqdy)) dqdy(:,i,j,iPatch) = matmul(recMatrixDy(:,:,i,j,iPatch),p)
             enddo
           enddo
+          !stop 'Check WENO2D in spatial_operator'
         enddo
         !$OMP END PARALLEL DO
       endif

@@ -7,7 +7,7 @@ var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 1;
+it       = 49;
 
 gravity = 9.80616;
 
@@ -39,6 +39,7 @@ lon = ncread(nc_file,'lon'   );
 lat = ncread(nc_file,'lat'   );
 var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1]);
 var0= ncread(nc_file,var_name,[ids,jds,1, 1],[Nx,Ny,Npatch,1]);
+var = (var-var0)./var0;
 % var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1])/gravity;
 % var0= ncread(nc_file,var_name,[ids,jds,1,1],[Nx,Ny,Npatch,1])/gravity;
 
