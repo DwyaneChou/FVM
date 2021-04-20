@@ -536,7 +536,6 @@
             enddo
             
             ! Rematch polynomial coefficients and calculate 3rd order polynomial
-            p1         = a1
             p1_on_3    = 0
             p1_on_3(1) = p1(1)
             p2_on_3    = 0
@@ -600,12 +599,15 @@
         
         !if(i==23.and.j==23.and.iPatch==1)then
         !  print*,a1
-        !  print*,''
-        !  print*,p2_on_5
-        !  print*,''
-        !  print*,a3
-        !  print*,''
-        !  print*,a5
+        !  print*,p1_on_3
+        !  print*,p1_on_5
+        !  print*,p1_on_7
+        !  !print*,''
+        !  !print*,p2_on_5
+        !  !print*,''
+        !  !print*,a3
+        !  !print*,''
+        !  !print*,a5
         !endif
         
         !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
