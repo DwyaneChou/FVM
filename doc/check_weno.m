@@ -7,7 +7,7 @@ var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 4;
+it       = 2;
 
 gravity = 9.80616;
 
@@ -90,8 +90,9 @@ if(case_num==9)
     plot(var(:,Ny/2,3))
 end
 
-% hold on
-% plot(p_WENO2D(:,Ny/2,3),'r','LineWidth',1.5)
-% plot(p_WENO  (:,Ny/2,3),'k','LineWidth',1.5)
+hold on
+plot(p_WENO2D(:,Ny/2,3),'r','LineWidth',1.5)
+plot(p_WENO3 (:,Ny/2,3),'k','LineWidth',1.5)
+% plot(p_WENO5 (:,Ny/2,3),'m','LineWidth',1.5)
 % plot(p_poly  (:,Ny/2,3),'b','LineWidth',1.5)
 % plot(p_WLS   (:,Ny/2,3),'g','LineWidth',1.5)

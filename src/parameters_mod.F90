@@ -36,7 +36,7 @@ module parameters_mod
   ! dynamic options
   integer(i_kind) :: nQuadOrder
   integer(i_kind) :: quad_opt
-  character*200   :: reconstruct_scheme = 'WENO'
+  character*200   :: reconstruct_scheme = 'WENO2D'
   integer(i_kind) :: stencil_width = 5
   integer(i_kind) :: recBdy        = 2
   real   (r_kind) :: epsilon       = 1.e-2 ! Coefficient for avioding divide 0 in WLS-ENO, 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
@@ -146,7 +146,18 @@ module parameters_mod
     ! Read namelist
     call readNamelist
     
-    if(trim(reconstruct_scheme)=='WENO')then
+    if(trim(reconstruct_scheme)=='WENO3')then
+      if(stencil_width/=3)then
+        print*,'stencil_width is not 3, during using WENO3, stencil_width has been reset to 3'
+        stencil_width = 3
+      endif
+      if(nPointsOnEdge/=1)then
+        print*,'nPointsOnEdge is not 1, during using WENO, nPointsOnEdge has been reset to 1'
+        nPointsOnEdge = 1
+      endif
+    endif
+    
+    if(trim(reconstruct_scheme)=='WENO5')then
       if(stencil_width/=5)then
         print*,'stencil_width is not 5, during using WENO, stencil_width has been reset to 5'
         stencil_width = 5

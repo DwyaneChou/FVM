@@ -543,7 +543,6 @@
               p2_on_3( rematch_idx_2_to_3(iCOS) ) = p2(0,iCOS)
             enddo
             p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
-            !p3 = ( a3 - p2_on_3 * r(1,2) ) / r(2,2)
             
             beta(2) = WENO_smooth_indicator_3(p3)
           elseif(iStencil==nStencil1+3)then
@@ -565,7 +564,6 @@
               p3_on_5( rematch_idx_3_to_5(iCOS) ) = p3(iCOS)
             enddo
             p5 = ( a5 - p1_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
-            !p5 = ( a5 - p2_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
             
             beta(3) = WENO_smooth_indicator_5(p5)
           elseif(iStencil==nStencil1+4)then
@@ -591,23 +589,30 @@
               p5_on_7( rematch_idx_5_to_7(iCOS) ) = p5(iCOS)
             enddo
             p7 = ( a7 - p1_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
-            !p7 = ( a7 - p2_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
             
             beta(4) = WENO_smooth_indicator_7(p7)
           endif
         enddo
         
-        !if(i==23.and.j==23.and.iPatch==1)then
+        ! Engineer solution of low order smooth indicator
+        if(nStencil>=3)then
+          if( abs( beta(3)-beta(2) ) / ( beta(2) + eps ) < 0.1 ) then
+            do iStencil = 2,nStencil
+              beta(iStencil) = beta(1)
+            enddo
+          endif
+        endif
+        
+        !if(i==66.and.j==45.and.iPatch==3)then
         !  print*,a1
-        !  print*,p1_on_3
-        !  print*,p1_on_5
-        !  print*,p1_on_7
-        !  !print*,''
-        !  !print*,p2_on_5
-        !  !print*,''
-        !  !print*,a3
-        !  !print*,''
-        !  !print*,a5
+        !  print*,''
+        !  print*,a3
+        !  print*,''
+        !  print*,a5
+        !  print*,''
+        !  print*,a7
+        !  print*,''
+        !  print*,beta
         !endif
         
         !tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
@@ -622,15 +627,18 @@
         
         w = alpha / sum(alpha)
         
+        !if(i==23.and.j==23.and.iPatch==1)then
+        !  print*,beta
+        !  print*,alpha
+        !  print*,w
+        !  print*,r(:,nStencil)
+        !  print*,''
+        !endif
+        
         if(nStencil==1)p = p1
         if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
         if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
         if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
-        
-        !if(nStencil==1)p = p1
-        !if(nStencil==2)p = w(1) * p2_on_3 + w(2) * p3
-        !if(nStencil==3)p = w(1) * p2_on_5 + w(2) * p3_on_5 + w(3) * p5
-        !if(nStencil==4)p = w(1) * p2_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
         
       end subroutine WENO2D
       

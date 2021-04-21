@@ -445,7 +445,7 @@ module spatial_operators_mod
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
-              ! Calculate WENO polynomial coefficient matrices
+              ! Calculate WENO 2D polynomial coefficient matrices
               do iStencil = 1,nStencil1
                 !iCenWENO(iStencil,i,j,iPatch) = 2
                 
@@ -1237,7 +1237,22 @@ module spatial_operators_mod
           enddo
         enddo
         !$OMP END PARALLEL DO
-      elseif(trim(reconstruct_scheme)=='WENO')then
+      elseif(trim(reconstruct_scheme)=='WENO3')then
+        !$OMP PARALLEL DO PRIVATE(j,i) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jds,jde
+            do i = ids,ide
+              if(present(qL  ))call WENO3(qL(1,i,j,iPatch),q(i-recBdy:i+recBdy,j,iPatch),-1)
+              if(present(qR  ))call WENO3(qR(1,i,j,iPatch),q(i-recBdy:i+recBdy,j,iPatch), 1)
+              if(present(qB  ))call WENO3(qB(1,i,j,iPatch),q(i,j-recBdy:j+recBdy,iPatch),-1)
+              if(present(qT  ))call WENO3(qT(1,i,j,iPatch),q(i,j-recBdy:j+recBdy,iPatch), 1)
+              
+              if(present(qQ  )) qQ(:,i,j,iPatch) = q(i,j,iPatch)
+            enddo
+          enddo
+        enddo
+        !$OMP END PARALLEL DO
+      elseif(trim(reconstruct_scheme)=='WENO5')then
         !$OMP PARALLEL DO PRIVATE(j,i) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
