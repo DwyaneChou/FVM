@@ -650,7 +650,7 @@ module spatial_operators_mod
         r = 0
         do jStencil = 1,nStencil
           do iStencil = 1,jStencil
-            r(iStencil,jStencil) = 10**(1*(iStencil-1))
+            r(iStencil,jStencil) = 10**(2*(iStencil-1))
           enddo
           r(:,jStencil) = r(:,jStencil) / sum(r(1:jStencil,jStencil))
         enddo
