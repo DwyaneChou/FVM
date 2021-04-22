@@ -7,7 +7,7 @@ var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 25;
+it       = 2;
 
 gravity = 9.80616;
 
@@ -39,7 +39,7 @@ lon = ncread(nc_file,'lon'   );
 lat = ncread(nc_file,'lat'   );
 var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1]);
 var0= ncread(nc_file,var_name,[ids,jds,1, 1],[Nx,Ny,Npatch,1]);
-% var = (var-var0)./var0;
+var = (var-var0)./var0;
 % var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1])/gravity;
 % var0= ncread(nc_file,var_name,[ids,jds,1,1],[Nx,Ny,Npatch,1])/gravity;
 
@@ -83,7 +83,7 @@ plt = pcolor(lon2d,lat2d,var_plot*coef);
 set(plt,'EdgeColor','None')
 % set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
 % set(gca,'CLim',[ 4.9e4,5.9e4])
-% set(gca,'CLim',[ 3e4,5e4])
+set(gca,'CLim',[ -7e-9,7e-9])
 colormap(jet)
 
 if(case_num==5)

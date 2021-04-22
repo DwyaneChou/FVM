@@ -497,10 +497,9 @@
         real(r_kind), dimension(49) :: p1_on_7
         real(r_kind), dimension(49) :: p3_on_7
         real(r_kind), dimension(49) :: p5_on_7
-        
-        integer(i_kind) :: imin(1)
-        
+      
         real(r_kind) :: tau
+        real(r_kind) :: sigma_sum
         real(r_kind), parameter :: eps = 1.e-15
         
         integer(i_kind) :: iCOS,iStencil
@@ -520,16 +519,13 @@
           elseif(iStencil==nStencil1+1)then
             a1 = polyCoef(iStencil,1:m)
             p1 = a1
-            imin = minloc(beta1)
-            beta(1) = beta1(imin(1)) / r(2,2)
+            beta(1) = minval(beta1) / r(2,2)
           elseif(iStencil==nStencil1+2)then
             ! Rematch array for calculating smooth indicator for 3rd order stencil
             a3 = 0
             do iCOS = 1,m
               a3( rematch_idx_3_to_3(iCOS) ) = polyCoef(iStencil,iCOS)
             enddo
-            beta(2) = WENO_smooth_indicator_3(a3) / r(2,2)
-            if( beta(2) > beta(1) ) a3 = p3_SI(imin(1),:)
             
             ! Rematch polynomial coefficients and calculate 3rd order polynomial
             p1_on_3    = 0
@@ -537,6 +533,7 @@
             p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
             
             beta(2) = WENO_smooth_indicator_3(p3)
+            beta(1) = min( beta(1), beta(2) )
           elseif(iStencil==nStencil1+3)then
             ! Rematch array for calculating smooth indicator for 5th order stencil
             a5 = 0
@@ -587,20 +584,19 @@
         !  endif
         !endif
         
-        !! In smooth region, the Smooth Indicator(SI) of high order stencil is smaller than SI for low order stencil
-        !! once the highest order stencil SI is small, we directly use high order stencil
-        !if(beta(nStencil)<=beta(nStencil-1))then
-        !  do iStencil = 1,nStencil-1
-        !    beta(iStencil) = beta(nStencil)
-        !  enddo
-        !endif
+        ! In smooth region, the Smooth Indicator(SI) of high order stencil is smaller than SI for low order stencil
+        ! once the highest order stencil SI is small, we directly use high order stencil
+        if(beta(nStencil)<=beta(nStencil-1))then
+          do iStencil = 1,nStencil-1
+            beta(iStencil) = beta(nStencil)
+          enddo
+        endif
         
         !if(i==23.and.j==23.and.iPatch==1)then
         !  print*,'beta1'
         !  print*,beta1
         !  print*,'beta'
         !  print*,beta
-        !  print*,imin(1)
         !  print*,''
         !  do iStencil = 1,nStencil1
         !   print*,iStencil
