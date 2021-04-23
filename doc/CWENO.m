@@ -2,10 +2,31 @@ clc
 clear
 
 run_seconds      = 2;
-dx               = 1/50;
-dt               = 0.004;
+dx               = 1/200;
+dt               = 0.0005;
 history_interval = 0.2;
 output_path      = 'pictures\';
+
+x_min = -1;
+x_max = 1;
+x_res = dx;
+
+x = x_min:x_res:x_max;
+
+u = ones(size(x));
+f = zeros(size(x));
+
+% Square wave
+f = ones(size(x));
+f(x>-0.4&x<0.4) = 2;
+
+% Sine wave
+% f = sin( x/(x_max-x_min)*2*pi )+1;
+
+nx  = length(f);
+
+nt  = run_seconds/dt;
+ht  = history_interval/dt;
 
 % Prepare for CWENO by Zhu Jun, 2018
 nStencil = 5;
@@ -34,31 +55,11 @@ for j = 1:nStencil
     r(:,j) = r(:,j) / sum(r(:,j));
 end
 
-x_min = -1;
-x_max = 1;
-x_res = dx;
-
-x = x_min:x_res:x_max;
-
-u = ones(size(x));
-f = zeros(size(x));
-
-% Square wave
-f(x>-0.4&x<0.4) = 2;
-
-% Sine wave
-% f = sin( x/(x_max-x_min)*2*pi )+1;
-
-n   = length(f);
-
-nt  = run_seconds/dt;
-ht  = history_interval/dt;
-
 stat.u        = u;
 stat.f        = f;
 stat.x        = x;
 stat.dx       = x_res;
-stat.n        = n;
+stat.n        = nx;
 stat.ht       = ht;
 stat.nt       = nt;
 stat.dt       = dt;
@@ -99,11 +100,11 @@ invA     = stat.invA;
 nStencil = stat.nStencil;
 maxTerms = stat.maxTerms;
 
-eps = 1.E-16;
-nm1 = n-1;
-kappa = 4;
+eps = 1.E-10;
+% kappa = nStencil-1;
+kappa = 1;
 
-stencil_width = 1:4;
+stencil_width = 1:nStencil-1;
 max_stencil_width = max(stencil_width);
 % Extend halo
 nfc = length(f) + 2 * max_stencil_width;
@@ -114,9 +115,9 @@ fc(nfc-max_stencil_width+1:nfc              ) = f(2:max_stencil_width+1);
 
 fR = zeros(1,n+1);
 fL = zeros(1,n+1);
-qc = zeros(5,9);
-q  = zeros(5,9);
-p  = zeros(5,9);
+qc = zeros(nStencil,maxTerms);
+q  = zeros(nStencil,maxTerms);
+p  = zeros(nStencil,maxTerms);
 w = zeros(nStencil,1);
 p_final = zeros(1,maxTerms);
 for i = 1:n
@@ -157,9 +158,9 @@ for i = 1:n
     sigma0 = r01 * ( 1 + abs(xi0-xi1)^kappa / ( xi0 + eps ) );
     sigma1 = r11 * ( 1 + abs(xi0-xi1)^kappa / ( xi1 + eps ) );
     sigma  = sigma0 + sigma1;
-    IS(1) = ( sigma0 * ( fc(idx) - fc(idx-1) + sigma1 * ( fc(idx+1) - fc(idx) ) ) )^2 / sigma;
+    IS(1) = ( sigma0 * ( fc(idx) - fc(idx-1) + sigma1 * ( fc(idx+1) - fc(idx) ) ) )^2 / sigma^2;
     
-    tau = sum( abs( IS(nStencil) - IS(1:nStencil-1) ) / ( nStencil - 1 ) )^( nStencil - 1 );
+    tau = ( sum( abs( IS(nStencil) - IS(1:nStencil-1) ) ) / ( nStencil - 1 ) )^( nStencil - 1 );
     
     for iStencil = 1:nStencil
         w(iStencil) = r(iStencil,nStencil) .* ( 1 + tau / ( IS(iStencil) + eps ) );
@@ -234,7 +235,7 @@ x_max = max(stat.x);
 figure('Visible','off')
 plot(stat.x,stat.f)
 xlim([x_min,x_max])
-ylim([-1,2.5])
+ylim([-0.5,2.5])
 title(['CWENO at ',num2str(time_idx*stat.ht*stat.dt),' second(s)'])
 print(gcf,'-r400','-dpng',[output_path,'CWENO_',num2str(time_idx,'%.4d'),'.png']);
 end
