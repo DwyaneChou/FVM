@@ -17,7 +17,7 @@ module spatial_operators_mod
       
   integer(i_kind),dimension(:,:,:  ), allocatable :: nRecCells ! number of cells for reconstruction
   integer(i_kind),dimension(:,:,:  ), allocatable :: nGstRecCells ! number of cells for ghost point reconstruction
-  integer(i_kind),dimension(:,:,:,:), allocatable :: nWENOCells ! number of cells for WENO reconstruction
+  integer(i_kind),dimension(:,:,:,:), allocatable :: nWENOCells ! number of cells for WENO2D reconstruction
   integer(i_kind),dimension(:,:,:  ), allocatable :: nRecTerms
   
   integer(i_kind),dimension(:,:,:), allocatable :: locPolyDegree ! degree of local reconstruction polynomial
@@ -32,11 +32,14 @@ module spatial_operators_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: iGstCell ! x index of ghost reconstruction cells
   integer(i_kind), dimension(:,:,:,:), allocatable :: jGstCell ! y index of ghost reconstruction cells
   
-  integer(i_kind), dimension(:,:,:,:,:), allocatable :: iWENOCell ! x index of weno reconstruction cells
-  integer(i_kind), dimension(:,:,:,:,:), allocatable :: jWENOCell ! y index of weno reconstruction cells
+  integer(i_kind), dimension(:), allocatable :: iWENOCell ! x index of WENO reconstruction cells
+  integer(i_kind), dimension(:), allocatable :: jWENOCell ! y index of WENO reconstruction cells
   
-  real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: WENOPoly ! polynomial coefficients for WENO
-  real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: invWENOPoly ! polynomial coefficients for WENO
+  integer(i_kind), dimension(:,:,:,:,:), allocatable :: iWENO2DCell ! x index of WENO2D reconstruction cells
+  integer(i_kind), dimension(:,:,:,:,:), allocatable :: jWENO2DCell ! y index of WENO2D reconstruction cells
+  
+  real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: WENOPoly ! polynomial coefficients for WENO2D
+  real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: invWENOPoly ! polynomial coefficients for WENO2D
   
   real   (r_kind), dimension(:,:), allocatable :: existWENOTerm
   
@@ -89,8 +92,8 @@ module spatial_operators_mod
     contains
     subroutine init_spatial_operator
   
-      real(r_kind), dimension(:,:,:,:,:), allocatable :: A
-      real(r_kind), dimension(:,:,:,:,:), allocatable :: invA
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: AGst
+      real(r_kind), dimension(:,:,:,:,:), allocatable :: invAGst
   
       real(r_kind), dimension(:,:,:,:,:), allocatable :: Apoly
       real(r_kind), dimension(:,:,:,:,:), allocatable :: invApoly
@@ -98,8 +101,11 @@ module spatial_operators_mod
       real(r_kind), dimension(:,:,:,:,:), allocatable :: xRel ! relative x coordinate of reconstruction cells
       real(r_kind), dimension(:,:,:,:,:), allocatable :: yRel ! relative y coordinate of reconstruction cells
       
-      real(r_kind), dimension(:,:,:,:,:,:), allocatable :: xRelWENO ! relative x coordinate of reconstruction cells for WENO2D
-      real(r_kind), dimension(:,:,:,:,:,:), allocatable :: yRelWENO ! relative y coordinate of reconstruction cells for WENO2D
+      real(r_kind), dimension(:,:,:,:,:,:), allocatable :: xRelWENO ! relative x coordinate of reconstruction cells for WENO
+      real(r_kind), dimension(:,:,:,:,:,:), allocatable :: yRelWENO ! relative y coordinate of reconstruction cells for WENO
+      
+      real(r_kind), dimension(:,:,:,:,:,:), allocatable :: xRelWENO2D ! relative x coordinate of reconstruction cells for WENO2D
+      real(r_kind), dimension(:,:,:,:,:,:), allocatable :: yRelWENO2D ! relative y coordinate of reconstruction cells for WENO2D
       
       real(r_kind), dimension(:,:,:,:,:), allocatable :: xGst ! relative x coordinate of Ghost reconstruction cells
       real(r_kind), dimension(:,:,:,:,:), allocatable :: yGst ! relative y coordinate of Ghost reconstruction cells
@@ -156,9 +162,6 @@ module spatial_operators_mod
       allocate(xRel(4,maxRecCells,ids:ide,jds:jde,ifs:ife))
       allocate(yRel(4,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
-      allocate(xRelWENO(nStencil_all,4,maxRecCells,ids:ide,jds:jde,ifs:ife))
-      allocate(yRelWENO(nStencil_all,4,maxRecCells,ids:ide,jds:jde,ifs:ife))
-      
       allocate(xGst(4,maxRecCells,ids:ide,jds:jde,ifs:ife))
       allocate(yGst(4,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
@@ -185,11 +188,14 @@ module spatial_operators_mod
       
         allocate(existPolyTerm(maxRecCells))
       elseif(trim(reconstruct_scheme)=='WENO2D')then
+        allocate(xRelWENO2D(nStencil_all,4,maxRecCells,ids:ide,jds:jde,ifs:ife))
+        allocate(yRelWENO2D(nStencil_all,4,maxRecCells,ids:ide,jds:jde,ifs:ife))
+      
         allocate(iCenWENO    (nStencil_all,ids:ide,jds:jde,ifs:ife))
         allocate(nWENOCells  (nStencil_all,ids:ide,jds:jde,ifs:ife))
       
-        allocate(iWENOCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
-        allocate(jWENOCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
+        allocate(iWENO2DCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
+        allocate(jWENO2DCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
         
         allocate(WENOPoly   (nStencil_all,maxRecCells,maxRecCells,ims:ime,jms:jme,ifs:ife))
         allocate(invWENOPoly(nStencil_all,maxRecCells,maxRecCells,ims:ime,jms:jme,ifs:ife))
@@ -211,13 +217,24 @@ module spatial_operators_mod
         allocate(polyMatrixB(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
         allocate(polyMatrixT(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
         allocate(polyMatrixQ(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+      elseif(trim(reconstruct_scheme)=='WENO')then
+        allocate(iWENOCell(9))
+        allocate(jWENOCell(9))
+        
+        allocate(wenoType(ids:ide,jds:jde,ifs:ife))
+        
+        allocate(polyMatrixL(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixR(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixB(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixT(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        allocate(polyMatrixQ(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       endif
       
       allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       allocate(recMatrixDy(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       
-      allocate(A   (maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
-      allocate(invA(maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
+      allocate(AGst   (maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
+      allocate(invAGst(maxRecCells,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
       allocate(gstMatrix(maxGhostPointsOnCell,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
@@ -335,42 +352,42 @@ module spatial_operators_mod
             do i = ids,ide
               iCOS = 5
               ! Left
-              iWENOCell(1,iCOS,i,j,iPatch) = i - 1
-              jWENOCell(1,iCOS,i,j,iPatch) = j
+              iWENO2DCell(1,iCOS,i,j,iPatch) = i - 1
+              jWENO2DCell(1,iCOS,i,j,iPatch) = j
               ! Low Left
-              iWENOCell(2,iCOS,i,j,iPatch) = i - 1
-              jWENOCell(2,iCOS,i,j,iPatch) = j - 1
+              iWENO2DCell(2,iCOS,i,j,iPatch) = i - 1
+              jWENO2DCell(2,iCOS,i,j,iPatch) = j - 1
               ! Low Center
-              iWENOCell(3,iCOS,i,j,iPatch) = i
-              jWENOCell(3,iCOS,i,j,iPatch) = j - 1
+              iWENO2DCell(3,iCOS,i,j,iPatch) = i
+              jWENO2DCell(3,iCOS,i,j,iPatch) = j - 1
               ! Low Right
-              iWENOCell(4,iCOS,i,j,iPatch) = i + 1
-              jWENOCell(4,iCOS,i,j,iPatch) = j - 1
+              iWENO2DCell(4,iCOS,i,j,iPatch) = i + 1
+              jWENO2DCell(4,iCOS,i,j,iPatch) = j - 1
               ! Right
-              iWENOCell(5,iCOS,i,j,iPatch) = i + 1
-              jWENOCell(5,iCOS,i,j,iPatch) = j
+              iWENO2DCell(5,iCOS,i,j,iPatch) = i + 1
+              jWENO2DCell(5,iCOS,i,j,iPatch) = j
               ! Up Right
-              iWENOCell(6,iCOS,i,j,iPatch) = i + 1
-              jWENOCell(6,iCOS,i,j,iPatch) = j + 1
+              iWENO2DCell(6,iCOS,i,j,iPatch) = i + 1
+              jWENO2DCell(6,iCOS,i,j,iPatch) = j + 1
               ! Up Center
-              iWENOCell(7,iCOS,i,j,iPatch) = i
-              jWENOCell(7,iCOS,i,j,iPatch) = j + 1
+              iWENO2DCell(7,iCOS,i,j,iPatch) = i
+              jWENO2DCell(7,iCOS,i,j,iPatch) = j + 1
               ! Up Left
-              iWENOCell(8,iCOS,i,j,iPatch) = i - 1
-              jWENOCell(8,iCOS,i,j,iPatch) = j + 1
+              iWENO2DCell(8,iCOS,i,j,iPatch) = i - 1
+              jWENO2DCell(8,iCOS,i,j,iPatch) = j + 1
               
               nWENOCells(1:nStencil1,i,j,iPatch) = 9
               
               do iStencil = 1,nStencil1
                 iCOS = 0
-                iR = iWENOCell(iStencil,5,i,j,iPatch)
-                jR = jWENOCell(iStencil,5,i,j,iPatch)
+                iR = iWENO2DCell(iStencil,5,i,j,iPatch)
+                jR = jWENO2DCell(iStencil,5,i,j,iPatch)
                 do jRec = -1,1
                   do iRec = -1,1
                     if( .not.inCorner(iR+iRec,jR+jRec,iPatch) )then
                       iCOS = iCOS + 1
-                      iWENOCell(iStencil,iCOS,i,j,iPatch) = iR + iRec
-                      jWENOCell(iStencil,iCOS,i,j,iPatch) = jR + jRec
+                      iWENO2DCell(iStencil,iCOS,i,j,iPatch) = iR + iRec
+                      jWENO2DCell(iStencil,iCOS,i,j,iPatch) = jR + jRec
                       
                       if(iRec==0.and.jRec==0)iCenWENO(iStencil,i,j,iPatch) = iCOS
                     endif
@@ -386,8 +403,8 @@ module spatial_operators_mod
                   do iRec = -(iStencil-nStencil1)+1,(iStencil-nStencil1)-1
                     if( .not.inCorner(i+iRec,j+jRec,iPatch) )then
                       iCOS = iCOS + 1
-                      iWENOCell(iStencil,iCOS,i,j,iPatch) = i + iRec
-                      jWENOCell(iStencil,iCOS,i,j,iPatch) = j + jRec
+                      iWENO2DCell(iStencil,iCOS,i,j,iPatch) = i + iRec
+                      jWENO2DCell(iStencil,iCOS,i,j,iPatch) = j + jRec
                       
                       if(iRec==0.and.jRec==0)iCenWENO(iStencil,i,j,iPatch) = iCOS
                     endif
@@ -444,11 +461,11 @@ module spatial_operators_mod
               do iStencil = 1,nStencil_all
                 nRC = nWENOCells(iStencil,i,j,iPatch)
                 do iCOS = 1,nRC
-                  iRec = iWENOCell(iStencil,iCOS,i,j,iPatch)
-                  jRec = jWENOCell(iStencil,iCOS,i,j,iPatch)
+                  iRec = iWENO2DCell(iStencil,iCOS,i,j,iPatch)
+                  jRec = jWENO2DCell(iStencil,iCOS,i,j,iPatch)
                   
-                  xRelWENO(iStencil,:,iCOS,i,j,iPatch) = ( x(ccs:cce,iRec,jRec,iPatch) - x(cc,i,j,iPatch) ) * recdx
-                  yRelWENO(iStencil,:,iCOS,i,j,iPatch) = ( y(ccs:cce,iRec,jRec,iPatch) - y(cc,i,j,iPatch) ) * recdy
+                  xRelWENO2D(iStencil,:,iCOS,i,j,iPatch) = ( x(ccs:cce,iRec,jRec,iPatch) - x(cc,i,j,iPatch) ) * recdx
+                  yRelWENO2D(iStencil,:,iCOS,i,j,iPatch) = ( y(ccs:cce,iRec,jRec,iPatch) - y(cc,i,j,iPatch) ) * recdy
                 enddo
               enddo
             enddo
@@ -463,29 +480,29 @@ module spatial_operators_mod
               ! Calculate WENO 2D polynomial coefficient matrices
               do iStencil = 1,nStencil1
                 ic = iCenWENO(iStencil,i,j,iPatch)
-                if( inCorner(iWENOCell(iStencil,ic,i,j,iPatch),jWENOCell(iStencil,ic,i,j,iPatch),iPatch) )then
+                if( inCorner(iWENO2DCell(iStencil,ic,i,j,iPatch),jWENO2DCell(iStencil,ic,i,j,iPatch),iPatch) )then
                   nWENOCells           (iStencil,  i,j,iPatch) = 0
                   rematch_idx_3_to_3_SI(iStencil,:,i,j,iPatch) = 0
                 else
                   nRC = nWENOCells(iStencil,i,j,iPatch)
-                  nxp = maxval(iWENOCell(iStencil,1:nRC,i,j,iPatch)) - minval(iWENOCell(iStencil,1:nRC,i,j,iPatch)) + 1
-                  nyp = maxval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) + 1
+                  nxp = maxval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
+                  nyp = maxval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
                   
                   ! Pick the cells that not in corner for reconstruction
-                  iidx = minloc( abs( x(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
-                  jidx = minloc( abs( y(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                  iidx = minloc( abs( x(cc,iWENO2DCell(iStencil,1:nRC,i,j,iPatch),jWENO2DCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                  jidx = minloc( abs( y(cc,iWENO2DCell(iStencil,1:nRC,i,j,iPatch),jWENO2DCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
                   
                   xdir = 1
                   ydir = 1
-                  if(iWENOCell(iStencil,iidx(1),i,j,iPatch)>iWENOCell(iStencil,1,i,j,iPatch))xdir=-1
-                  if(jWENOCell(iStencil,jidx(2),i,j,iPatch)>jWENOCell(iStencil,1,i,j,iPatch))ydir=-1
+                  if(iWENO2DCell(iStencil,iidx(1),i,j,iPatch)>iWENO2DCell(iStencil,1,i,j,iPatch))xdir=-1
+                  if(jWENO2DCell(iStencil,jidx(2),i,j,iPatch)>jWENO2DCell(iStencil,1,i,j,iPatch))ydir=-1
                   
                   k = 0
                   do jR = 0,nyp-1
                     do iR = 0,nxp-1
                       k = k + 1
-                      iRec = iWENOCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
-                      jRec = jWENOCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
+                      iRec = iWENO2DCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
+                      jRec = jWENO2DCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
                       if( .not.inCorner(iRec,jRec,iPatch) )then
                         existWENOTerm(iStencil,k) = 1
                       else
@@ -503,8 +520,8 @@ module spatial_operators_mod
                         iCOS = iCOS + 1
                         
                         call calc_rectangle_poly_integration(nxp,nyp,&
-                                                             xRelWENO(iStencil,1,iCOS,i,j,iPatch),xRelWENO(iStencil,2,iCOS,i,j,iPatch),&
-                                                             yRelWENO(iStencil,1,iCOS,i,j,iPatch),yRelWENO(iStencil,4,iCOS,i,j,iPatch),&
+                                                             xRelWENO2D(iStencil,1,iCOS,i,j,iPatch),xRelWENO2D(iStencil,2,iCOS,i,j,iPatch),&
+                                                             yRelWENO2D(iStencil,1,iCOS,i,j,iPatch),yRelWENO2D(iStencil,4,iCOS,i,j,iPatch),&
                                                              WENOPoly(iStencil,iCOS,1:nRC,i,j,iPatch),existWENOTerm(iStencil,1:nxp*nyp))
                         
                         rematch_idx_3_to_3_SI(iStencil,iCOS,i,j,iPatch) = k
@@ -516,7 +533,7 @@ module spatial_operators_mod
                   if(invstat==0)then
                     print*,'Inverse Apoly dost not exist'
                     print*,'i,j,iPatch,nRC,nxp,nyp are'
-                    print*,i,j,iPatch,nRC,nxp,nyp,iStencil,iWENOCell(iStencil,iC,i,j,iPatch),jWENOCell(iStencil,iC,i,j,iPatch)
+                    print*,i,j,iPatch,nRC,nxp,nyp,iStencil,iWENO2DCell(iStencil,iC,i,j,iPatch),jWENO2DCell(iStencil,iC,i,j,iPatch)
                     stop 'Check BRINV for calculating WENO 2D low order polynomial matrix'
                   endif
                 endif
@@ -524,24 +541,24 @@ module spatial_operators_mod
               
               do iStencil = nStencil1+1,nStencil_all
                 nRC = nWENOCells(iStencil,i,j,iPatch)
-                nxp = maxval(iWENOCell(iStencil,1:nRC,i,j,iPatch)) - minval(iWENOCell(iStencil,1:nRC,i,j,iPatch)) + 1
-                nyp = maxval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENOCell(iStencil,1:nRC,i,j,iPatch)) + 1
+                nxp = maxval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
+                nyp = maxval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
                 
                 ! Pick the cells that not in corner for reconstruction
-                iidx = minloc( abs( x(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
-                jidx = minloc( abs( y(cc,iWENOCell(iStencil,1:nRC,i,j,iPatch),jWENOCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                iidx = minloc( abs( x(cc,iWENO2DCell(iStencil,1:nRC,i,j,iPatch),jWENO2DCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
+                jidx = minloc( abs( y(cc,iWENO2DCell(iStencil,1:nRC,i,j,iPatch),jWENO2DCell(iStencil,1:nRC,i,j,iPatch),iPatch) ) )
                 
                 xdir = 1
                 ydir = 1
-                if(iWENOCell(iStencil,iidx(1),i,j,iPatch)>iWENOCell(iStencil,1,i,j,iPatch))xdir=-1
-                if(jWENOCell(iStencil,jidx(2),i,j,iPatch)>jWENOCell(iStencil,1,i,j,iPatch))ydir=-1
+                if(iWENO2DCell(iStencil,iidx(1),i,j,iPatch)>iWENO2DCell(iStencil,1,i,j,iPatch))xdir=-1
+                if(jWENO2DCell(iStencil,jidx(2),i,j,iPatch)>jWENO2DCell(iStencil,1,i,j,iPatch))ydir=-1
                 
                 k = 0
                 do jR = 0,nyp-1
                   do iR = 0,nxp-1
                     k = k + 1
-                    iRec = iWENOCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
-                    jRec = jWENOCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
+                    iRec = iWENO2DCell(iStencil,iidx(1),i,j,iPatch) + xdir * iR
+                    jRec = jWENO2DCell(iStencil,jidx(2),i,j,iPatch) + ydir * jR
                     if( .not.inCorner(iRec,jRec,iPatch) )then
                       existWENOTerm(iStencil,k) = 1
                     else
@@ -559,8 +576,8 @@ module spatial_operators_mod
                       iCOS = iCOS + 1
                       
                       call calc_rectangle_poly_integration(nxp,nyp,&
-                                                           xRelWENO(iStencil,1,iCOS,i,j,iPatch),xRelWENO(iStencil,2,iCOS,i,j,iPatch),&
-                                                           yRelWENO(iStencil,1,iCOS,i,j,iPatch),yRelWENO(iStencil,4,iCOS,i,j,iPatch),&
+                                                           xRelWENO2D(iStencil,1,iCOS,i,j,iPatch),xRelWENO2D(iStencil,2,iCOS,i,j,iPatch),&
+                                                           yRelWENO2D(iStencil,1,iCOS,i,j,iPatch),yRelWENO2D(iStencil,4,iCOS,i,j,iPatch),&
                                                            WENOPoly(iStencil,iCOS,1:nRC,i,j,iPatch),existWENOTerm(iStencil,1:nxp*nyp))
                       
                       if(nxp==3)then
@@ -578,7 +595,7 @@ module spatial_operators_mod
                 if(invstat==0)then
                   print*,'Inverse Apoly dost not exist'
                   print*,'i,j,iPatch,nRC,nxp,nyp are'
-                    print*,i,j,iPatch,nRC,nxp,nyp,iStencil,iWENOCell(iStencil,iCenWENO(iStencil,i,j,iPatch),i,j,iPatch),jWENOCell(iStencil,iCenWENO(iStencil,i,j,iPatch),i,j,iPatch)
+                    print*,i,j,iPatch,nRC,nxp,nyp,iStencil,iWENO2DCell(iStencil,iCenWENO(iStencil,i,j,iPatch),i,j,iPatch),jWENO2DCell(iStencil,iCenWENO(iStencil,i,j,iPatch),i,j,iPatch)
                   stop 'Check BRINV for calculating WENO 2D high order polynomial matrix'
                 endif
               enddo
@@ -819,13 +836,13 @@ module spatial_operators_mod
                 do iR = 1,nxp
                   iCOS = iCOS + 1
                   call calc_rectangle_poly_integration(nxp,nyp,xGst(1,iCOS,i,j,iPatch),xGst(2,iCOS,i,j,iPatch),&
-                                                               yGst(1,iCOS,i,j,iPatch),yGst(4,iCOS,i,j,iPatch),A(iCOS,1:nRC,i,j,iPatch))
+                                                               yGst(1,iCOS,i,j,iPatch),yGst(4,iCOS,i,j,iPatch),AGst(iCOS,1:nRC,i,j,iPatch))
                 enddo
               enddo
               
-              call BRINV(nRC,A(1:nRC,1:nRC,i,j,iPatch),invA(1:nRC,1:nRC,i,j,iPatch),invstat)
+              call BRINV(nRC,AGst(1:nRC,1:nRC,i,j,iPatch),invAGst(1:nRC,1:nRC,i,j,iPatch),invstat)
               if(invstat==0)then
-                print*,'Inverse A dost not exist'
+                print*,'Inverse AGst dost not exist'
                 print*,'i,j,iPatch,nRC,nxp,nyp are'
                 print*,i,j,iPatch,nRC,nxp,nyp
                 stop 'Check BRINV for Special treamtment on boundary cells'
@@ -836,7 +853,7 @@ module spatial_operators_mod
               yg(1:pg) = ( y(cgs:cgs+pg-1,i,j,iPatch) - y(cc,i,j,iPatch) ) * recdy
               call calc_rectangle_poly_matrix(nxp,nyp,pg,xg,yg,gstMatrix(1:pg,1:nRC,i,j,iPatch))
               
-              gstMatrix(1:pg,1:nRC,i,j,iPatch) = matmul( gstMatrix(1:pg,1:nRC,i,j,iPatch), invA(1:nRC,1:nRC,i,j,iPatch) )
+              gstMatrix(1:pg,1:nRC,i,j,iPatch) = matmul( gstMatrix(1:pg,1:nRC,i,j,iPatch), invAGst(1:nRC,1:nRC,i,j,iPatch) )
             endif
           enddo
         enddo
@@ -1329,8 +1346,8 @@ module spatial_operators_mod
                 m = nWENOCells(iStencil,i,j,iPatch)
                 if(m>0)then
                   do iCOS = 1,m
-                    iRec = iWENOCell(iStencil,iCOS,i,j,iPatch)
-                    jRec = jWENOCell(iStencil,iCOS,i,j,iPatch)
+                    iRec = iWENO2DCell(iStencil,iCOS,i,j,iPatch)
+                    jRec = jWENO2DCell(iStencil,iCOS,i,j,iPatch)
                     
                     uWENO(iStencil,iCOS) = q(iRec,jRec,iPatch)
                   enddo

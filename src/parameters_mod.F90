@@ -36,7 +36,7 @@ module parameters_mod
   ! dynamic options
   integer(i_kind) :: nQuadOrder
   integer(i_kind) :: quad_opt
-  character*200   :: reconstruct_scheme = 'WENO2D'
+  character*200   :: reconstruct_scheme = 'WENO'
   integer(i_kind) :: stencil_width = 5
   integer(i_kind) :: recBdy        = 2
   real   (r_kind) :: epsilon       = 1.e-2 ! Coefficient for avioding divide 0 in WLS-ENO, 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
@@ -152,19 +152,31 @@ module parameters_mod
         stencil_width = 3
       endif
       if(nPointsOnEdge/=1)then
-        print*,'nPointsOnEdge is not 1, during using WENO, nPointsOnEdge has been reset to 1'
+        print*,'nPointsOnEdge is not 1, during using WENO3, nPointsOnEdge has been reset to 1'
         nPointsOnEdge = 1
       endif
     endif
     
     if(trim(reconstruct_scheme)=='WENO5')then
       if(stencil_width/=5)then
-        print*,'stencil_width is not 5, during using WENO, stencil_width has been reset to 5'
+        print*,'stencil_width is not 5, during using WENO5, stencil_width has been reset to 5'
         stencil_width = 5
       endif
       if(nPointsOnEdge/=1)then
-        print*,'nPointsOnEdge is not 1, during using WENO, nPointsOnEdge has been reset to 1'
+        print*,'nPointsOnEdge is not 1, during using WENO5, nPointsOnEdge has been reset to 1'
         nPointsOnEdge = 1
+      endif
+    endif
+    
+    if(trim(reconstruct_scheme)=='WENO')then
+      nStencil = 9
+      if(stencil_width/=5)then
+        print*,'stencil_width is not 5, during using WENO, stencil_width has been reset to 5'
+        stencil_width = 5
+      endif
+      if(nPointsOnEdge/=2)then
+        print*,'nPointsOnEdge is not 2, during using WENO, nPointsOnEdge has been reset to 2'
+        nPointsOnEdge = 2
       endif
     endif
     
@@ -191,9 +203,11 @@ module parameters_mod
     xhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
     yhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
     
-    nStencil     = recBdy + 1
-    nStencil1    = 8
-    nStencil_all = nStencil1 + recBdy + 1 ! 4 1st order stencils + high order stencils
+    if(trim(reconstruct_scheme)=='WENO2D')then
+      nStencil     = recBdy + 1
+      nStencil1    = 8
+      nStencil_all = nStencil1 + recBdy + 1 ! 4 1st order stencils + high order stencils
+    endif
     
     ! Calculate starting and ending index for physical domain
     ids  = 1

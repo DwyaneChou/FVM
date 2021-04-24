@@ -15,11 +15,11 @@ case_num    = 2, ! Choose from 2, 5, 6, 8, 9
 &domain
 dx                   = 2,  ! Unit: degree
 dy                   = 2,  ! Unit: degree
-nPointsOnEdge        = 3,
+nPointsOnEdge        = 2,
 /
 
 &dynamic_opt
-reconstruct_scheme = 'WENO2D' ! Choose from 'WLS-ENO', 'Polynomial', 'WENO3', 'WENO5', 'WENO2D'
+reconstruct_scheme = 'WENO' ! Choose from 'WLS-ENO', 'Polynomial', 'WENO3', 'WENO5', 'WENO2D', 'WENO'
 epsilon            = 1.e-2! Coefficient for avioding divide 0 in WLS-ENO
 stencil_width      = 5,
 quad_opt           = 1, ! 1 for square gaussian quadratrue, 2 for triangular quaduature
