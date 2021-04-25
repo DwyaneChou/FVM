@@ -15,11 +15,6 @@
       integer(i_kind) :: maxRecCells
       integer(i_kind) :: maxRecTerms
       
-      real   (r_kind) :: recCoef
-      real   (r_kind) :: recdx
-      real   (r_kind) :: recdy
-      real   (r_kind) :: recdV
-      
       ! For WENO 2D
       integer(i_kind), dimension(:,:,:,:), allocatable :: iCenWENO           ! center cell index on reconstruction stencil for WENO2D
       real   (r_kind), dimension(:,:    ), allocatable :: r                  ! optimal coefficients for WENO 2D
@@ -567,7 +562,11 @@
         
       end subroutine WENO3
       
-      subroutine WENO
+      subroutine WENO(qrec,q,wenoType)
+        real   (r_kind), intent(out) :: qrec(:)
+        real   (r_kind), intent(in ) :: q(25)
+        integer(i_kind), intent(in ) :: wenoType
+        
         integer(i_kind) :: i,j
         
       end subroutine WENO

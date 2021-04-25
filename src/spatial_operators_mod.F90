@@ -62,12 +62,6 @@ module spatial_operators_mod
   
   real   (r_kind), dimension(:,:,:,:), allocatable :: dh
   
-  !real(r_kind) :: recCoef
-  !real(r_kind) :: recdx
-  !real(r_kind) :: recdy
-  !real(r_kind) :: recdV
-  real(r_kind) :: dV
-  
   real   (r_kind), dimension(:,:,:,:  ), allocatable :: qC
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: qL
   real   (r_kind), dimension(:,:,:,:,:), allocatable :: qR
@@ -109,24 +103,11 @@ module spatial_operators_mod
       
       real(r_kind), dimension(:,:,:,:,:), allocatable :: xGst ! relative x coordinate of Ghost reconstruction cells
       real(r_kind), dimension(:,:,:,:,:), allocatable :: yGst ! relative y coordinate of Ghost reconstruction cells
-  
-      real(r_kind), dimension(:), allocatable :: xL
-      real(r_kind), dimension(:), allocatable :: xR
-      real(r_kind), dimension(:), allocatable :: xB
-      real(r_kind), dimension(:), allocatable :: xT
-      
-      real(r_kind), dimension(:), allocatable :: yL
-      real(r_kind), dimension(:), allocatable :: yR
-      real(r_kind), dimension(:), allocatable :: yB
-      real(r_kind), dimension(:), allocatable :: yT
-      
-      real(r_kind), dimension(:), allocatable :: xg
-      real(r_kind), dimension(:), allocatable :: yg
-      
-      real(r_kind), dimension(:), allocatable :: xq
-      real(r_kind), dimension(:), allocatable :: yq
       
       real(r_kind), dimension(:), allocatable :: existPolyTerm
+
+      real(r_kind), dimension(:), allocatable :: xg
+      real(r_kind), dimension(:), allocatable :: yg
       
       integer(i_kind) :: i,j,k,iPatch
       integer(i_kind) :: iCOS ! indices of Cells On Stencils
@@ -164,6 +145,9 @@ module spatial_operators_mod
       
       allocate(xGst(4,maxRecCells,ids:ide,jds:jde,ifs:ife))
       allocate(yGst(4,maxRecCells,ids:ide,jds:jde,ifs:ife))
+
+      allocate(xg(nPointsOnCell))
+      allocate(yg(nPointsOnCell))
       
       if(trim(reconstruct_scheme)=='WLS-ENO')then
         allocate(iCenCell  (                              ims:ime,jms:jme,ifs:ife))
@@ -217,17 +201,10 @@ module spatial_operators_mod
         allocate(polyMatrixB(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
         allocate(polyMatrixT(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
         allocate(polyMatrixQ(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
+        
+        iCenWENO = 0
       elseif(trim(reconstruct_scheme)=='WENO')then
-        allocate(iWENOCell(9))
-        allocate(jWENOCell(9))
-        
         allocate(wenoType(ids:ide,jds:jde,ifs:ife))
-        
-        allocate(polyMatrixL(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
-        allocate(polyMatrixR(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
-        allocate(polyMatrixB(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
-        allocate(polyMatrixT(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
-        allocate(polyMatrixQ(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
       endif
       
       allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -258,26 +235,6 @@ module spatial_operators_mod
       
       allocate(dphitdx(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
       allocate(dphitdy(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife))
-      
-      allocate(xL(nPointsOnEdge))
-      allocate(xR(nPointsOnEdge))
-      allocate(xB(nPointsOnEdge))
-      allocate(xT(nPointsOnEdge))
-      
-      allocate(yL(nPointsOnEdge))
-      allocate(yR(nPointsOnEdge))
-      allocate(yB(nPointsOnEdge))
-      allocate(yT(nPointsOnEdge))
-      
-      allocate(xg(nPointsOnCell))
-      allocate(yg(nPointsOnCell))
-      
-      allocate(xq(nQuadPointsOncell))
-      allocate(yq(nQuadPointsOncell))
-      
-      iCenWENO = 0
-      
-      dV = dx * dy
       
       print*,''
       print*,'Set reconstruction cells on each stencil'
@@ -417,25 +374,6 @@ module spatial_operators_mod
         enddo
       endif
       
-      xL = - dx / 2.
-      xR =   dx / 2.
-      do iQP = 1,nPointsOnEdge
-        xB(iQP) = xL(1) + dx * quad_pos_1d(iQP)
-        xT(iQP) = xB(iQP)
-      enddo
-      
-      yB = - dy / 2.
-      yT =   dy / 2.
-      do jQP = 1,nPointsOnEdge
-        yL(jQP) = yB(1) + dy * quad_pos_1d(jQP)
-        yR(jQP) = yL(jQP)
-      enddo
-      
-      recCoef = 1.
-      recdx   = 1. / ( dx * recCoef )
-      recdy   = 1. / ( dy * recCoef )
-      recdV   = 1. / ( recCoef**2 )
-      
       !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC) COLLAPSE(3)
       do iPatch = ifs,ife
         do j = jds,jde
@@ -473,7 +411,7 @@ module spatial_operators_mod
         enddo
         !$OMP END PARALLEL DO
         
-        !$OMP PARALLEL DO PRIVATE(i,j,iStencil,ic,nRC,iCOS,invstat,nxp,nyp,iidx,jidx,xdir,ydir,k,iR,jR,iRec,jRec,existWENOTerm,iPOC,xq,yq)
+        !$OMP PARALLEL DO PRIVATE(i,j,iStencil,ic,nRC,iCOS,invstat,nxp,nyp,iidx,jidx,xdir,ydir,k,iR,jR,iRec,jRec,existWENOTerm,iPOC)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -604,15 +542,11 @@ module spatial_operators_mod
               nRC = stencil_width**2
               nxp = stencil_width
               nyp = stencil_width
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL*recdx,yL*recdy,polyMatrixL(:,1:nRC,i,j,iPatch))
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR*recdx,yR*recdy,polyMatrixR(:,1:nRC,i,j,iPatch))
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB*recdx,yB*recdy,polyMatrixB(:,1:nRC,i,j,iPatch))
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT*recdx,yT*recdy,polyMatrixT(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL,yL,polyMatrixL(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR,yR,polyMatrixR(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB,yB,polyMatrixB(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT,yT,polyMatrixT(:,1:nRC,i,j,iPatch))
               
-              do iPOC = 1,nQuadPointsOncell
-                xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
-                yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
-              enddo
               call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,polyMatrixQ(:,1:nRC,i,j,iPatch))
               
               ! Calculate derivative matrix on quadrature points on cell
@@ -703,10 +637,10 @@ module spatial_operators_mod
               enddo
               
               ! Calculate reconstruction matrix on edge
-              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xL*recdx,yL*recdy,recMatrixL(:,1:nRT,i,j,iPatch))
-              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xR*recdx,yR*recdy,recMatrixR(:,1:nRT,i,j,iPatch))
-              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xB*recdx,yB*recdy,recMatrixB(:,1:nRT,i,j,iPatch))
-              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xT*recdx,yT*recdy,recMatrixT(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xL,yL,recMatrixL(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xR,yR,recMatrixR(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xB,yB,recMatrixB(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xT,yT,recMatrixT(:,1:nRT,i,j,iPatch))
               
               do iPOC = 1,nQuadPointsOncell
                 xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
@@ -784,10 +718,10 @@ module spatial_operators_mod
               enddo
             
               ! Calculate reconstruction matrix on edge
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL*recdx,yL*recdy,polyMatrixL(:,1:nRC,i,j,iPatch),existPolyTerm)
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR*recdx,yR*recdy,polyMatrixR(:,1:nRC,i,j,iPatch),existPolyTerm)
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB*recdx,yB*recdy,polyMatrixB(:,1:nRC,i,j,iPatch),existPolyTerm)
-              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT*recdx,yT*recdy,polyMatrixT(:,1:nRC,i,j,iPatch),existPolyTerm)
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL,yL,polyMatrixL(:,1:nRC,i,j,iPatch),existPolyTerm)
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xR,yR,polyMatrixR(:,1:nRC,i,j,iPatch),existPolyTerm)
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB,yB,polyMatrixB(:,1:nRC,i,j,iPatch),existPolyTerm)
+              call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT,yT,polyMatrixT(:,1:nRC,i,j,iPatch),existPolyTerm)
               
               call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,polyMatrixQ(:,1:nRC,i,j,iPatch),existPolyTerm)
               
@@ -1239,8 +1173,8 @@ module spatial_operators_mod
       real(r_kind), dimension(maxRecCells             ) :: u
       real(r_kind), dimension(maxRecCells ,maxRecTerms) :: coordMtx
       real(r_kind), dimension(             maxRecTerms) :: polyCoef
-      real(r_kind), dimension(nStencil_all,maxRecCells) :: uWENO
-      real(r_kind), dimension(nStencil_all,maxRecTerms) :: polyWENO
+      real(r_kind), dimension(nStencil_all,maxRecCells) :: uWENO2D
+      real(r_kind), dimension(nStencil_all,maxRecTerms) :: polyWENO2D
       
       ! For WENO 2D
       real(r_kind), dimension(maxRecTerms) :: p
@@ -1338,7 +1272,7 @@ module spatial_operators_mod
         enddo
         !$OMP END PARALLEL DO
       elseif(trim(reconstruct_scheme)=='WENO2D')then
-        !$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,uWENO,polyWENO,p) COLLAPSE(3)
+        !$OMP PARALLEL DO PRIVATE(j,i,iStencil,m,iCOS,iRec,jRec,uWENO2D,polyWENO2D,p) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -1349,14 +1283,14 @@ module spatial_operators_mod
                     iRec = iWENO2DCell(iStencil,iCOS,i,j,iPatch)
                     jRec = jWENO2DCell(iStencil,iCOS,i,j,iPatch)
                     
-                    uWENO(iStencil,iCOS) = q(iRec,jRec,iPatch)
+                    uWENO2D(iStencil,iCOS) = q(iRec,jRec,iPatch)
                   enddo
                   
-                  polyWENO(iStencil,1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),uWENO(iStencil,1:m))
+                  polyWENO2D(iStencil,1:m) = matmul(invWENOPoly(iStencil,1:m,1:m,i,j,iPatch),uWENO2D(iStencil,1:m))
                 endif
               enddo
               
-              call WENO2D(polyWENO,nWENOCells(:,i,j,iPatch)    ,&
+              call WENO2D(polyWENO2D,nWENOCells(:,i,j,iPatch)  ,&
                           rematch_idx_3_to_3_SI(:,:,i,j,iPatch),&
                           rematch_idx_3_to_3(:,i,j,iPatch)     ,&
                           rematch_idx_5_to_5(:,i,j,iPatch)     ,&

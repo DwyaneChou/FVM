@@ -97,6 +97,24 @@ MODULE mesh_mod
   logical, dimension(:,:,:), allocatable :: inDomain
   logical, dimension(:,:,:), allocatable :: inCorner
   logical, dimension(:,:,:), allocatable :: noCorner
+
+  real(r_kind), dimension(:), allocatable :: xL
+  real(r_kind), dimension(:), allocatable :: xR
+  real(r_kind), dimension(:), allocatable :: xB
+  real(r_kind), dimension(:), allocatable :: xT
+  
+  real(r_kind), dimension(:), allocatable :: yL
+  real(r_kind), dimension(:), allocatable :: yR
+  real(r_kind), dimension(:), allocatable :: yB
+  real(r_kind), dimension(:), allocatable :: yT
+  
+  real(r_kind), dimension(:), allocatable :: xq
+  real(r_kind), dimension(:), allocatable :: yq
+  
+  real   (r_kind) :: recCoef
+  real   (r_kind) :: recdx
+  real   (r_kind) :: recdy
+  real   (r_kind) :: recdV
       
   contains
   
@@ -202,6 +220,19 @@ MODULE mesh_mod
     allocate(inCorner  (ims:ime,jms:jme,ifs:ife))
     allocate(noCorner  (ims:ime,jms:jme,ifs:ife))
     
+    allocate(xL(nPointsOnEdge))
+    allocate(xR(nPointsOnEdge))
+    allocate(xB(nPointsOnEdge))
+    allocate(xT(nPointsOnEdge))
+    
+    allocate(yL(nPointsOnEdge))
+    allocate(yR(nPointsOnEdge))
+    allocate(yB(nPointsOnEdge))
+    allocate(yT(nPointsOnEdge))
+    
+    allocate(xq(nQuadPointsOncell))
+    allocate(yq(nQuadPointsOncell))
+      
     inDomain(ims:ime,jms:jme,ifs:ife) = .false. 
     inDomain(ids:ide,jds:jde,ifs:ife) = .true.
     
@@ -479,6 +510,43 @@ MODULE mesh_mod
     !deallocate( secy )
     !deallocate( cscy )
     
+    recCoef = 1.
+    recdx   = 1. / ( dx * recCoef )
+    recdy   = 1. / ( dy * recCoef )
+    recdV   = 1. / ( recCoef**2 )
+    
+    i      = 1
+    j      = 1
+    iPatch = 1
+    
+    do iPOC = 1,nQuadPointsOncell
+      xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
+      yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
+    enddo
+      
+    xL = - dx / 2.
+    xR =   dx / 2.
+    do iQP = 1,nPointsOnEdge
+      xB(iQP) = xL(1) + dx * quad_pos_1d(iQP)
+      xT(iQP) = xB(iQP)
+    enddo
+    
+    yB = - dy / 2.
+    yT =   dy / 2.
+    do jQP = 1,nPointsOnEdge
+      yL(jQP) = yB(1) + dy * quad_pos_1d(jQP)
+      yR(jQP) = yL(jQP)
+    enddo
+    
+    xL = xL * recdx
+    xR = xR * recdx
+    xB = xB * recdx
+    xT = xT * recdx
+    yL = yL * recdy
+    yR = yR * recdy
+    yB = yB * recdy
+    yT = yT * recdy
+      
   end subroutine init_mesh
   
   !------------------------------------------------------------------------------
