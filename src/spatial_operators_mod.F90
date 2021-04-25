@@ -32,8 +32,8 @@ module spatial_operators_mod
   integer(i_kind), dimension(:,:,:,:), allocatable :: iGstCell ! x index of ghost reconstruction cells
   integer(i_kind), dimension(:,:,:,:), allocatable :: jGstCell ! y index of ghost reconstruction cells
   
-  integer(i_kind), dimension(:), allocatable :: iWENOCell ! x index of WENO reconstruction cells
-  integer(i_kind), dimension(:), allocatable :: jWENOCell ! y index of WENO reconstruction cells
+  integer(i_kind), dimension(:,:,:,:), allocatable :: iWENOCell ! x index of WENO reconstruction cells
+  integer(i_kind), dimension(:,:,:,:), allocatable :: jWENOCell ! y index of WENO reconstruction cells
   
   integer(i_kind), dimension(:,:,:,:,:), allocatable :: iWENO2DCell ! x index of WENO2D reconstruction cells
   integer(i_kind), dimension(:,:,:,:,:), allocatable :: jWENO2DCell ! y index of WENO2D reconstruction cells
@@ -205,6 +205,9 @@ module spatial_operators_mod
         iCenWENO = 0
       elseif(trim(reconstruct_scheme)=='WENO')then
         allocate(wenoType(ids:ide,jds:jde,ifs:ife))
+        
+        allocate(iWENOCell(maxRecCells,ims:ime,jms:jme,ifs:ife))
+        allocate(jWENOCell(maxRecCells,ims:ime,jms:jme,ifs:ife))
       endif
       
       allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -301,6 +304,54 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
+      
+      if(trim(reconstruct_scheme)=='WENO')then
+        do iPatch = ifs,ife
+          do j = jds,jde
+            do i = ids,ide
+              iCOS = 0
+              wenoType(i,j,iPatch) = 1
+              
+              xdir = 1
+              ydir = 1
+              if( i<ids+2.and.j<jds+2 )then ! low left corner
+                xdir = -1
+                ydir = -1
+              elseif(i>ide-2.and.j<jds+2)then ! low right corner
+                xdir = 1
+                ydir = -1
+              !elseif(i>ide-2.and.j>jde-2)then ! up right corner
+              !  xdir = 1
+              !  ydir = 1
+              elseif(i<ids+2.and.j>jde-2)then ! up left corner
+                xdir = -1
+                ydir = 1
+              endif
+              
+              do jRec = -recBdy,recBdy
+                do iRec = -recBdy,recBdy
+                  iCOS = iCOS + 1
+                  iR = i + xdir * iRec
+                  jR = j + ydir * jRec
+                  
+                  if( inCorner(iR,jR,iPatch) .and. iCOS ==19 )then
+                    wenoType(i,j,iPatch) = 2
+                  elseif(inCorner(iR,jR,iPatch) .and. iCOS ==20)then
+                    wenoType(i,j,iPatch) = 3
+                  elseif(inCorner(iR,jR,iPatch) .and. iCOS ==24)then
+                    wenoType(i,j,iPatch) = 4
+                  elseif(inCorner(iR,jR,iPatch) .and. iCOS ==25)then
+                    wenoType(i,j,iPatch) = 5
+                  endif
+                  
+                  iWENOCell(iCOS,i,j,iPatch) = iR
+                  jWENOCell(iCOS,i,j,iPatch) = jR
+                enddo
+              enddo
+            enddo
+          enddo
+        enddo
+      endif
       
       if(trim(reconstruct_scheme)=='WENO2D')then
         ! WENO 2D stencil
@@ -547,7 +598,7 @@ module spatial_operators_mod
               call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB,yB,polyMatrixB(:,1:nRC,i,j,iPatch))
               call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT,yT,polyMatrixT(:,1:nRC,i,j,iPatch))
               
-              call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,polyMatrixQ(:,1:nRC,i,j,iPatch))
+              call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq,yq,polyMatrixQ(:,1:nRC,i,j,iPatch))
               
               ! Calculate derivative matrix on quadrature points on cell
               !xq = 0
@@ -608,7 +659,7 @@ module spatial_operators_mod
       endif
       
       if(trim(reconstruct_scheme)=='WLS-ENO')then
-        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC,nRT,iPOC,xq,yq) COLLAPSE(3)
+        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,nRC,nRT,iPOC) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -642,15 +693,10 @@ module spatial_operators_mod
               call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xB,yB,recMatrixB(:,1:nRT,i,j,iPatch))
               call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nPointsOnEdge,nRT,xT,yT,recMatrixT(:,1:nRT,i,j,iPatch))
               
-              do iPOC = 1,nQuadPointsOncell
-                xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
-                yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
-              enddo
-              
               call calc_polynomial_deriv_matrix(locPolyDegree(i,j,iPatch),nQuadPointsOnCell,nRT,&
                                                 xq,yq,recMatrixDx(:,1:nRT,i,j,iPatch),recMatrixDy(:,1:nRT,i,j,iPatch))
               
-              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nQuadPointsOnCell,nRT,xq*recdx,yq*recdy,recMatrixQ(:,1:nRT,i,j,iPatch))
+              call calc_polynomial_matrix(locPolyDegree(i,j,iPatch),nQuadPointsOnCell,nRT,xq,yq,recMatrixQ(:,1:nRT,i,j,iPatch))
             enddo
           enddo
         enddo
@@ -658,7 +704,7 @@ module spatial_operators_mod
       endif
       
       if( trim(reconstruct_scheme)=='Polynomial' )then
-        !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iidx,jidx,xdir,ydir,k,jR,iR,iRec,jRec,existPolyTerm,iCOS,invstat,iPOC,xq,yq) COLLAPSE(3)
+        !$OMP PARALLEL DO PRIVATE(i,j,nRC,nxp,nyp,iidx,jidx,xdir,ydir,k,jR,iR,iRec,jRec,existPolyTerm,iCOS,invstat,iPOC) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -711,11 +757,6 @@ module spatial_operators_mod
                 print*,i,j,iPatch,nRC,nxp,nyp
                 stop 'Check BRINV for Special treamtment on boundary cells'
               endif
-              
-              do iPOC = 1,nQuadPointsOncell
-                xq(iPOC) = x(cqs+iPOC-1,i,j,iPatch) - x(cc,i,j,iPatch)
-                yq(iPOC) = y(cqs+iPOC-1,i,j,iPatch) - y(cc,i,j,iPatch)
-              enddo
             
               ! Calculate reconstruction matrix on edge
               call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xL,yL,polyMatrixL(:,1:nRC,i,j,iPatch),existPolyTerm)
@@ -723,7 +764,7 @@ module spatial_operators_mod
               call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xB,yB,polyMatrixB(:,1:nRC,i,j,iPatch),existPolyTerm)
               call calc_rectangle_poly_matrix(nxp,nyp,nPointsOnEdge,xT,yT,polyMatrixT(:,1:nRC,i,j,iPatch),existPolyTerm)
               
-              call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq*recdx,yq*recdy,polyMatrixQ(:,1:nRC,i,j,iPatch),existPolyTerm)
+              call calc_rectangle_poly_matrix(nxp,nyp,nQuadPointsOnCell,xq,yq,polyMatrixQ(:,1:nRC,i,j,iPatch),existPolyTerm)
               
               polyMatrixL(:,1:nRC,i,j,iPatch) = matmul( polyMatrixL(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
               polyMatrixR(:,1:nRC,i,j,iPatch) = matmul( polyMatrixR(:,1:nRC,i,j,iPatch), invApoly(1:nRC,1:nRC,i,j,iPatch) )
@@ -989,24 +1030,24 @@ module spatial_operators_mod
         enddo
         !$OMP END PARALLEL DO
         
-        call reconstruction(phitC       ,&
-                            dqdx=dphitdx,&
-                            dqdy=dphitdy)
+        !call reconstruction(phitC       ,&
+        !                    dqdx=dphitdx,&
+        !                    dqdy=dphitdy)
         
-        !!$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
-        !do iPatch = ifs,ife
-        !  do j = jds,jde
-        !    do i = ids,ide
-        !      !! 4th order
-        !      !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
-        !      !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
-        !      ! 6th order
-        !      dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
-        !      dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
-        !    enddo
-        !  enddo
-        !enddo
-        !!$OMP END PARALLEL DO
+        !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+        do iPatch = ifs,ife
+          do j = jds,jde
+            do i = ids,ide
+              !! 4th order
+              !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
+              !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
+              ! 6th order
+              dphitdx(:,i,j,iPatch) = (-phitC(i-3,j,iPatch) + 9.*phitC(i-2,j,iPatch) - 45.*phitC(i-1,j,iPatch) + 45.*phitC(i+1,j,iPatch) - 9.*phitC(i+2,j,iPatch) + phitC(i+3,j,iPatch) )/(60.*dx)
+              dphitdy(:,i,j,iPatch) = (-phitC(i,j-3,iPatch) + 9.*phitC(i,j-2,iPatch) - 45.*phitC(i,j-1,iPatch) + 45.*phitC(i,j+1,iPatch) - 9.*phitC(i,j+2,iPatch) + phitC(i,j+3,iPatch) )/(60.*dy)
+            enddo
+          enddo
+        enddo
+        !$OMP END PARALLEL DO
       endif
       
       call fill_bdy_flux(qL,qR,qB,qT)
@@ -1179,12 +1220,52 @@ module spatial_operators_mod
       ! For WENO 2D
       real(r_kind), dimension(maxRecTerms) :: p
       
+      ! For WENO
+      real   (r_kind), dimension(nWenoPoints) :: qrec
+      integer(i_kind) :: xdir,ydir
+      
       integer(i_kind) :: iVar,i,j,iPatch,iCOS,iStencil
       integer(i_kind) :: iRec,jRec
       integer(i_kind) :: ic
       integer(i_kind) :: m,n
       
-      if(trim(reconstruct_scheme)=='WLS-ENO')then
+      if(trim(reconstruct_scheme)=='WENO')then
+        do iPatch = ifs,ife
+          do j = jds,jde
+            do i = ids,ide
+              do iCOS = 1,maxRecCells
+                iRec = iWENOCell(iCOS,i,j,iPatch)
+                jRec = jWENOCell(iCOS,i,j,iPatch)
+                u(iCOS) = q(iRec,jRec,iPatch)
+              enddo
+              
+              call WENO(qrec,u,wenoType(i,j,iPatch))
+              
+              xdir = 1
+              ydir = 1
+              if( i<ids+2.and.j<jds+2 )then ! low left corner
+                xdir = -1
+                ydir = -1
+              elseif(i>ide-2.and.j<jds+2)then ! low right corner
+                xdir = 1
+                ydir = -1
+              !elseif(i>ide-2.and.j>jde-2)then ! up right corner
+              !  xdir = 1
+              !  ydir = 1
+              elseif(i<ids+2.and.j>jde-2)then ! up left corner
+                xdir = -1
+                ydir = 1
+              endif
+              
+              if(present(qL)) qL(:,i,j,iPatch) = qrec(wenoLIdx(:,xdir,ydir))
+              if(present(qR)) qR(:,i,j,iPatch) = qrec(wenoRIdx(:,xdir,ydir))
+              if(present(qB)) qB(:,i,j,iPatch) = qrec(wenoBIdx(:,xdir,ydir))
+              if(present(qT)) qT(:,i,j,iPatch) = qrec(wenoTIdx(:,xdir,ydir))
+              if(present(qQ)) qQ(:,i,j,iPatch) = qrec(wenoQIdx(:,xdir,ydir))
+            enddo
+          enddo
+        enddo
+      elseif(trim(reconstruct_scheme)=='WLS-ENO')then
         !$OMP PARALLEL DO PRIVATE(j,i,m,n,iCOS,iRec,jRec,u,coordMtx,ic,polyCoef) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde

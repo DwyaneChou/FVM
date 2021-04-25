@@ -14,6 +14,24 @@
       
       integer(i_kind) :: maxRecCells
       integer(i_kind) :: maxRecTerms
+  
+      real   (r_kind) :: recCoef
+      real   (r_kind) :: recdx
+      real   (r_kind) :: recdy
+      real   (r_kind) :: recdV
+
+      real(r_kind), dimension(:), allocatable :: xL
+      real(r_kind), dimension(:), allocatable :: xR
+      real(r_kind), dimension(:), allocatable :: xB
+      real(r_kind), dimension(:), allocatable :: xT
+      
+      real(r_kind), dimension(:), allocatable :: yL
+      real(r_kind), dimension(:), allocatable :: yR
+      real(r_kind), dimension(:), allocatable :: yB
+      real(r_kind), dimension(:), allocatable :: yT
+      
+      real(r_kind), dimension(:), allocatable :: xq
+      real(r_kind), dimension(:), allocatable :: yq
       
       ! For WENO 2D
       integer(i_kind), dimension(:,:,:,:), allocatable :: iCenWENO           ! center cell index on reconstruction stencil for WENO2D
@@ -34,24 +52,41 @@
       ! Type 3: [20,25]
       ! Type 4: [24,25]
       ! Type 5: [25]
-      integer(i_kind), parameter :: nWenoType = 5
+      integer(i_kind), parameter :: nWenoStencil= 9
+      integer(i_kind), parameter :: nWenoCells  = 9           ! nCells in each WENO reconstruction stencil
+      integer(i_kind), parameter :: nWenoTerms  = nWenoCells  ! nTerms in each WENO reconstruction stencil
+      integer(i_kind), parameter :: nWenoType   = 5
+      integer(i_kind), parameter :: nWenoPoints = 12 ! nPoints on cell those are reconstructed by WENO
+      
       integer(i_kind), dimension(:,:,:), allocatable :: wenoType
-      real   (r_kind), dimension(:,:,:), allocatable :: wenoCoefL
-      real   (r_kind), dimension(:,:,:), allocatable :: wenoCoefR
-      real   (r_kind), dimension(:,:,:), allocatable :: wenoCoefB
-      real   (r_kind), dimension(:,:,:), allocatable :: wenoCoefT
-      real   (r_kind), dimension(:,:,:), allocatable :: wenoCoefQ
-      real   (r_kind), dimension(9,9,9) :: AWENO
-      real   (r_kind), dimension(9,9,9) :: invAWENO
+        
+      logical,dimension(nWenoStencil,nWenoType) :: availableStencil = .true.
+      
+      real   (r_kind), dimension(nWenoPoints,nWenoStencil,nWenoType ) :: wenoCoef
+      real   (r_kind), dimension(nWenoStencil,nWenoTerms ,nWenoTerms) :: AWENO      ! (nStencil,nWenoTerms,nWenoTerms)
+      real   (r_kind), dimension(nWenoStencil,nWenoTerms ,nWenoTerms) :: invAWENO   ! (nStencil,nWenoTerms,nWenoTerms)
+      integer(i_kind), dimension(nWenoStencil,nWenoCells            ) :: wenoidx    ! (nStencil,nWenoCells)
+      
+      integer(i_kind), dimension(2,-1:1,-1:1) :: wenoLIdx
+      integer(i_kind), dimension(2,-1:1,-1:1) :: wenoRIdx
+      integer(i_kind), dimension(2,-1:1,-1:1) :: wenoBIdx
+      integer(i_kind), dimension(2,-1:1,-1:1) :: wenoTIdx
+      integer(i_kind), dimension(4,-1:1,-1:1) :: wenoQIdx
+      
+      real(r_kind), dimension(nWenoPoints) :: xw
+      real(r_kind), dimension(nWenoPoints) :: yw
+      
+      real(r_kind), dimension(nWenoPoints,nWenoTerms) :: ps ! position polynomial of reconstructed points
       ! For WENO
       
     contains
       subroutine init_reconstruction
         integer(i_kind) :: i,j,k,iStencil,iCOS
+        integer(i_kind) :: iQP,jQP,iPOC
         
         integer(i_kind) :: n
         
-        real(r_kind) :: ic(9),jc(9)
+        real(r_kind) :: ic(nWenoCells),jc(nWenoCells)
         real(r_kind) :: iP,jP
         real(r_kind) :: x_min,x_max,y_min,y_max
         
@@ -88,6 +123,19 @@
         
         allocate(quad_wts_tri_tmp_1d(n,1))
         allocate(quad_wts_tri_tmp_2d(n,n))
+    
+        allocate(xL(nPointsOnEdge))
+        allocate(xR(nPointsOnEdge))
+        allocate(xB(nPointsOnEdge))
+        allocate(xT(nPointsOnEdge))
+        
+        allocate(yL(nPointsOnEdge))
+        allocate(yR(nPointsOnEdge))
+        allocate(yB(nPointsOnEdge))
+        allocate(yT(nPointsOnEdge))
+        
+        allocate(xq(nQuadPointsOncell))
+        allocate(yq(nQuadPointsOncell))
         
         if(nPointsOnEdge>1)then
           call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
@@ -144,24 +192,54 @@
             enddo
           enddo
         endif
+    
+        recCoef = 1.
+        recdx   = 1. / ( dx * recCoef )
+        recdy   = 1. / ( dy * recCoef )
+        recdV   = 1. / ( recCoef**2 )
+        
+        xL = - dx / 2.
+        xR =   dx / 2.
+        do iQP = 1,nPointsOnEdge
+          xB(iQP) = xL(1) + dx * quad_pos_1d(iQP)
+          xT(iQP) = xB(iQP)
+        enddo
+        
+        yB = - dy / 2.
+        yT =   dy / 2.
+        do jQP = 1,nPointsOnEdge
+          yL(jQP) = yB(1) + dy * quad_pos_1d(jQP)
+          yR(jQP) = yL(jQP)
+        enddo
+        
+        xL = xL * recdx
+        xR = xR * recdx
+        xB = xB * recdx
+        xT = xT * recdx
+        yL = yL * recdy
+        yR = yR * recdy
+        yB = yB * recdy
+        yT = yT * recdy
+        
+        ! Square Gaussian quadrature points
+        iPOC = 0
+        do jQP = 1,nPointsOnEdge
+          do iQP = 1,nPointsOnEdge
+            iPOC = iPOC + 1
+            xq(iPOC) = quad_pos_1d(iQP) - 0.5
+            yq(iPOC) = quad_pos_1d(jQP) - 0.5
+            !print*,iQP,jQP
+            !print*,xq(iPOC)
+            !print*,yq(iPOC)
+            !print*,''
+          enddo
+        enddo
         
         if(trim(reconstruct_scheme)=='WENO')then
-          allocate( wenoCoefL( nPointsOnEdge    , nStencil, nWenoType ) )
-          allocate( wenoCoefR( nPointsOnEdge    , nStencil, nWenoType ) )
-          allocate( wenoCoefB( nPointsOnEdge    , nStencil, nWenoType ) )
-          allocate( wenoCoefT( nPointsOnEdge    , nStencil, nWenoType ) )
-          allocate( wenoCoefQ( nQuadPointsOnCell, nStencil, nWenoType ) )
-          
           open(10,file='WENO_COEF.txt',status='old')
-          do k = 1,5
-            do j = 1,nPointsOnEdge
-              read(10,*)( wenoCoefL( j, i, k ), i = 1,nStencil )
-              read(10,*)( wenoCoefR( j, i, k ), i = 1,nStencil )
-              read(10,*)( wenoCoefB( j, i, k ), i = 1,nStencil )
-              read(10,*)( wenoCoefT( j, i, k ), i = 1,nStencil )
-            enddo
-            do j = 1,nQuadPointsOnCell
-              read(10,*)( wenoCoefQ( j, i, k ), i = 1,nStencil )
+          do k = 1,nWenoType
+            do j = 1,nWenoPoints
+              read(10,*)( wenoCoef( j, i, k ), i = 1,nStencil )
             enddo
             
             !do j = 1,nPointsOnEdge
@@ -173,7 +251,7 @@
             !do j = 1,nQuadPointsOnCell
             !  write(*,'(9e)')wenoCoefQ( j, :, k )
             !enddo
-            
+            if( abs(wenoCoef(1,1,k)) < 1.e-14 ) availableStencil(:,k) = .false.
           enddo
           close(10)
           
@@ -205,7 +283,7 @@
           ! up left
           ic(9) = -1
           jc(9) = 1
-          do iStencil = 1,9
+          do iStencil = 1,nWenoStencil
             iCOS = 0
             do j = -1,1
               do i = -1,1
@@ -223,6 +301,56 @@
             where(abs(invAWENO)<1.e-15)invAWENO=0
           enddo
           
+          wenoidx(1,1:3) = (/ 7, 8, 9/); wenoidx(1,4:6) = (/12,13,14/); wenoidx(1,7:9) = (/17,18,19/);
+          wenoidx(2,1:3) = (/ 6, 7, 8/); wenoidx(2,4:6) = (/11,12,13/); wenoidx(2,7:9) = (/16,17,18/);
+          wenoidx(3,1:3) = (/ 1, 2, 3/); wenoidx(3,4:6) = (/ 6, 7, 8/); wenoidx(3,7:9) = (/11,12,13/);
+          wenoidx(4,1:3) = (/ 2, 3, 4/); wenoidx(4,4:6) = (/ 7, 8, 9/); wenoidx(4,7:9) = (/12,13,14/);
+          wenoidx(5,1:3) = (/ 3, 4, 5/); wenoidx(5,4:6) = (/ 8, 9,10/); wenoidx(5,7:9) = (/13,14,15/);
+          wenoidx(6,1:3) = (/ 8, 9,10/); wenoidx(6,4:6) = (/13,14,15/); wenoidx(6,7:9) = (/18,19,20/);
+          wenoidx(7,1:3) = (/13,14,15/); wenoidx(7,4:6) = (/18,19,20/); wenoidx(7,7:9) = (/23,24,25/);
+          wenoidx(8,1:3) = (/12,13,14/); wenoidx(8,4:6) = (/17,18,19/); wenoidx(8,7:9) = (/22,23,24/);
+          wenoidx(9,1:3) = (/11,12,13/); wenoidx(9,4:6) = (/16,17,18/); wenoidx(9,7:9) = (/21,22,23/);
+          
+          xw(1:2 ) = xL
+          yw(1:2 ) = yL
+          xw(3:4 ) = xR
+          yw(3:4 ) = yR
+          xw(5:6 ) = xB
+          yw(5:6 ) = yB
+          xw(7:8 ) = xT
+          yw(7:8 ) = yT
+          xw(9:12) = xq
+          yw(9:12) = yq
+          
+          call calc_rectangle_poly_matrix(3,3,nWENOPoints,xw,yw,ps)
+          
+          wenoLIdx(1,1,1) =  1; wenoLIdx(2,1,1) =  2;
+          wenoRIdx(1,1,1) =  3; wenoRIdx(2,1,1) =  4;
+          wenoBIdx(1,1,1) =  5; wenoBIdx(2,1,1) =  6;
+          wenoTIdx(1,1,1) =  7; wenoTIdx(2,1,1) =  8;
+          wenoQIdx(1,1,1) =  9; wenoQIdx(2,1,1) = 10;
+          wenoQIdx(3,1,1) = 11; wenoQIdx(4,1,1) = 12;
+          
+          wenoLIdx(1,-1,1) =  3; wenoLIdx(2,-1,1) =  4;
+          wenoRIdx(1,-1,1) =  1; wenoRIdx(2,-1,1) =  2;
+          wenoBIdx(1,-1,1) =  6; wenoBIdx(2,-1,1) =  5;
+          wenoTIdx(1,-1,1) =  8; wenoTIdx(2,-1,1) =  7;
+          wenoQIdx(1,-1,1) = 10; wenoQIdx(2,-1,1) =  9;
+          wenoQIdx(3,-1,1) = 12; wenoQIdx(4,-1,1) = 11;
+          
+          wenoLIdx(1,-1,-1) =  4; wenoLIdx(2,-1,-1) =  3;
+          wenoRIdx(1,-1,-1) =  2; wenoRIdx(2,-1,-1) =  1;
+          wenoBIdx(1,-1,-1) =  8; wenoBIdx(2,-1,-1) =  7;
+          wenoTIdx(1,-1,-1) =  6; wenoTIdx(2,-1,-1) =  5;
+          wenoQIdx(1,-1,-1) = 12; wenoQIdx(2,-1,-1) = 11;
+          wenoQIdx(3,-1,-1) = 10; wenoQIdx(4,-1,-1) =  9;
+          
+          wenoLIdx(1,1,-1) =  2; wenoLIdx(2,1,-1) =  1;
+          wenoRIdx(1,1,-1) =  4; wenoRIdx(2,1,-1) =  3;
+          wenoBIdx(1,1,-1) =  7; wenoBIdx(2,1,-1) =  8;
+          wenoTIdx(1,1,-1) =  5; wenoTIdx(2,1,-1) =  6;
+          wenoQIdx(1,1,-1) = 11; wenoQIdx(2,1,-1) = 12;
+          wenoQIdx(3,1,-1) =  9; wenoQIdx(4,1,-1) = 10;
         endif
         
       end subroutine init_reconstruction
@@ -265,6 +393,67 @@
     
       end function cell_quadrature
     
+      subroutine WENO(qrec,q,wenoType)
+        real   (r_kind), intent(out) :: qrec(nWenoPoints)
+        real   (r_kind), intent(in ) :: q   (25)
+        integer(i_kind), intent(in ) :: wenoType
+        
+        real   (r_kind), parameter :: eps = 1.e-15
+        
+        integer(i_kind) :: iStencil,iCell,iPoint,iTerm
+        
+        real(r_kind), dimension(nWenoCells ) :: qC
+        
+        real(r_kind), dimension(nWenoStencil,nWenoTerms ) :: a  ! coef of reconstruction polynomial
+        real(r_kind), dimension(nWenoStencil            ) :: SI
+        real(r_kind), dimension(nWenoStencil,nWenoPoints) :: w
+        real(r_kind), dimension(nWenoPoints ,nWenoTerms ) :: wa ! weighted polynomial coef
+        
+        ! Rematch cells on each stencil
+        do iStencil = 1,nWenoStencil
+          do iCell = 1,nWenoCells
+            qC(iCell) = q(wenoidx(iStencil,iCell))
+          enddo
+          
+          a(iStencil,:) = matmul( invAWENO(iStencil,:,:),qC(:) )
+          
+          if( availableStencil(iStencil,wenoType) )then
+            SI(iStencil) = WENO_smooth_indicator_3(a(iStencil,:))
+          else
+            SI(iStencil) = Inf
+          endif
+        enddo
+        
+        do iPoint = 1,nWenoPoints
+          w(:,iPoint) = wenoCoef(iPoint,:,wenoType) / ( SI + eps )**2
+          w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
+          
+          do iTerm = 1,nWenoTerms
+            wa(iPoint,iTerm) = dot_product( w(:,iPoint), a(:,iTerm) )
+          enddo
+        
+          qrec(iPoint) = dot_product( wa(iPoint,:), ps(iPoint,:) )
+          
+          !print*,iPoint,wenoType
+          !print*,wenoCoef(iPoint,:,wenoType)
+          !print*,''
+          !print*,w(:,iPoint)
+          !print*,''
+          !print*,SI
+          !print*,''
+          !do iStencil = 1,9
+          !  print*,'iStencil',iStencil
+          !  print*,q(wenoidx(iStencil,:))
+          !  print*,''
+          !enddo
+          !print*,''
+          !print*,q
+          !print*,''
+          !print*,qrec(iPoint)
+        enddo
+        
+      end subroutine WENO
+      
       function WLS_ENO(A,u,h,m,n,ic,x0)
         ! WLS_ENO
         ! Ax = b -> WAx=Wb -> min|| WAx - Wb || -> x
@@ -562,18 +751,9 @@
         
       end subroutine WENO3
       
-      subroutine WENO(qrec,q,wenoType)
-        real   (r_kind), intent(out) :: qrec(:)
-        real   (r_kind), intent(in ) :: q(25)
-        integer(i_kind), intent(in ) :: wenoType
-        
-        integer(i_kind) :: i,j
-        
-      end subroutine WENO
-      
-      subroutine WENO2D(polyCoef,nCellsOnStencil,rematch_idx_3_to_3_SI,rematch_idx_3_to_3,rematch_idx_5_to_5,rematch_idx_7_to_7,p,i,j,iPatch)
+      subroutine WENO2D(polyCoef,nWenoCells,rematch_idx_3_to_3_SI,rematch_idx_3_to_3,rematch_idx_5_to_5,rematch_idx_7_to_7,p,i,j,iPatch)
         real   (r_kind),dimension(:,:),intent(in ) :: polyCoef
-        integer(i_kind),dimension(:  ),intent(in ) :: nCellsOnStencil    ! nWENOCells
+        integer(i_kind),dimension(:  ),intent(in ) :: nWenoCells    ! nWenoCells
         integer(i_kind),dimension(:,:),intent(in ) :: rematch_idx_3_to_3_SI
         integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_3_to_3
         integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_5_to_5
@@ -613,7 +793,7 @@
         integer(i_kind) :: m
         
         do iStencil = 1,nStencil_all
-          m = nCellsOnStencil(iStencil)
+          m = nWenoCells(iStencil)
           if(iStencil<=nStencil1)then
             if(m>0)then
               do iCOS = 1,m
