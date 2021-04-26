@@ -1230,7 +1230,7 @@ module spatial_operators_mod
       integer(i_kind) :: m,n
       
       if(trim(reconstruct_scheme)=='WENO')then
-        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,u,qrec,xdir,ydir)
+        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,u,qrec,xdir,ydir) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
