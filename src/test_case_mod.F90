@@ -455,6 +455,8 @@ module test_case_mod
     rr       = pi/9.
     labmda_c = 180 * D2R
     theta_c  = 0
+    !labmda_c = 45 * D2R
+    !theta_c  = 35.2643896827547 * D2R
     
     longitude = lon
     latitude  = lat
@@ -465,6 +467,10 @@ module test_case_mod
       do j = jms, jme
         do i = ims, ime
           do iPOC = 1,nPointsOnCell
+            !if(i==ide.and.j==jde.and.iPatch==1.and.iPOC==cce-1)then
+            !  print*,longitude(iPOC,i,j,iPatch)*R2D,latitude(iPOC,i,j,iPatch)*R2D
+            !endif
+              
             ! Cycle
             r(iPOC,i,j,iPatch) = sqrt( (longitude(iPOC,i,j,iPatch)-labmda_c)**2 + (latitude(iPOC,i,j,iPatch)-theta_c)**2 )
             if(r(iPOC,i,j,iPatch)<=rr)phi(iPOC,i,j,iPatch) = 2. * gh0

@@ -398,7 +398,8 @@
         real   (r_kind), intent(in ) :: q   (25)
         integer(i_kind), intent(in ) :: wenoType
         
-        real   (r_kind), parameter :: eps = 1.e-15
+        real   (r_kind), parameter :: eps   = 1.e-15
+        real   (r_kind), parameter :: theta = 3
         
         integer(i_kind) :: iStencil,iCell,iPoint,iTerm
         
@@ -408,6 +409,21 @@
         real(r_kind), dimension(nWenoStencil            ) :: SI
         real(r_kind), dimension(nWenoStencil,nWenoPoints) :: w
         real(r_kind), dimension(nWenoPoints ,nWenoTerms ) :: wa ! weighted polynomial coef
+        
+        real(r_kind), dimension(nWenoStencil) :: rp
+        real(r_kind), dimension(nWenoStencil) :: rn
+        
+        real(r_kind), dimension(nWenoStencil,nWenoPoints) :: wp
+        real(r_kind), dimension(nWenoStencil,nWenoPoints) :: wn
+        
+        real(r_kind), dimension(nWenoPoints ,nWenoTerms ) :: wap ! weighted polynomial coef
+        real(r_kind), dimension(nWenoPoints ,nWenoTerms ) :: wan ! weighted polynomial coef
+        
+        real(r_kind), dimension(nWenoPoints) :: qrecp
+        real(r_kind), dimension(nWenoPoints) :: qrecn
+        
+        real(r_kind) :: sigmap
+        real(r_kind) :: sigman
         
         ! Rematch cells on each stencil
         do iStencil = 1,nWenoStencil
@@ -425,31 +441,42 @@
         enddo
         
         do iPoint = 1,nWenoPoints
-          w(:,iPoint) = wenoCoef(iPoint,:,wenoType) / ( SI + eps )**2
-          w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
-          
-          do iTerm = 1,nWenoTerms
-            wa(iPoint,iTerm) = dot_product( w(:,iPoint), a(:,iTerm) )
-          enddo
-        
-          qrec(iPoint) = dot_product( wa(iPoint,:), ps(iPoint,:) )
-          
-          !print*,iPoint,wenoType
-          !print*,wenoCoef(iPoint,:,wenoType)
-          !print*,''
-          !print*,w(:,iPoint)
-          !print*,''
-          !print*,SI
-          !print*,''
-          !do iStencil = 1,9
-          !  print*,'iStencil',iStencil
-          !  print*,q(wenoidx(iStencil,:))
-          !  print*,''
-          !enddo
-          !print*,''
-          !print*,q
-          !print*,''
-          !print*,qrec(iPoint)
+          if( .not.any(wenoCoef(iPoint,:,wenoType)<0) )then
+            w(:,iPoint) = wenoCoef(iPoint,:,wenoType) / ( SI + eps )**2
+            w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
+            
+            do iTerm = 1,nWenoTerms
+              wa(iPoint,iTerm) = dot_product( w(:,iPoint), a(:,iTerm) )
+            enddo
+            
+            qrec(iPoint) = dot_product( wa(iPoint,:), ps(iPoint,:) )
+          else
+            ! Deal with negative linear weights, accroding to Shi J., Hu C. and Shu C.,2002
+            rp = 0.5 * ( wenoCoef(iPoint,:,wenoType) + theta * abs( wenoCoef(iPoint,:,wenoType) ) )
+            rn = rp - wenoCoef(iPoint,:,wenoType)
+            
+            sigmap = sum(rp)
+            sigman = sum(rn)
+            
+            rp = rp / sigmap
+            rn = rn / sigman
+            
+            wp(:,iPoint) = rp / ( SI + eps )**2
+            wp(:,iPoint) = wp(:,iPoint) / sum(wp(:,iPoint))
+            
+            wn(:,iPoint) = rn / ( SI + eps )**2
+            wn(:,iPoint) = wn(:,iPoint) / sum(wn(:,iPoint))
+            
+            do iTerm = 1,nWenoTerms
+              wap(iPoint,iTerm) = dot_product( wp(:,iPoint), a(:,iTerm) )
+              wan(iPoint,iTerm) = dot_product( wn(:,iPoint), a(:,iTerm) )
+            enddo
+            
+            qrecp(iPoint) = dot_product( wap(iPoint,:), ps(iPoint,:) )
+            qrecn(iPoint) = dot_product( wan(iPoint,:), ps(iPoint,:) )
+            
+            qrec(iPoint) = sigmap * qrecp(iPoint) - sigman * qrecn(iPoint)
+          endif
         enddo
         
       end subroutine WENO

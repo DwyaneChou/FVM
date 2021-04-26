@@ -1,6 +1,6 @@
 &time_settings
-run_days         = 0
-run_hours        = 1
+run_days         = 100
+run_hours        = 0
 run_minutes      = 0
 run_seconds      = 0
 dt               = 200 ! 200s for 1 degree
@@ -9,7 +9,7 @@ integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
 
 &case_select
-case_num    = 9, ! Choose from 2, 5, 6, 8, 9
+case_num    = 6, ! Choose from 2, 5, 6, 8, 9
 /
 
 &domain
