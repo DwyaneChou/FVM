@@ -2,7 +2,7 @@ clc
 clear
 
 time_start = 1;
-time_end   = 121;
+time_end   = 2;
 
 history_path = '..\run';
 

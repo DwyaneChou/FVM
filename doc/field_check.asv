@@ -7,7 +7,7 @@ var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 2;
+it       = 23;
 
 gravity = 9.80616;
 
@@ -39,6 +39,7 @@ lon = ncread(nc_file,'lon'   );
 lat = ncread(nc_file,'lat'   );
 var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1]);
 var0= ncread(nc_file,var_name,[ids,jds,1, 1],[Nx,Ny,Npatch,1]);
+% var = (var-var0)./var0;
 % var = ncread(nc_file,var_name,[ids,jds,1,it],[Nx,Ny,Npatch,1])/gravity;
 % var0= ncread(nc_file,var_name,[ids,jds,1,1],[Nx,Ny,Npatch,1])/gravity;
 
@@ -82,17 +83,22 @@ plt = pcolor(lon2d,lat2d,var_plot*coef);
 set(plt,'EdgeColor','None')
 % set(gca,'CLim',[ 7.8494e+04,1.0350e+05])
 % set(gca,'CLim',[ 4.9e4,5.9e4])
-% set(gca,'CLim',[ 3e4,5e4])
+% set(gca,'CLim',[ -7e-9,7e-9])
 colormap(jet)
 
-if(case_num==9)
-    figure
-    plot(var(:,Ny/2,3))
+if(case_num==5)
+    if(strcmp(var_name,'phit'))
+        hold on
+        LevelList = 5050:50:5950;
+        plt=contour(lon2d,lat2d,var_plot*coef,'LevelList',LevelList,'LineColor','k');
+        %     plt=contour(lon2d,lat2d,var_plot,'LevelList',LevelList,'LineColor','k','ShowText','on');
+    elseif(strcmp(var_name,'zonal_wind'))
+        hold on
+        LevelList = -30:10:60;
+        plt=contour(lon2d,lat2d,var_plot,'LevelList',LevelList,'LineColor','k');
+    elseif(strcmp(var_name,'meridional_wind'))
+        hold on
+        LevelList = -30:10:30;
+        plt=contour(lon2d,lat2d,var_plot,'LevelList',LevelList,'LineColor','k');
+    end
 end
-
-hold on
-plot(p_WENO2D(:,Ny/2,3),'r','LineWidth',1.5)
-plot(p_WENO3 (:,Ny/2,3),'k','LineWidth',1.5)
-% plot(p_WENO5 (:,Ny/2,3),'m','LineWidth',1.5)
-% plot(p_poly  (:,Ny/2,3),'b','LineWidth',1.5)
-% plot(p_WLS   (:,Ny/2,3),'g','LineWidth',1.5)

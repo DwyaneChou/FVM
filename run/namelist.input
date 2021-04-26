@@ -1,20 +1,20 @@
 &time_settings
-run_days         = 0
-run_hours        = 144
+run_days         = 100
+run_hours        = 0
 run_minutes      = 0
 run_seconds      = 0
-dt               = 100 ! 200s for 1 degree
-history_interval = 3600
+dt               = 200 ! 200s for 1 degree
+history_interval = 86400
 integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
 
 &case_select
-case_num    = 8, ! Choose from 2, 5, 6, 8, 9
+case_num    = 6, ! Choose from 2, 5, 6, 8, 9
 /
 
 &domain
-dx                   = 0.5,  ! Unit: degree
-dy                   = 0.5,  ! Unit: degree
+dx                   = 1,  ! Unit: degree
+dy                   = 1,  ! Unit: degree
 nPointsOnEdge        = 2,
 /
 

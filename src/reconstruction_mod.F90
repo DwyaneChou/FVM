@@ -401,7 +401,7 @@
         real   (r_kind), parameter :: eps   = 1.e-15
         real   (r_kind), parameter :: theta = 3
         
-        integer(i_kind) :: iStencil,iCell,iPoint,iTerm
+        integer(i_kind) :: iStencil,jStencil,iCell,iPoint,iTerm,iCount
         
         real(r_kind), dimension(nWenoCells ) :: qC
         
@@ -425,6 +425,8 @@
         real(r_kind) :: sigmap
         real(r_kind) :: sigman
         
+        real(r_kind) :: tau
+        
         ! Rematch cells on each stencil
         do iStencil = 1,nWenoStencil
           do iCell = 1,nWenoCells
@@ -440,9 +442,26 @@
           endif
         enddo
         
+        ! For WENO-Z
+        tau = 0
+        iCount = 0
+        do jStencil = 1,nWENOStencil-1
+          if( availableStencil(jStencil,wenoType) )then
+            do iStencil = jStencil+1,nWENOStencil
+              if( availableStencil(iStencil,wenoType) )then
+                iCount = iCount + 1
+                tau = tau + abs( SI(iStencil) - SI(jStencil) )
+              endif
+            enddo
+          endif
+        enddo
+        tau = tau / iCount
+        ! For WENO-Z
+        
         do iPoint = 1,nWenoPoints
           if( .not.any(wenoCoef(iPoint,:,wenoType)<0) )then
-            w(:,iPoint) = wenoCoef(iPoint,:,wenoType) / ( SI + eps )**2
+            !w(:,iPoint) = wenoCoef(iPoint,:,wenoType) / ( SI + eps )**2 ! Origin
+            w(:,iPoint) = wenoCoef(iPoint,:,wenoType) * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
             w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
             
             do iTerm = 1,nWenoTerms
@@ -461,10 +480,12 @@
             rp = rp / sigmap
             rn = rn / sigman
             
-            wp(:,iPoint) = rp / ( SI + eps )**2
+            !wp(:,iPoint) = rp / ( SI + eps )**2 ! Origin
+            wp(:,iPoint) = rp * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
             wp(:,iPoint) = wp(:,iPoint) / sum(wp(:,iPoint))
             
-            wn(:,iPoint) = rn / ( SI + eps )**2
+            !wn(:,iPoint) = rn / ( SI + eps )**2 ! Origin
+            wn(:,iPoint) = rn * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
             wn(:,iPoint) = wn(:,iPoint) / sum(wn(:,iPoint))
             
             do iTerm = 1,nWenoTerms
