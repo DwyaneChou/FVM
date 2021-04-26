@@ -99,16 +99,33 @@ MODULE diag_mod
         enddo
       enddo
       
-      call reconstruction(v,dqdx=dvdx)
-      call reconstruction(u,dqdy=dudy)
+      !call reconstruction(v,dqdx=dvdx)
+      !call reconstruction(u,dqdy=dudy)
       
-      do iPatch = ifs, ife
+      !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
+      do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
-            vorticity(i,j,iPatch) = cell_quadrature( ( dvdx(:,i,j,iPatch) - dudy(:,i,j,iPatch) ) / sqrtG(cqs:cqe,i,j,iPatch) )
+            !! 4th order
+            !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
+            !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
+            ! 6th order
+            dvdx(cc,i,j,iPatch) = (-v(i-3,j,iPatch) + 9.*v(i-2,j,iPatch) - 45.*v(i-1,j,iPatch) + 45.*v(i+1,j,iPatch) - 9.*v(i+2,j,iPatch) + v(i+3,j,iPatch) )/(60.*dx)
+            dudy(cc,i,j,iPatch) = (-u(i,j-3,iPatch) + 9.*u(i,j-2,iPatch) - 45.*u(i,j-1,iPatch) + 45.*u(i,j+1,iPatch) - 9.*u(i,j+2,iPatch) + u(i,j+3,iPatch) )/(60.*dy)
+            
+            vorticity(i,j,iPatch) = ( dvdx(cc,i,j,iPatch) - dudy(cc,i,j,iPatch) ) / sqrtG(cc,i,j,iPatch)
           enddo
         enddo
       enddo
+      !$OMP END PARALLEL DO
+      
+      !do iPatch = ifs, ife
+      !  do j = jds,jde
+      !    do i = ids,ide
+      !      vorticity(i,j,iPatch) = cell_quadrature( ( dvdx(:,i,j,iPatch) - dudy(:,i,j,iPatch) ) / sqrtG(cqs:cqe,i,j,iPatch) )
+      !    enddo
+      !  enddo
+      !enddo
       
     end subroutine calc_relative_vorticity
     
