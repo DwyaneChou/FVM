@@ -241,16 +241,6 @@
             do j = 1,nWenoPoints
               read(10,*)( wenoCoef( j, i, k ), i = 1,nStencil )
             enddo
-            
-            !do j = 1,nPointsOnEdge
-            !  write(*,'(9e)')wenoCoefL( j, :, k )
-            !  write(*,'(9e)')wenoCoefR( j, :, k )
-            !  write(*,'(9e)')wenoCoefB( j, :, k )
-            !  write(*,'(9e)')wenoCoefT( j, :, k )
-            !enddo
-            !do j = 1,nQuadPointsOnCell
-            !  write(*,'(9e)')wenoCoefQ( j, :, k )
-            !enddo
             if( abs(wenoCoef(1,1,k)) < 1.e-14 ) availableStencil(:,k) = .false.
           enddo
           close(10)
@@ -430,10 +420,10 @@
         ! Rematch cells on each stencil
         do iStencil = 1,nWenoStencil
           do iCell = 1,nWenoCells
-            qC(iCell) = q(wenoidx(iStencil,iCell))
+            qC(iCell) = q( wenoidx(iStencil,iCell) )
           enddo
           
-          a(iStencil,:) = matmul( invAWENO(iStencil,:,:),qC(:) )
+          a(iStencil,:) = matmul( invAWENO(iStencil,:,:), qC(:) )
           
           if( availableStencil(iStencil,wenoType) )then
             SI(iStencil) = WENO_smooth_indicator_3(a(iStencil,:))
