@@ -3,11 +3,11 @@
 % clear
 
 % var_name = 'phi';
-var_name = 'phit';
+% var_name = 'phit';
 % var_name = 'zonal_wind';
-% var_name = 'meridional_wind';
+var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 21;
+it       = 51;
 
 gravity = 9.80616;
 

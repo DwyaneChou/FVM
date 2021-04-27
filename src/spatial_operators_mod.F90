@@ -17,7 +17,7 @@ module spatial_operators_mod
       
   integer(i_kind),dimension(:,:,:  ), allocatable :: nRecCells ! number of cells for reconstruction
   integer(i_kind),dimension(:,:,:  ), allocatable :: nGstRecCells ! number of cells for ghost point reconstruction
-  integer(i_kind),dimension(:,:,:,:), allocatable :: nWENOCells ! number of cells for WENO2D reconstruction
+  integer(i_kind),dimension(:,:,:,:), allocatable :: nWENO2DCells ! number of cells for WENO2D reconstruction
   integer(i_kind),dimension(:,:,:  ), allocatable :: nRecTerms
   
   integer(i_kind),dimension(:,:,:), allocatable :: locPolyDegree ! degree of local reconstruction polynomial
@@ -132,7 +132,6 @@ module spatial_operators_mod
         
       allocate(nRecCells   (         ids:ide,jds:jde,ifs:ife))
       allocate(nGstRecCells(         ids:ide,jds:jde,ifs:ife))
-      allocate(nRecTerms   (         ids:ide,jds:jde,ifs:ife))
       
       allocate(iRecCell  (maxRecCells,ims:ime,jms:jme,ifs:ife))
       allocate(jRecCell  (maxRecCells,ims:ime,jms:jme,ifs:ife))
@@ -150,6 +149,7 @@ module spatial_operators_mod
       allocate(yg(nPointsOnCell))
       
       if(trim(reconstruct_scheme)=='WLS-ENO')then
+        allocate(nRecTerms(                               ids:ide,jds:jde,ifs:ife))
         allocate(iCenCell  (                              ims:ime,jms:jme,ifs:ife))
         allocate(dh        (                  maxRecCells,ids:ide,jds:jde,ifs:ife))
         allocate(recMatrixL(nPointsOnEdge    ,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -176,7 +176,7 @@ module spatial_operators_mod
         allocate(yRelWENO2D(nStencil_all,4,maxRecCells,ids:ide,jds:jde,ifs:ife))
       
         allocate(iCenWENO    (nStencil_all,ids:ide,jds:jde,ifs:ife))
-        allocate(nWENOCells  (nStencil_all,ids:ide,jds:jde,ifs:ife))
+        allocate(nWENO2DCells  (nStencil_all,ids:ide,jds:jde,ifs:ife))
       
         allocate(iWENO2DCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
         allocate(jWENO2DCell (nStencil_all,maxRecCells,ims:ime,jms:jme,ifs:ife))
@@ -384,7 +384,7 @@ module spatial_operators_mod
               iWENO2DCell(8,iCOS,i,j,iPatch) = i - 1
               jWENO2DCell(8,iCOS,i,j,iPatch) = j + 1
               
-              nWENOCells(1:nStencil1,i,j,iPatch) = 9
+              nWENO2DCells(1:nStencil1,i,j,iPatch) = 9
               
               do iStencil = 1,nStencil1
                 iCOS = 0
@@ -401,8 +401,8 @@ module spatial_operators_mod
                     endif
                   enddo
                 enddo
-                nWENOCells(iStencil,i,j,iPatch) = iCOS
-                if(iCenWENO(iStencil,i,j,iPatch)==0)nWENOCells(iStencil,i,j,iPatch)=0
+                nWENO2DCells(iStencil,i,j,iPatch) = iCOS
+                if(iCenWENO(iStencil,i,j,iPatch)==0)nWENO2DCells(iStencil,i,j,iPatch)=0
               enddo
                 
               do iStencil = nStencil1+1,nStencil_all
@@ -418,7 +418,7 @@ module spatial_operators_mod
                     endif
                   enddo
                 enddo
-                nWENOCells(iStencil,i,j,iPatch) = iCOS
+                nWENO2DCells(iStencil,i,j,iPatch) = iCOS
               enddo
             enddo
           enddo
@@ -448,7 +448,7 @@ module spatial_operators_mod
           do j = jds,jde
             do i = ids,ide
               do iStencil = 1,nStencil_all
-                nRC = nWENOCells(iStencil,i,j,iPatch)
+                nRC = nWENO2DCells(iStencil,i,j,iPatch)
                 do iCOS = 1,nRC
                   iRec = iWENO2DCell(iStencil,iCOS,i,j,iPatch)
                   jRec = jWENO2DCell(iStencil,iCOS,i,j,iPatch)
@@ -470,10 +470,10 @@ module spatial_operators_mod
               do iStencil = 1,nStencil1
                 ic = iCenWENO(iStencil,i,j,iPatch)
                 if( inCorner(iWENO2DCell(iStencil,ic,i,j,iPatch),jWENO2DCell(iStencil,ic,i,j,iPatch),iPatch) )then
-                  nWENOCells           (iStencil,  i,j,iPatch) = 0
+                  nWENO2DCells           (iStencil,  i,j,iPatch) = 0
                   rematch_idx_3_to_3_SI(iStencil,:,i,j,iPatch) = 0
                 else
-                  nRC = nWENOCells(iStencil,i,j,iPatch)
+                  nRC = nWENO2DCells(iStencil,i,j,iPatch)
                   nxp = maxval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
                   nyp = maxval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
                   
@@ -529,7 +529,7 @@ module spatial_operators_mod
               enddo
               
               do iStencil = nStencil1+1,nStencil_all
-                nRC = nWENOCells(iStencil,i,j,iPatch)
+                nRC = nWENO2DCells(iStencil,i,j,iPatch)
                 nxp = maxval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(iWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
                 nyp = maxval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) - minval(jWENO2DCell(iStencil,1:nRC,i,j,iPatch)) + 1
                 
@@ -1360,7 +1360,7 @@ module spatial_operators_mod
           do j = jds,jde
             do i = ids,ide
               do iStencil = 1,nStencil_all
-                m = nWENOCells(iStencil,i,j,iPatch)
+                m = nWENO2DCells(iStencil,i,j,iPatch)
                 if(m>0)then
                   do iCOS = 1,m
                     iRec = iWENO2DCell(iStencil,iCOS,i,j,iPatch)
@@ -1373,7 +1373,7 @@ module spatial_operators_mod
                 endif
               enddo
               
-              call WENO2D(polyWENO2D,nWENOCells(:,i,j,iPatch)  ,&
+              call WENO2D(polyWENO2D,nWENO2DCells(:,i,j,iPatch)  ,&
                           rematch_idx_3_to_3_SI(:,:,i,j,iPatch),&
                           rematch_idx_3_to_3(:,i,j,iPatch)     ,&
                           rematch_idx_5_to_5(:,i,j,iPatch)     ,&
