@@ -768,6 +768,8 @@
         real(r_kind), dimension(nStencil) :: beta
         real(r_kind), dimension(nStencil) :: omega
         
+        real(r_kind) :: tau
+        
         integer(i_kind) iStencil
         
         Qim(1) = Q(1)
@@ -790,10 +792,16 @@
         
         beta = coefA**2
         
-        ! origin WENO
-        alpha = weno_coef / ( eps + beta )**2
+        !! origin WENO
+        !alpha = weno_coef / ( eps + beta )**2
+        !! origin WENO
+        
+        ! WENO-Z
+        tau = abs( beta(1) -beta(2) )
+        alpha = weno_coef * ( 1. + tau / ( eps + beta ) )
+        ! WENO-Z
+        
         omega = alpha / sum(alpha)
-        ! origin WENO
         
         Qrec = dot_product( stencil, omega )
         
