@@ -3,11 +3,10 @@
       implicit none
       
     contains
-    subroutine calc_weno_coef(coef,stencil_width,nPointsOnEdge,quad_pos)
+    subroutine calc_weno_coef(coef,stencil_width,nPointsOnEdge)
       real   (r_kind), dimension(:,:), intent(out) :: coef
       integer(i_kind)                , intent(in ) :: stencil_width
       integer(i_kind)                , intent(in ) :: nPointsOnEdge
-      real   (r_kind), dimension(:,:), intent(in ) :: quad_pos
       
     end subroutine calc_weno_coef
     
