@@ -6,9 +6,9 @@
       
     contains
       subroutine calc_weno_coef(coef,stencil_width,nPointsOnEdge)
-        real   (r_kind), dimension(:,:), allocatable, intent(out) :: coef
-        integer(i_kind)                             , intent(in ) :: stencil_width
-        integer(i_kind)                             , intent(in ) :: nPointsOnEdge
+        real   (r_kind), dimension(:,:,:), allocatable, intent(out) :: coef
+        integer(i_kind)                               , intent(in ) :: stencil_width
+        integer(i_kind)                               , intent(in ) :: nPointsOnEdge
         
         real   (r16), dimension(nPointsOnEdge) :: quad_pos_1d
         real   (r16), dimension(nPointsOnEdge) :: quad_wts_1d
@@ -19,34 +19,52 @@
         real   (r16), dimension(:), allocatable :: x
         real   (r16), dimension(:), allocatable :: y
         
-        integer(i_kind), dimension(:), allocatable :: lack_pos
+        integer(i_kind), dimension(:,:), allocatable :: lack_pos
+        integer(i_kind), dimension(:  ), allocatable :: lack
         
         integer(i_kind) :: nStencil, nPoints, nWenoType, recBdy
         
+        integer(i_kind) :: stencil_width_sub, recBdy_sub
+        
         integer(i_kind) :: nCOSL ! Cell number On Stencil for Low order stencil
         integer(i_kind) :: nCOSH ! Cell number On Stencil for High order stencil
+
+        integer(i_kind) :: ix_min,ix_max
+        integer(i_kind) :: iy_min,iy_max
+        integer(i_kind) :: stride
         
-        integer(i_kind) :: i,j,k,iCOS,iRCOS
+        integer(i_kind) :: i,j,k,iCOS,iRCOS,iType
         
         recBdy = ( stencil_width - 1 ) / 2
         
         if(stencil_width==3)then
-          nStencil  = 4
-          nCOSL     = 4
+          nStencil          = 4
+          nCOSL             = 4
+          stride            = 2
+          stencil_width_sub = 2
         else
-          nStencil  = ( stencil_width - 2 )**2
-          nCOSL     = 9
+          nStencil          = ( stencil_width - 2 )**2
+          nCOSL             = 9
+          stride            = 1
+          stencil_width_sub = 3
         endif
+        recBdy_sub = 1
         nCOSH = stencil_width**2
         
         nWenoType = recBdy**2 + 1
         
         nPoints = 4*nPointsOnEdge+nPointsOnEdge**2
         
-        allocate( x(nPoints) )
-        allocate( y(nPoints) )
-        allocate( lack_pos(recBdy**2) )
-        allocate( coef(nPoints*nWenoType,nStencil) )
+        ix_min = -recBdy
+        ix_max = recBdy
+        iy_min = -recBdy
+        iy_max = recBdy
+        
+        allocate( x       (nPoints)                    )
+        allocate( y       (nPoints)                    )
+        allocate( lack_pos(nWenoType,recBdy**2)        )
+        allocate( lack    (          recBdy**2)        )
+        allocate( coef    (nWenoType,nPoints,nStencil) )
         
         call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
         
@@ -68,6 +86,35 @@
         do j = 1,nPointsOnEdge
           x(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d
           y(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d(j)
+        enddo
+        
+        lack_pos = 0
+        if(stencil_width==3)then
+          lack_pos(2,1) = 9
+        elseif(stencil_width==5)then
+          lack_pos(2,:) = (/19,20,24,25/)
+          lack_pos(3,:) = (/20,25, 0, 0/)
+          lack_pos(4,:) = (/24,25, 0, 0/)
+          lack_pos(5,:) = (/25, 0, 0, 0/)
+        elseif(stencil_width==7)then
+          lack_pos( 2,:) = (/33,34,35,40,41,42,47,48,49/)
+          lack_pos( 3,:) = (/34,35,41,42,48,49, 0, 0, 0/)
+          lack_pos( 4,:) = (/35,42,49, 0, 0, 0, 0, 0, 0/)
+          lack_pos( 5,:) = (/40,41,42,47,48,49, 0, 0, 0/)
+          lack_pos( 6,:) = (/47,48,49, 0, 0, 0, 0, 0, 0/)
+          lack_pos( 7,:) = (/41,42,48,49, 0, 0, 0, 0, 0/)
+          lack_pos( 8,:) = (/42,49, 0, 0, 0, 0, 0, 0, 0/)
+          lack_pos( 9,:) = (/48,49, 0, 0, 0, 0, 0, 0, 0/)
+          lack_pos(10,:) = (/49, 0, 0, 0, 0, 0, 0, 0, 0/)
+        endif
+        
+        iCOS = 0
+        do j = -recBdy,recBdy
+          do i = -recBdy,recBdy
+            iCOS = iCOS + 1
+            xC(iCOS) = -recBdy + ( i + 1 )
+            yC(iCOS) = -recBdy + ( j + 1 )
+          enddo
         enddo
         
         coef = 0

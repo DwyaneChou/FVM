@@ -58,6 +58,7 @@ set(source_files
   src/temporal_mod.F90
   src/diag_mod.F90
   src/quadpack.F90
+  src/weno_coef_mod.F90
 )
 
 add_library(fvm ${source_files})

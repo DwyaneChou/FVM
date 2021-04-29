@@ -170,14 +170,14 @@ module parameters_mod
     
     if(trim(reconstruct_scheme)=='WENO')then
       nStencil = 9
-      !if(stencil_width/=5)then
-      !  print*,'stencil_width is not 5, during using WENO, stencil_width has been reset to 5'
-      !  stencil_width = 5
-      !endif
-      !if(nPointsOnEdge/=2)then
-      !  print*,'nPointsOnEdge is not 2, during using WENO, nPointsOnEdge has been reset to 2'
-      !  nPointsOnEdge = 2
-      !endif
+      if(stencil_width/=5)then
+        print*,'stencil_width is not 5, during using WENO, stencil_width has been reset to 5'
+        stencil_width = 5
+      endif
+      if(nPointsOnEdge/=2)then
+        print*,'nPointsOnEdge is not 2, during using WENO, nPointsOnEdge has been reset to 2'
+        nPointsOnEdge = 2
+      endif
     endif
     
     ! Calculate total run time in seconds
