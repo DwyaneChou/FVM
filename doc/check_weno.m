@@ -7,7 +7,7 @@ var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 2;
+it       = 13;
 
 gravity = 9.80616;
 

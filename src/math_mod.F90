@@ -315,15 +315,15 @@
     real   (r_kind),intent(out)           :: A      (N,N)
     integer(i_kind),intent(out), optional :: L
     
-    real    :: T,D
-    integer :: IS(N),JS(N)
-    integer :: i,j,k
+    real   (r_kind) :: T,D
+    integer(i_kind) :: IS(N),JS(N)
+    integer(i_kind) :: i,j,k
     
     A = A_input
     
     if(present(L))L=1
     do K=1,N
-      D=0.
+      D=0._r_kind
       do I=K,N
         do J=K,N
           IF (ABS(A(I,J)).GT.D) THEN
@@ -334,7 +334,7 @@
         enddo
       enddo
     
-      IF (D+1.0.EQ.1.0) THEN
+      IF (D+1._r_kind.EQ.1._r_kind) THEN
         if(present(L))L=0
         WRITE(*,*)'ERR**NOT INV'
         RETURN
@@ -352,7 +352,7 @@
         A(I,JS(K))=T
       enddo
       
-      A(K,K)=1/A(K,K)
+      A(K,K)=1._r_kind/A(K,K)
       do J=1,N
         IF (J.NE.K) THEN
           A(K,J)=A(K,J)*A(K,K)

@@ -16,36 +16,66 @@
         real   (r16), dimension(stencil_width**2) :: xC
         real   (r16), dimension(stencil_width**2) :: yC
         
-        real   (r16), dimension(:), allocatable :: x
-        real   (r16), dimension(:), allocatable :: y
+        real   (r16), dimension(:), allocatable :: xP
+        real   (r16), dimension(:), allocatable :: yP
+        
+        integer(i_kind), dimension(:  ), allocatable :: iSC  ! center cell index for each stencil
+        integer(i_kind), dimension(:,:), allocatable :: POS  ! index of cells on full stencil
+        integer(i_kind), dimension(:,:), allocatable :: COSL ! cell indices in substencil
+        integer(i_kind), dimension(:  ), allocatable :: COSH ! cell indices in full stencil
+        real   (r16   ), dimension(:,:), allocatable :: existTermL
+        real   (r16   ), dimension(:  ), allocatable :: existTermH
+        integer(i_kind), dimension(:  ), allocatable :: nExistTermL
+        integer(i_kind)                              :: nExistTermH
+        
+        real   (r16), dimension(:,:,:), allocatable :: AL
+        real   (r16), dimension(:,:,:), allocatable :: iAL
+        real   (r16), dimension(:,:  ), allocatable :: AH
+        real   (r16), dimension(:,:  ), allocatable :: iAH
+        
+        real   (r16), dimension(:,:,:), allocatable :: PL
+        real   (r16), dimension(  :,:), allocatable :: PH
+        
+        real   (r16), dimension(:,:,:), allocatable :: RL
+        real   (r16), dimension(  :,:), allocatable :: RH
+        real   (r16), dimension(:,:,:), allocatable :: RL_on_RH
+        real   (r16), dimension(  :,:), allocatable :: RL_LS
+        real   (r16), dimension(  :,:), allocatable :: iRL_LS
         
         integer(i_kind), dimension(:,:), allocatable :: lack_pos
         integer(i_kind), dimension(:  ), allocatable :: lack
+        
+        real   (r16), dimension(:,:), allocatable :: post
+        real   (r16), dimension(  :), allocatable :: post_check
         
         integer(i_kind) :: nStencil, nPoints, nWenoType, recBdy
         
         integer(i_kind) :: stencil_width_sub, recBdy_sub
         
-        integer(i_kind) :: nCOSL ! Cell number On Stencil for Low order stencil
-        integer(i_kind) :: nCOSH ! Cell number On Stencil for High order stencil
+        integer(i_kind) :: nCOSL ! Cell number On Stencil for Low order stencil(substencil)
+        integer(i_kind) :: nCOSH ! Cell number On Stencil for High order stencil(full stencil)
 
         integer(i_kind) :: ix_min,ix_max
         integer(i_kind) :: iy_min,iy_max
-        integer(i_kind) :: stride
         
-        integer(i_kind) :: i,j,k,iCOS,iRCOS,iType
+        integer(i_kind) :: nx,ny
+        real   (r16) :: x_min, x_max
+        real   (r16) :: y_min, y_max
+        
+        integer(i_kind) :: i,j,k,iCOS,iRCOS,iType,iPOS,iStencil,iPoint
+        integer(i_kind) :: iC,jC
+        integer(i_kind) :: nRC
+        integer(i_kind) :: invStat
         
         recBdy = ( stencil_width - 1 ) / 2
         
         if(stencil_width==3)then
           nStencil          = 4
           nCOSL             = 4
-          stride            = 2
           stencil_width_sub = 2
         else
           nStencil          = ( stencil_width - 2 )**2
           nCOSL             = 9
-          stride            = 1
           stencil_width_sub = 3
         endif
         recBdy_sub = 1
@@ -53,39 +83,62 @@
         
         nWenoType = recBdy**2 + 1
         
-        nPoints = 4*nPointsOnEdge+nPointsOnEdge**2
+        nPoints = 4 * nPointsOnEdge + nPointsOnEdge**2
         
         ix_min = -recBdy
         ix_max = recBdy
         iy_min = -recBdy
         iy_max = recBdy
         
-        allocate( x       (nPoints)                    )
-        allocate( y       (nPoints)                    )
-        allocate( lack_pos(nWenoType,recBdy**2)        )
-        allocate( lack    (          recBdy**2)        )
-        allocate( coef    (nWenoType,nPoints,nStencil) )
+        allocate( xP      (nPoints)                     )
+        allocate( yP      (nPoints)                     )
+        allocate( lack_pos(nWenoType,recBdy**2)         )
+        allocate( lack    (          recBdy**2)         )
+        allocate( coef    (nWenoType,nPoints,nStencil)  )
+        allocate( iSC     (nStencil)                    )
+        allocate( POS     (ix_min:ix_max,iy_min:iy_max) )
+        allocate( COSL    (nStencil,nCOSL)              )
+        allocate( COSH    (         nCOSH)              )
+        allocate( AL      (nStencil,nCOSL,nCOSL)        )
+        allocate( iAL     (nStencil,nCOSL,nCOSL)        )
+        allocate( AH      (nCOSH,nCOSH)                 )
+        allocate( iAH     (nCOSH,nCOSH)                 )
+        allocate( PL      (nStencil,nPoints,nCOSL)      )
+        allocate( PH      (         nPoints,nCOSH)      )
+        allocate( RL      (nPoints,nStencil,nCOSL)      )
+        allocate( RH      (nPoints,         nCOSH)      )
+        allocate( RL_on_RH(nPoints,nStencil,nCOSH)      )
+        allocate( RL_LS   (nStencil,nStencil)           )
+        allocate( iRL_LS  (nStencil,nStencil)           )
+        
+        allocate( existTermL(nStencil,nCOSL) )
+        allocate( existTermH(         nCOSH) )
+        
+        allocate( nExistTermL(nStencil) )
+        
+        allocate( post      (nStencil, nCOSH) )
+        allocate( post_check(          nCOSH) )
         
         call Gaussian_Legendre(nPointsOnEdge, quad_pos_1d, quad_wts_1d)
         
         quad_pos_1d = quad_pos_1d / 2._r16
         
         ! Left
-        x(nPointsOnEdge*0+1:nPointsOnEdge*1) = -0.5
-        y(nPointsOnEdge*0+1:nPointsOnEdge*1) = quad_pos_1d
+        xP(nPointsOnEdge*0+1:nPointsOnEdge*1) = -0.5_r16
+        yP(nPointsOnEdge*0+1:nPointsOnEdge*1) = quad_pos_1d
         ! Right
-        x(nPointsOnEdge*1+1:nPointsOnEdge*2) = 0.5
-        y(nPointsOnEdge*1+1:nPointsOnEdge*2) = quad_pos_1d
+        xP(nPointsOnEdge*1+1:nPointsOnEdge*2) = 0.5_r16
+        yP(nPointsOnEdge*1+1:nPointsOnEdge*2) = quad_pos_1d
         ! Bottom
-        x(nPointsOnEdge*2+1:nPointsOnEdge*3) = quad_pos_1d
-        y(nPointsOnEdge*2+1:nPointsOnEdge*3) = -0.5
+        xP(nPointsOnEdge*2+1:nPointsOnEdge*3) = quad_pos_1d
+        yP(nPointsOnEdge*2+1:nPointsOnEdge*3) = -0.5_r16
         ! Top
-        x(nPointsOnEdge*3+1:nPointsOnEdge*4) = quad_pos_1d
-        y(nPointsOnEdge*3+1:nPointsOnEdge*4) = 0.5
+        xP(nPointsOnEdge*3+1:nPointsOnEdge*4) = quad_pos_1d
+        yP(nPointsOnEdge*3+1:nPointsOnEdge*4) = 0.5_r16
         ! Quadrature Points
         do j = 1,nPointsOnEdge
-          x(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d
-          y(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d(j)
+          xP(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d
+          yP(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d(j)
         enddo
         
         lack_pos = 0
@@ -112,34 +165,193 @@
         do j = -recBdy,recBdy
           do i = -recBdy,recBdy
             iCOS = iCOS + 1
-            xC(iCOS) = -recBdy + ( i + 1 )
-            yC(iCOS) = -recBdy + ( j + 1 )
+            POS(i,j) = iCOS
+            xC(iCOS) = real(i,r16)
+            yC(iCOS) = real(j,r16)
           enddo
         enddo
         
-        coef = 0
+        if(stencil_width==3)then
+          iSC(1) = 1
+          iSC(2) = 3
+          iSC(3) = 7
+          iSC(4) = 9
+        elseif(stencil_width>3)then
+          iStencil = 0
+          do j = -recBdy+1,recBdy-1
+            do i = -recBdy+1,recBdy-1
+              iStencil = iStencil + 1
+              iPOS = POS(i,j)
+              iSC(iStencil) = iPOS
+            enddo
+          enddo
+        endif
+        
+        do iType = 1,nWenoType
+          existTermL = 0
+          existTermH = 0
+          lack = lack_pos( iType, :)
+          
+          ! Calculate inverse matrices on substencil
+          do iStencil = 1,nStencil
+            iCOS = 0
+            iRCOS = 0
+            do j = -1,1
+              do i = -1,1
+                iC = xC(iSC(iStencil)) + i
+                jC = yC(iSC(iStencil)) + j
+                if( iC>=ix_min .and. iC<=ix_max .and. jC>=iy_min .and. jC<=iy_max )then
+                  iCOS = iCOS + 1
+                  if( .not.any(lack==POS(iC,jC)) )then
+                    iRCOS = iRCOS + 1
+                    existTermL(iStencil,iCOS) = 1
+                    COSL(iStencil,iRCOS) = POS(iC,jC)
+                  endif
+                endif
+              enddo ! i
+            enddo ! j
+            nExistTermL(iStencil) = sum(existTermL(iStencil,:))
+            
+            nRC = nExistTermL(iStencil)
+            nx  = stencil_width_sub
+            ny  = stencil_width_sub
+            do iCOS = 1,nRC
+              x_min = xC(COSL(iStencil,iCOS)) - 0.5_r16
+              x_max = xC(COSL(iStencil,iCOS)) + 0.5_r16
+              y_min = yC(COSL(iStencil,iCOS)) - 0.5_r16
+              y_max = yC(COSL(iStencil,iCOS)) + 0.5_r16
+              
+              call calc_rectangle_poly_integration( nx,ny,x_min,x_max,y_min,y_max,AL(iStencil,iCOS,1:nRC),existTermL(iStencil,:))
+            enddo
+            
+            call BRINV(nRC,AL(iStencil,1:nRC,1:nRC),iAL(iStencil,1:nRC,1:nRC),invStat)
+            if(invStat==0)then
+              print*,'WENO substencil coef calculation failed, iType, iStencil', iType, iStencil
+              stop
+            endif
+            
+            call calc_rectangle_poly_matrix(nx,ny,nPoints,xP,yP,PL(iStencil,1:nPoints,1:nRC),existTermL(iStencil,:))
+            
+            RL(1:nPoints,iStencil,1:nRC) = matmul( PL(iStencil,1:nPoints,1:nRC), iAL(iStencil,1:nRC,1:nRC) )
+            
+          enddo ! iStencil
+          
+          ! Calculate inverse matrices on full stencil
+          iCOS = 0
+          iRCOS = 0
+          do j = -recBdy,recBdy
+            do i = -recBdy,recBdy
+              iCOS = iCOS + 1
+              if( .not.any(lack==POS(i,j)) )then
+                iRCOS = iRCOS + 1
+                COSH(iCOS) = iRCOS
+                existTermH(iCOS) = 1
+              endif
+            enddo
+          enddo
+          nExistTermH = sum(existTermH)
+          
+          nRC = nExistTermH
+          nx  = stencil_width
+          ny  = stencil_width
+          iRCOS = 0
+          do j = -recBdy,recBdy
+            do i = -recBdy,recBdy
+              if( .not.any(lack==POS(i,j)) )then
+                iRCOS = iRCOS + 1
+                x_min = real(i,r16) - 0.5_r16
+                x_max = real(i,r16) + 0.5_r16
+                y_min = real(j,r16) - 0.5_r16
+                y_max = real(j,r16) + 0.5_r16
+                call calc_rectangle_poly_integration(nx,ny,x_min,x_max,y_min,y_max,AH(iRCOS,1:nRC),existTermH)
+              endif
+            enddo
+          enddo
+          
+          call BRINV(nRC,AH(1:nRC,1:nRC),iAH(1:nRC,1:nRC),invStat)
+          if(invStat==0)then
+            print*,'WENO full stencil coef calculation failed'
+            stop
+          endif
+          
+          call calc_rectangle_poly_matrix(nx,ny,nPoints,xP,yP,PH(1:nPoints,1:nRC),existTermH)
+          
+          RH(1:nPoints,1:nRC) = matmul( PH(1:nPoints,1:nRC), iAH(1:nRC,1:nRC) )
+          
+          do iStencil = 1,nStencil
+            iCOS  = 0
+            iRCOS = 0
+            do j = -1,1
+              do i = -1,1
+                iC = xC(iSC(iStencil)) + real(i,r16)
+                jC = yC(iSC(iStencil)) + real(j,r16)
+                if( iC>=ix_min .and. iC<=ix_max .and. jC>=iy_min .and. jC<=iy_max )then
+                  iCOS = iCOS + 1
+                  if( existTermL(iStencil,iCOS)==1 )then
+                    iRCOS = iRCOS + 1
+                    RL_on_RH(1:nPoints,iStencil,COSH(COSL(iStencil,iCOS))) = RL(1:nPoints,iStencil,iRCOS)
+                  endif
+                endif
+              enddo
+            enddo
+          enddo
+          
+          do iPoint = 1,nPoints
+            RL_LS = matmul( RL_on_RH(iPoint,:,1:nRC), transpose(RL_on_RH(iPoint,:,1:nRC)) )
+            call BRINV(nStencil,RL_LS,iRL_LS,invStat)
+            if(invStat==0)then
+              print*,'WENO optimal coef calculatio fail'
+              stop
+            endif
+            
+            coef(iType,iPoint,:) = matmul( matmul( iRL_LS, RL_on_RH(iPoint,:,1:nRC) ), RH(iPoint,1:nRC) )
+            print*,coef(iType,iPoint,:)
+          enddo
+          
+          ! Post Check
+          do iPoint = 1,nPoints
+            do iStencil = 1,nStencil
+              post(iStencil,:) = 0
+              post(iStencil,:) = coef(iType,iPoint,iStencil) * RL_on_RH(iPoint,iStencil,:)
+            enddo
+            post_check = sum(post,1)
+            print*,'iType ',iType,' iPoint',iPoint,' diff=',sum(post_check(1:nRC)-RH(iPoint,1:nRC))
+          enddo
+        enddo ! iType
+        
+        stop 'calc_weno_coef'
       end subroutine calc_weno_coef
     
-      subroutine  calc_polynomial_square_integration(d,x_min,x_max,y_min,y_max,c)
-        integer(i_kind), intent(in ) :: d ! degree of polynomial
-        real   (r16), intent(in ) :: x_min
-        real   (r16), intent(in ) :: x_max
-        real   (r16), intent(in ) :: y_min
-        real   (r16), intent(in ) :: y_max
-        real   (r16), intent(out) :: c(:)
+      subroutine calc_rectangle_poly_integration(nx,ny,x_min,x_max,y_min,y_max,c,existPolyTerm)
+        integer(i_kind), intent(in   ) :: nx  ! number of points on x direction
+        integer(i_kind), intent(in   ) :: ny  ! number of points on y direction
+        real   (r16), intent(in   ) :: x_min
+        real   (r16), intent(in   ) :: x_max
+        real   (r16), intent(in   ) :: y_min
+        real   (r16), intent(in   ) :: y_max
+        real   (r16), intent(inout) :: c(:)
+        real   (r16), intent(in   ),optional :: existPolyTerm(nx*ny)
         
-        integer(i_kind) :: i,j,k
+        real   (r16) :: ext(nx*ny)
+        integer(i_kind) :: i,j,k,iCOS
         
-        k = 0
-        c = 0
-        do j = 0,d
-          do i = 0,j
+        ext = 1
+        if(present(existPolyTerm))ext = existPolyTerm
+                
+        k    = 0
+        c    = 0
+        iCOS = 0
+        do j = 0,ny-1
+          do i = 0,nx-1
             k = k + 1
-            c(k) = ( x_max**(j-i+1) - x_min**(j-i+1) ) * ( y_max**(i+1) - y_min**(i+1) ) / real( ( i + 1 ) * ( j - i + 1 ), r16 )
+            if(ext(k)>0)then
+              iCOS = iCOS + 1
+              c(iCOS) = ( x_max**(i+1) - x_min**(i+1) ) * ( y_max**(j+1) - y_min**(j+1) ) / real( ( i + 1 ) * ( j + 1 ), r16 )
+            endif
           enddo
         enddo
         
-      end subroutine  calc_polynomial_square_integration
+      end subroutine  calc_rectangle_poly_integration
       
       subroutine calc_rectangle_poly_matrix(nx,ny,m,xi,eta,A,existPolyTerm)
         integer(i_kind), intent(in   ) :: nx ! number of points on x direction for reconstruction
@@ -190,7 +402,7 @@
       real   (r16),intent(out)           :: A      (N,N)
       integer(i_kind),intent(out), optional :: L
       
-      real    :: T,D
+      real(r16):: T,D
       integer :: IS(N),JS(N)
       integer :: i,j,k
       
@@ -198,7 +410,7 @@
       
       if(present(L))L=1
       do K=1,N
-        D=0.
+        D=0._r16
         do I=K,N
           do J=K,N
             IF (ABS(A(I,J)).GT.D) THEN
@@ -209,7 +421,7 @@
           enddo
         enddo
       
-        IF (D+1.0.EQ.1.0) THEN
+        IF (D+1._r16.EQ.1._r16) THEN
           if(present(L))L=0
           WRITE(*,*)'ERR**NOT INV'
           RETURN
@@ -227,7 +439,7 @@
           A(I,JS(K))=T
         enddo
         
-        A(K,K)=1/A(K,K)
+        A(K,K)=1._r16/A(K,K)
         do J=1,N
           IF (J.NE.K) THEN
             A(K,J)=A(K,J)*A(K,K)
@@ -356,7 +568,7 @@
           Else
             a = c
           End If
-          If ((b-a)<1.e-16) exit 
+          If ((b-a)<1e-34) exit 
         End Do
         bis = c!bis即是利用二分法求得的解
       End Function bis
