@@ -283,8 +283,8 @@
             iRCOS = 0
             do j = -1,1
               do i = -1,1
-                iC = xC(iSC(iStencil)) + real(i,r16)
-                jC = yC(iSC(iStencil)) + real(j,r16)
+                iC = xC(iSC(iStencil)) + i
+                jC = yC(iSC(iStencil)) + j
                 if( iC>=ix_min .and. iC<=ix_max .and. jC>=iy_min .and. jC<=iy_max )then
                   iCOS = iCOS + 1
                   if( existTermL(iStencil,iCOS)==1 )then
