@@ -109,9 +109,12 @@ module spatial_operators_mod
       real(r_kind), dimension(:), allocatable :: xg
       real(r_kind), dimension(:), allocatable :: yg
       
+      integer(i_kind), dimension(:), allocatable :: lack
+      
       integer(i_kind) :: i,j,k,iPatch
       integer(i_kind) :: iCOS ! indices of Cells On Stencils
       integer(i_kind) :: iPOC ! indices of points on cell
+      integer(i_kind) :: iType ! indices of WENO type
       integer(i_kind) :: ic
       integer(i_kind) :: iStencil,jStencil
       integer(i_kind) :: iRec,jRec
@@ -208,6 +211,11 @@ module spatial_operators_mod
         
         allocate(iWENOCell(maxRecCells,ims:ime,jms:jme,ifs:ife))
         allocate(jWENOCell(maxRecCells,ims:ime,jms:jme,ifs:ife))
+        
+        allocate(lack(nWenoLack))
+        
+        allocate(xDirWENO(ids:ide,jds:jde))
+        allocate(yDirWENO(ids:ide,jds:jde))
       endif
       
       allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -310,44 +318,54 @@ module spatial_operators_mod
           do j = jds,jde
             do i = ids,ide
               iCOS = 0
+              iPOC = 0
               wenoType(i,j,iPatch) = 1
               
-              xdir = 1
-              ydir = 1
-              if( i<ids+2.and.j<jds+2 )then ! low left corner
-                xdir = -1
-                ydir = -1
-              elseif(i>ide-2.and.j<jds+2)then ! low right corner
-                xdir = 1
-                ydir = -1
-              !elseif(i>ide-2.and.j>jde-2)then ! up right corner
-              !  xdir = 1
-              !  ydir = 1
-              elseif(i<ids+2.and.j>jde-2)then ! up left corner
-                xdir = -1
-                ydir = 1
+              if(iPatch==1)then
+                xDirWENO(i,j) = 1
+                yDirWENO(i,j) = 1
+                if( i<ids+recBdy.and.j<jds+recBdy )then ! low left corner
+                  xDirWENO(i,j) = -1
+                  yDirWENO(i,j) = -1
+                elseif(i>ide-recBdy.and.j<jds+recBdy)then ! low right corner
+                  xDirWENO(i,j) = 1
+                  yDirWENO(i,j) = -1
+                !elseif(i>ide-recBdy.and.j>jde-recBdy)then ! up right corner
+                !  xDirWENO(i,j) = 1
+                !  yDirWENO(i,j) = 1
+                elseif(i<ids+recBdy.and.j>jde-recBdy)then ! up left corner
+                  xDirWENO(i,j) = -1
+                  yDirWENO(i,j) = 1
+                endif
               endif
               
+              xdir = xDirWENO(i,j)
+              ydir = yDirWENO(i,j)
+              
+              lack = 0
               do jRec = -recBdy,recBdy
                 do iRec = -recBdy,recBdy
                   iCOS = iCOS + 1
                   iR = i + xdir * iRec
                   jR = j + ydir * jRec
                   
-                  if( inCorner(iR,jR,iPatch) .and. iCOS ==19 )then
-                    wenoType(i,j,iPatch) = 2
-                  elseif(inCorner(iR,jR,iPatch) .and. iCOS ==20)then
-                    wenoType(i,j,iPatch) = 3
-                  elseif(inCorner(iR,jR,iPatch) .and. iCOS ==24)then
-                    wenoType(i,j,iPatch) = 4
-                  elseif(inCorner(iR,jR,iPatch) .and. iCOS ==25)then
-                    wenoType(i,j,iPatch) = 5
+                  if( inCorner(iR,jR,iPatch) )then
+                    iPOC = iPOC + 1
+                    lack(iPOC) = iCOS
                   endif
                   
                   iWENOCell(iCOS,i,j,iPatch) = iR
                   jWENOCell(iCOS,i,j,iPatch) = jR
                 enddo
               enddo
+              
+              do iType = 2,nWenoType
+                if( sum( lack - wenoLack(iType,:) )==0 )then
+                  wenoType(i,j,iPatch) = iType
+                  exit
+                endif
+              enddo
+              
             enddo
           enddo
         enddo
@@ -1237,7 +1255,7 @@ module spatial_operators_mod
       integer(i_kind) :: m,n
       
       if(trim(reconstruct_scheme)=='WENO')then
-        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,u,qrec,xdir,ydir) COLLAPSE(3)
+        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,u,qrec) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -1249,27 +1267,11 @@ module spatial_operators_mod
               
               call WENO(qrec,u,wenoType(i,j,iPatch))
               
-              xdir = 1
-              ydir = 1
-              if( i<ids+2.and.j<jds+2 )then ! low left corner
-                xdir = -1
-                ydir = -1
-              elseif(i>ide-2.and.j<jds+2)then ! low right corner
-                xdir = 1
-                ydir = -1
-              !elseif(i>ide-2.and.j>jde-2)then ! up right corner
-              !  xdir = 1
-              !  ydir = 1
-              elseif(i<ids+2.and.j>jde-2)then ! up left corner
-                xdir = -1
-                ydir = 1
-              endif
-              
-              if(present(qL)) qL(:,i,j,iPatch) = qrec(wenoLIdx(:,xdir,ydir))
-              if(present(qR)) qR(:,i,j,iPatch) = qrec(wenoRIdx(:,xdir,ydir))
-              if(present(qB)) qB(:,i,j,iPatch) = qrec(wenoBIdx(:,xdir,ydir))
-              if(present(qT)) qT(:,i,j,iPatch) = qrec(wenoTIdx(:,xdir,ydir))
-              if(present(qQ)) qQ(:,i,j,iPatch) = qrec(wenoQIdx(:,xdir,ydir))
+              if(present(qL)) qL(:,i,j,iPatch) = qrec(wenoLIdx(:,xDirWENO(i,j),yDirWENO(i,j)))
+              if(present(qR)) qR(:,i,j,iPatch) = qrec(wenoRIdx(:,xDirWENO(i,j),yDirWENO(i,j)))
+              if(present(qB)) qB(:,i,j,iPatch) = qrec(wenoBIdx(:,xDirWENO(i,j),yDirWENO(i,j)))
+              if(present(qT)) qT(:,i,j,iPatch) = qrec(wenoTIdx(:,xDirWENO(i,j),yDirWENO(i,j)))
+              if(present(qQ)) qQ(:,i,j,iPatch) = qrec(wenoQIdx(:,xDirWENO(i,j),yDirWENO(i,j)))
             enddo
           enddo
         enddo

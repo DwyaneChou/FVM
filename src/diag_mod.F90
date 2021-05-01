@@ -106,13 +106,19 @@ MODULE diag_mod
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
-            !! 4th order
-            !dphitdx(:,i,j,iPatch) = ( phitC(i-2,j,iPatch) - 8.*phitC(i-1,j,iPatch) + 8.*phitC(i+1,j,iPatch) - phitC(i+2,j,iPatch) )/(12.*dx)
-            !dphitdy(:,i,j,iPatch) = ( phitC(i,j-2,iPatch) - 8.*phitC(i,j-1,iPatch) + 8.*phitC(i,j+1,iPatch) - phitC(i,j+2,iPatch) )/(12.*dy)
-            ! 6th order
-            dvdx(cc,i,j,iPatch) = (-v(i-3,j,iPatch) + 9.*v(i-2,j,iPatch) - 45.*v(i-1,j,iPatch) + 45.*v(i+1,j,iPatch) - 9.*v(i+2,j,iPatch) + v(i+3,j,iPatch) )/(60.*dx)
-            dudy(cc,i,j,iPatch) = (-u(i,j-3,iPatch) + 9.*u(i,j-2,iPatch) - 45.*u(i,j-1,iPatch) + 45.*u(i,j+1,iPatch) - 9.*u(i,j+2,iPatch) + u(i,j+3,iPatch) )/(60.*dy)
-            
+            if(recBdy==1)then
+              ! 2nd order
+              dvdx(:,i,j,iPatch) = ( v(i+1,j,iPatch) - v(i-1,j,iPatch) )/(2.*dx)
+              dudy(:,i,j,iPatch) = ( u(i,j+1,iPatch) - u(i,j-1,iPatch) )/(2.*dy)
+            elseif(recBdy==2)then
+              ! 4th order
+              dvdx(:,i,j,iPatch) = ( v(i-2,j,iPatch) - 8.*v(i-1,j,iPatch) + 8.*v(i+1,j,iPatch) - v(i+2,j,iPatch) )/(12.*dx)
+              dudy(:,i,j,iPatch) = ( u(i,j-2,iPatch) - 8.*u(i,j-1,iPatch) + 8.*u(i,j+1,iPatch) - u(i,j+2,iPatch) )/(12.*dy)
+            elseif(recBdy>2)then
+              ! 6th order
+              dvdx(:,i,j,iPatch) = (-v(i-3,j,iPatch) + 9.*v(i-2,j,iPatch) - 45.*v(i-1,j,iPatch) + 45.*v(i+1,j,iPatch) - 9.*v(i+2,j,iPatch) + v(i+3,j,iPatch) )/(60.*dx)
+              dudy(:,i,j,iPatch) = (-u(i,j-3,iPatch) + 9.*u(i,j-2,iPatch) - 45.*u(i,j-1,iPatch) + 45.*u(i,j+1,iPatch) - 9.*u(i,j+2,iPatch) + u(i,j+3,iPatch) )/(60.*dy)
+            endif
             vorticity(i,j,iPatch) = ( dvdx(cc,i,j,iPatch) - dudy(cc,i,j,iPatch) ) / sqrtG(cc,i,j,iPatch)
           enddo
         enddo

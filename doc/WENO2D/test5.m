@@ -3,36 +3,50 @@ clear
 
 digits(36);
 
-nPointsOnEdge = 3;
-
-ngpts = vpa(nPointsOnEdge);
+ngpts = vpa(2);
 [pG,wG] = Gaussian_Quadrature(ngpts);
 pG = pG / 2;
 
-quad_pos_1d = pG;
+% left
+x(1) = vpa(-0.5);
+y(1) = pG(1);
 
-nPoints = 4 * nPointsOnEdge + nPointsOnEdge^2;
+x(2) = vpa(-0.5);
+y(2) = pG(2);
 
-x = zeros(nPoints,1);
-y = zeros(nPoints,1);
+% right
+x(3) = vpa(0.5);
+y(3) = pG(1);
 
-% ! Left
-x(nPointsOnEdge*0+1:nPointsOnEdge*1) = -0.5;
-y(nPointsOnEdge*0+1:nPointsOnEdge*1) = quad_pos_1d;
-% ! Right
-x(nPointsOnEdge*1+1:nPointsOnEdge*2) = 0.5;
-y(nPointsOnEdge*1+1:nPointsOnEdge*2) = quad_pos_1d;
-% ! Bottom
-x(nPointsOnEdge*2+1:nPointsOnEdge*3) = quad_pos_1d;
-y(nPointsOnEdge*2+1:nPointsOnEdge*3) = -0.5;
-% ! Top
-x(nPointsOnEdge*3+1:nPointsOnEdge*4) = quad_pos_1d;
-y(nPointsOnEdge*3+1:nPointsOnEdge*4) = 0.5;
-% ! Quadrature Points
-for j = 1:nPointsOnEdge
-    x(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d;
-    y(nPointsOnEdge*(4+j-1)+1:nPointsOnEdge*(4+j)) = quad_pos_1d(j);
-end
+x(4) = vpa(0.5);
+y(4) = pG(2);
+
+% bottom
+x(5) = pG(1);
+y(5) = vpa(-0.5);
+
+x(6) = pG(2);
+y(6) = vpa(-0.5);
+
+% top
+x(7) = pG(1);
+y(7) = vpa(0.5);
+
+x(8) = pG(2);
+y(8) = vpa(0.5);
+
+% quadrature points
+x(9) = pG(1);
+y(9) = pG(1);
+
+x(10) = pG(2);
+y(10) = pG(1);
+
+x(11) = pG(2);
+y(11) = pG(2);
+
+x(12) = pG(1);
+y(12) = pG(2);
 
 lack = zeros(5,4);
 lack(2,:) = [19,20,24,25];
@@ -59,61 +73,61 @@ for iType = 1:5
     lack_pos = lack(iType,:);
     if(any(lack_pos==19))
         nStencil = 8;
-        % low left
-        ic(1) = -recBdy;
-        jc(1) = -recBdy;
-        % low middle
-        ic(2) = 0;
-        jc(2) = -recBdy;
-        % low right
-        ic(3) = recBdy;
-        jc(3) = -recBdy;
-        % middle left
-        ic(4) = -recBdy;
-        jc(4) = 0;
         % middle middle
-        ic(5) = 0;
-        jc(5) = 0;
+        ic(1) = 0;
+        jc(1) = 0;
+        % middle left
+        ic(2) = -recBdy;
+        jc(2) = 0;
+        % low left
+        ic(3) = -recBdy;
+        jc(3) = -recBdy;
+        % low middle
+        ic(4) = 0;
+        jc(4) = -recBdy;
+        % low right
+        ic(5) = recBdy;
+        jc(5) = -recBdy;
         % middle right
         ic(6) = recBdy;
         jc(6) = 0;
-        % up left
-        ic(7) = -recBdy;
-        jc(7) = recBdy;
+        %     % up right
+        %     ic(7) = recBdy;
+        %     jc(7) = recBdy;
         % up middle
-        ic(8) = 0;
+        ic(7) = 0;
+        jc(7) = recBdy;
+        % up left
+        ic(8) = -recBdy;
         jc(8) = recBdy;
-%         % up right
-%         ic(9) = recBdy;
-%         jc(9) = recBdy;
     else
         nStencil = 9;
-        % low left
-        ic(1) = -recBdy;
-        jc(1) = -recBdy;
-        % low middle
-        ic(2) = 0;
-        jc(2) = -recBdy;
-        % low right
-        ic(3) = recBdy;
-        jc(3) = -recBdy;
-        % middle left
-        ic(4) = -recBdy;
-        jc(4) = 0;
         % middle middle
-        ic(5) = 0;
-        jc(5) = 0;
+        ic(1) = 0;
+        jc(1) = 0;
+        % middle left
+        ic(2) = -recBdy;
+        jc(2) = 0;
+        % low left
+        ic(3) = -recBdy;
+        jc(3) = -recBdy;
+        % low middle
+        ic(4) = 0;
+        jc(4) = -recBdy;
+        % low right
+        ic(5) = recBdy;
+        jc(5) = -recBdy;
         % middle right
         ic(6) = recBdy;
         jc(6) = 0;
-        % up left
-        ic(7) = -recBdy;
+        % up right
+        ic(7) = recBdy;
         jc(7) = recBdy;
         % up middle
         ic(8) = 0;
         jc(8) = recBdy;
-        % up right
-        ic(9) = recBdy;
+        % up left
+        ic(9) = -recBdy;
         jc(9) = recBdy;
     end
     
@@ -126,8 +140,8 @@ for iType = 1:5
         end
     end
     
-    Coef = vpa( zeros(nPoints,9) );
-    for iPoint = 1:nPoints
+    Coef = vpa( zeros(12,9) );
+    for iPoint = 1:12
         xG = x(iPoint);
         yG = y(iPoint);
         
@@ -249,7 +263,9 @@ for iType = 1:5
         disp(['Type ',num2str(iType),', ','Point ',num2str(iPoint),', diff=',num2str(double(diff))])
         
         if any(lack_pos==19)
-            C(9) = 0;
+            C(9) = C(8);
+            C(8) = C(7);
+            C(7) = 0;
         end
         
         Coef(iPoint,:) = C;
@@ -257,7 +273,7 @@ for iType = 1:5
     
     Coef(abs(Coef)<1.e-12) = 0;
     
-    for j = 1:nPoints
+    for j = 1:12
         fprintf( fid,'%9s\n',char(Coef(j,:)) );
     end
 end
