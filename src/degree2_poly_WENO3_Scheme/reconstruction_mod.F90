@@ -239,7 +239,7 @@
         if(trim(reconstruct_scheme)=='WENO')then
           if(stencil_width==3)then
             nWenoStencil = 4
-            nWenoCells   = 4
+            nWenoCells   = 6
           else
             nWenoStencil = ( stencil_width - 2 )**2
             nWenoCells   = 9
@@ -252,8 +252,8 @@
           
           allocate( wenoCoef        (nWenoType,nWenoPoints,nWenoStencil) )
           allocate( availableStencil(nWenoType,nWenoStencil) )
-          allocate( AWENO           (nWenoStencil,nWenoTerms ,nWenoTerms) )
-          allocate( iAWENO          (nWenoStencil,nWenoTerms ,nWenoTerms) )
+          allocate( AWENO           (nWenoStencil,nWenoTerms,nWenoTerms) )
+          allocate( iAWENO          (nWenoStencil,nWenoTerms,nWenoTerms) )
           allocate( wenoIdx         (nWenoStencil,nWenoCells) )
           allocate( wenoLack        (nWenoType,nWenoLack) )
           allocate( xw              (nWenoPoints) )
@@ -268,7 +268,11 @@
           
           call calc_weno_coef(wenoCoef,availableStencil,iAWENO,wenoIdx,xw,yw,stencil_width_sub,wenoLack,stencil_width,nPointsOnEdge)
           
-          call calc_rectangle_poly_matrix(stencil_width_sub,stencil_width_sub,nWenoPoints,xw,yw,ps)
+          if(stencil_width==3)then
+            call calc_polynomial_matrix(2,nWenoPoints,nWenoTerms,xw,yw,ps)
+          elseif(stencil_width>3)then
+            call calc_rectangle_poly_matrix(stencil_width_sub,stencil_width_sub,nWenoPoints,xw,yw,ps)
+          endif
           
           ! Calculate rematch positon for quadrature points in each corner
           xdir = 1
@@ -338,6 +342,59 @@
               wenoQIdx(iPOE,xdir,ydir) =  nWenoPoints + ydir * ( jQP - 1 ) * nPointsOnEdge + xdir * ( iQP - 1 )
             enddo
           enddo
+          
+          !print*,wenoLIdx(:, 1, 1)
+          !print*,wenoRIdx(:, 1, 1)
+          !print*,wenoBIdx(:, 1, 1)
+          !print*,wenoTIdx(:, 1, 1)
+          !print*,wenoQIdx(:, 1, 1)
+          !print*,''
+          !print*,wenoLIdx(:,-1, 1)
+          !print*,wenoRIdx(:,-1, 1)
+          !print*,wenoBIdx(:,-1, 1)
+          !print*,wenoTIdx(:,-1, 1)
+          !print*,wenoQIdx(:,-1, 1)
+          !print*,''
+          !print*,wenoLIdx(:,1,-1)
+          !print*,wenoRIdx(:,1,-1)
+          !print*,wenoBIdx(:,1,-1)
+          !print*,wenoTIdx(:,1,-1)
+          !print*,wenoQIdx(:,1,-1)
+          !print*,''
+          !print*,wenoLIdx(:,-1,-1)
+          !print*,wenoRIdx(:,-1,-1)
+          !print*,wenoBIdx(:,-1,-1)
+          !print*,wenoTIdx(:,-1,-1)
+          !print*,wenoQIdx(:,-1,-1)
+          !stop
+          
+          !wenoLIdx(1,1,1) =  1; wenoLIdx(2,1,1) =  2;
+          !wenoRIdx(1,1,1) =  3; wenoRIdx(2,1,1) =  4;
+          !wenoBIdx(1,1,1) =  5; wenoBIdx(2,1,1) =  6;
+          !wenoTIdx(1,1,1) =  7; wenoTIdx(2,1,1) =  8;
+          !wenoQIdx(1,1,1) =  9; wenoQIdx(2,1,1) = 10;
+          !wenoQIdx(3,1,1) = 11; wenoQIdx(4,1,1) = 12;
+          !
+          !wenoLIdx(1,-1,1) =  3; wenoLIdx(2,-1,1) =  4;
+          !wenoRIdx(1,-1,1) =  1; wenoRIdx(2,-1,1) =  2;
+          !wenoBIdx(1,-1,1) =  6; wenoBIdx(2,-1,1) =  5;
+          !wenoTIdx(1,-1,1) =  8; wenoTIdx(2,-1,1) =  7;
+          !wenoQIdx(1,-1,1) = 10; wenoQIdx(2,-1,1) =  9;
+          !wenoQIdx(3,-1,1) = 12; wenoQIdx(4,-1,1) = 11;
+          !
+          !wenoLIdx(1,-1,-1) =  4; wenoLIdx(2,-1,-1) =  3;
+          !wenoRIdx(1,-1,-1) =  2; wenoRIdx(2,-1,-1) =  1;
+          !wenoBIdx(1,-1,-1) =  8; wenoBIdx(2,-1,-1) =  7;
+          !wenoTIdx(1,-1,-1) =  6; wenoTIdx(2,-1,-1) =  5;
+          !wenoQIdx(1,-1,-1) = 12; wenoQIdx(2,-1,-1) = 11;
+          !wenoQIdx(3,-1,-1) = 10; wenoQIdx(4,-1,-1) =  9;
+          !
+          !wenoLIdx(1,1,-1) =  2; wenoLIdx(2,1,-1) =  1;
+          !wenoRIdx(1,1,-1) =  4; wenoRIdx(2,1,-1) =  3;
+          !wenoBIdx(1,1,-1) =  7; wenoBIdx(2,1,-1) =  8;
+          !wenoTIdx(1,1,-1) =  5; wenoTIdx(2,1,-1) =  6;
+          !wenoQIdx(1,1,-1) = 11; wenoQIdx(2,1,-1) = 12;
+          !wenoQIdx(3,1,-1) =  9; wenoQIdx(4,1,-1) = 10;
         endif
         
       end subroutine init_reconstruction
@@ -412,7 +469,7 @@
         real(r_kind) :: sigmap
         real(r_kind) :: sigman
         
-        real(r_kind) :: tau,phi,min_SI
+        real(r_kind) :: tau
         
         ! Rematch cells on each stencil
         do iStencil = 1,nWenoStencil
@@ -431,21 +488,16 @@
             SI(iStencil) = Inf
           endif
         enddo
-        min_SI = minval(SI)
         
         ! For WENO-Z
-        tau    = 0
+        tau = 0
         iCount = 0
-        phi    = 0
         do jStencil = 1,nWENOStencil-1
           if( availableStencil(wenoType,jStencil) )then
             do iStencil = jStencil+1,nWENOStencil
               if( availableStencil(wenoType,iStencil) )then
                 iCount = iCount + 1
                 tau = tau + abs( SI(iStencil) - SI(jStencil) )
-        
-                ! Fix 3rd order scheme
-                phi = max( abs( SI(iStencil) - SI(jStencil) ), phi )
               endif
             enddo
           endif
@@ -455,13 +507,9 @@
         
         do iPoint = 1,nWenoPoints
           if( .not.any(wenoCoef(wenoType,iPoint,:)<0) )then
-            if(phi>min_SI)then
-              !w(:,iPoint) = wenoCoef(wenoType,iPoint,:) / ( SI + eps )**2 ! Origin
-              w(:,iPoint) = wenoCoef(wenoType,iPoint,:) * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
-              w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
-            else
-              w(:,iPoint) = wenoCoef(wenoType,iPoint,:)
-            endif
+            !w(:,iPoint) = wenoCoef(wenoType,iPoint,:) / ( SI + eps )**2 ! Origin
+            w(:,iPoint) = wenoCoef(wenoType,iPoint,:) * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
+            w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
             
             do iTerm = 1,nWenoTerms
               wa(iPoint,iTerm) = dot_product( w(:,iPoint), a(:,iTerm) )
@@ -479,18 +527,13 @@
             rp = rp / sigmap
             rn = rn / sigman
             
-            if(phi>min_SI)then
-              !wp(:,iPoint) = rp / ( SI + eps )**2 ! Origin
-              wp(:,iPoint) = rp * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
-              wp(:,iPoint) = wp(:,iPoint) / sum(wp(:,iPoint))
-              
-              !wn(:,iPoint) = rn / ( SI + eps )**2 ! Origin
-              wn(:,iPoint) = rn * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
-              wn(:,iPoint) = wn(:,iPoint) / sum(wn(:,iPoint))
-            else
-              wp(:,iPoint) = rp
-              wn(:,iPoint) = rn
-            endif
+            !wp(:,iPoint) = rp / ( SI + eps )**2 ! Origin
+            wp(:,iPoint) = rp * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
+            wp(:,iPoint) = wp(:,iPoint) / sum(wp(:,iPoint))
+            
+            !wn(:,iPoint) = rn / ( SI + eps )**2 ! Origin
+            wn(:,iPoint) = rn * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
+            wn(:,iPoint) = wn(:,iPoint) / sum(wn(:,iPoint))
             
             do iTerm = 1,nWenoTerms
               wap(iPoint,iTerm) = dot_product( wp(:,iPoint), a(:,iTerm) )
@@ -1028,6 +1071,7 @@
       
       end function right_side_recon3
       
+      ! For WENO 3rd scheme with 2 degree polynomial substencil
       function WENO_smooth_indicator_2(a_in)
         real(r_kind) :: WENO_smooth_indicator_2
         real(r_kind) :: a_in(:)
@@ -1035,10 +1079,23 @@
         
         a = a_in
         
-        WENO_smooth_indicator_2 = a(2)**2 + a(3)**2 + 7._r16 * a(4)**2 / 6._r16
+        WENO_smooth_indicator_2 = a(2)**2 + a(3)**2 + 13*a(4)**2/3 + 7*a(5)**2/6 + 13*a(6)**2/3
         
       end function WENO_smooth_indicator_2
       
+      !! For WENO 3rd scheme with 2x2 substencil
+      !function WENO_smooth_indicator_2(a_in)
+      !  real(r_kind) :: WENO_smooth_indicator_2
+      !  real(r_kind) :: a_in(:)
+      !  real(r16) :: a(lbound(a_in,1):ubound(a_in,1))
+      !  
+      !  a = a_in
+      !  
+      !  WENO_smooth_indicator_2 = a(2)**2 + a(3)**2 + 7._r16 * a(4)**2 / 6._r16
+      !  
+      !end function WENO_smooth_indicator_2
+      
+      ! For Zhu Jun 2019
       !function WENO_smooth_indicator_2(a_in)
       !  real(r_kind) :: WENO_smooth_indicator_2
       !  real(r_kind) :: a_in(:)

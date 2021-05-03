@@ -3,7 +3,7 @@ run_days         = 12
 run_hours        = 0
 run_minutes      = 0
 run_seconds      = 0
-dt               = 900 ! 200s for 1 degree
+dt               = 50 ! 200s for 1 degree
 history_interval = 3600
 integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
 /
@@ -13,8 +13,8 @@ case_num    = 2, ! Choose from 2, 5, 6, 8, 9
 /
 
 &domain
-dx                   = 4.5,  ! Unit: degree
-dy                   = 4.5,  ! Unit: degree
+dx                   = 0.25,  ! Unit: degree
+dy                   = 0.25,  ! Unit: degree
 nPointsOnEdge        = 2,
 /
 

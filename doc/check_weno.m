@@ -7,7 +7,7 @@ var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
 % var_name = 'vorticity';
-it       = 13;
+it       = 2;
 
 gravity = 9.80616;
 
@@ -68,7 +68,7 @@ lat1d = reshape(lat,[],1);
 var1d = reshape(var,[],1);
 % var1d = reshape(var-var0,[],1);
 
-res = dx;
+res = dx/4;
 x   = xs:res:xe;
 y   = -90:res:90;
 
