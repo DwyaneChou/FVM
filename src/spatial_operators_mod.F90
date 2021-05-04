@@ -14,6 +14,7 @@ module spatial_operators_mod
   public init_spatial_operator,spatial_operator
   
   public qC, fill_halo, reconstruction ! just for diag
+  public trouble_cell_indicator,trouble_cell
       
   integer(i_kind),dimension(:,:,:  ), allocatable :: nRecCells ! number of cells for reconstruction
   integer(i_kind),dimension(:,:,:  ), allocatable :: nGstRecCells ! number of cells for ghost point reconstruction
@@ -40,6 +41,8 @@ module spatial_operators_mod
   
   real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: WENOPoly ! polynomial coefficients for WENO2D
   real   (r_kind), dimension(:,:,:,:,:,:), allocatable :: invWENOPoly ! polynomial coefficients for WENO2D
+  
+  logical, dimension(:,:,:,:), allocatable :: trouble_cell
   
   real   (r_kind), dimension(:,:), allocatable :: existWENOTerm
   
@@ -216,6 +219,8 @@ module spatial_operators_mod
         
         allocate(xDirWENO(ids:ide,jds:jde))
         allocate(yDirWENO(ids:ide,jds:jde))
+        
+        if(use_trouble_cell_indicator)allocate(trouble_cell(nVar,ims:ime,jms:jme,ifs:ife))
       endif
       
       allocate(recMatrixDx(nQuadPointsOnCell,maxRecTerms,ids:ide,jds:jde,ifs:ife))
@@ -996,7 +1001,7 @@ module spatial_operators_mod
       call fill_halo(stat%q,qQ(1,:,:,:,:))
       
       qC = stat%q
-              
+      
       if(case_num==5)then
         !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
         do iPatch = ifs,ife
@@ -1012,14 +1017,26 @@ module spatial_operators_mod
         !$OMP END PARALLEL DO
       endif
       
-      do iVar = 1,nVar
-        call reconstruction(qC(iVar,:,:,:  ),&
-                            qL(iVar,:,:,:,:),&
-                            qR(iVar,:,:,:,:),&
-                            qB(iVar,:,:,:,:),&
-                            qT(iVar,:,:,:,:),&
-                            qQ(iVar,:,:,:,:))
-      enddo
+      if(reconstruct_scheme=='WENO'.and.use_trouble_cell_indicator)then
+        do iVar = 1,nVar
+          call reconstruction(qC(iVar,:,:,:  ),&
+                              qL(iVar,:,:,:,:),&
+                              qR(iVar,:,:,:,:),&
+                              qB(iVar,:,:,:,:),&
+                              qT(iVar,:,:,:,:),&
+                              qQ(iVar,:,:,:,:),&
+                              trouble_cell=trouble_cell(iVar,:,:,:))
+        enddo
+      else
+        do iVar = 1,nVar
+          call reconstruction(qC(iVar,:,:,:  ),&
+                              qL(iVar,:,:,:,:),&
+                              qR(iVar,:,:,:,:),&
+                              qB(iVar,:,:,:,:),&
+                              qT(iVar,:,:,:,:),&
+                              qQ(iVar,:,:,:,:))
+        enddo
+      endif
       
       if(case_num==5)then
         !$OMP PARALLEL DO PRIVATE(i,j) COLLAPSE(3)
@@ -1226,7 +1243,7 @@ module spatial_operators_mod
       !$OMP END PARALLEL
     end subroutine fill_halo
     
-    subroutine reconstruction(q,qL,qR,qB,qT,qQ,dqdx,dqdy)
+    subroutine reconstruction(q,qL,qR,qB,qT,qQ,dqdx,dqdy,trouble_cell)
       real(r_kind), dimension(                  ims:ime,jms:jme,ifs:ife), intent(in   )          :: q
       real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(  out),optional :: qL
       real(r_kind), dimension(nPointsOnEdge    ,ims:ime,jms:jme,ifs:ife), intent(  out),optional :: qR
@@ -1235,6 +1252,7 @@ module spatial_operators_mod
       real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(inout),optional :: qQ
       real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(  out),optional :: dqdx ! x derivative on quadrature points
       real(r_kind), dimension(nQuadPointsOnCell,ims:ime,jms:jme,ifs:ife), intent(  out),optional :: dqdy ! y derivative on quadrature points
+      logical     , dimension(                  ims:ime,jms:jme,ifs:ife), intent(in   ),optional :: trouble_cell
       
       real(r_kind), dimension(maxRecCells             ) :: u
       real(r_kind), dimension(maxRecCells ,maxRecTerms) :: coordMtx
@@ -1247,15 +1265,17 @@ module spatial_operators_mod
       
       ! For WENO
       real   (r_kind), dimension(nWenoPoints) :: qrec
+      real   (r_kind), dimension(maxRecCells) :: qH
       integer(i_kind) :: xdir,ydir
+      logical         :: TC
       
-      integer(i_kind) :: iVar,i,j,iPatch,iCOS,iStencil
+      integer(i_kind) :: iVar,i,j,iPatch,iCOS,iCell,iStencil
       integer(i_kind) :: iRec,jRec
       integer(i_kind) :: ic
       integer(i_kind) :: m,n
       
       if(trim(reconstruct_scheme)=='WENO')then
-        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,u,qrec) COLLAPSE(3)
+        !$OMP PARALLEL DO PRIVATE(i,j,iCOS,iRec,jRec,u,qrec,TC,iCell,qH) COLLAPSE(3)
         do iPatch = ifs,ife
           do j = jds,jde
             do i = ids,ide
@@ -1265,7 +1285,29 @@ module spatial_operators_mod
                 u(iCOS) = q(iRec,jRec,iPatch)
               enddo
               
-              call WENO(qrec,u,wenoType(i,j,iPatch))
+              if(present(trouble_cell))then
+                if( any( trouble_cell(iWENOCell(:,i,j,iPatch),jWENOCell(:,i,j,iPatch),iPatch) ) )then
+                  TC = .true.
+                else
+                  TC = .false.
+                endif
+              else
+                TC = .true.
+              endif
+              
+              if(TC)then
+                call WENO(qrec,u,wenoType(i,j,iPatch))
+              else
+               iCOS = 0
+               do iCell = 1,maxRecCells
+                 if(existPolyTerm(wenoType(i,j,iPatch),iCell)==1)then
+                   iCOS = iCOS + 1
+                   qH(iCOS) = u(iCell)
+                 endif
+               enddo
+               
+               qrec = matmul( iAPoly(wenoType(i,j,iPatch),:,1:iCOS), qH(1:iCOS) )
+              endif
               
               if(present(qL)) qL(:,i,j,iPatch) = qrec(wenoLIdx(:,xDirWENO(i,j),yDirWENO(i,j)))
               if(present(qR)) qR(:,i,j,iPatch) = qrec(wenoRIdx(:,xDirWENO(i,j),yDirWENO(i,j)))
@@ -1743,7 +1785,68 @@ module spatial_operators_mod
       endif
       
     end function P5
-  
+    
+    subroutine trouble_cell_indicator(trouble_cell,q)
+      logical     , dimension(ims:ime,jms:jme,ifs:ife), intent(out) :: trouble_cell
+      real(r_kind), dimension(ims:ime,jms:jme,ifs:ife), intent(in ) :: q
+      
+      integer :: i,j,iPatch
+      
+      integer :: imsp1,imem1,jmsp1,jmem1
+      
+      real(r_kind) :: c,c_up,c_down,c_left,c_right,ndir
+      
+      !$OMP PARALLEL DO PRIVATE(i,j,ndir,c_up,c_down,c_left,c_right,c) COLLAPSE(3)
+      do iPatch = ifs,ife
+        do j = jms,jme
+          do i = ims,ime
+            ndir = 0
+            
+            if(j<jme)then
+              c_up = abs( q(i,j+1,iPatch) - q(i,j,iPatch) )
+              ndir = ndir + 1
+            else
+              c_up = 0
+            endif
+            
+            if(j>jms)then
+              c_down = abs( q(i,j-1,iPatch) - q(i,j,iPatch) )
+              ndir = ndir + 1
+            else
+              c_down = 0
+            endif
+            
+            if(i<ime)then
+              c_right = abs( q(i+1,j,iPatch) - q(i,j,iPatch) )
+              ndir = ndir + 1
+            else
+              c_right = 0
+            endif
+            
+            if(i>ims)then
+              c_left = abs( q(i-1,j,iPatch) - q(i,j,iPatch) )
+              ndir = ndir + 1
+            else
+              c_left = 0
+            endif
+            
+            !c = ( c_up + c_down + c_right + c_left ) / ( ndir * ( sqrt(2.) * dx )**(dble(stencil_width)/2) * abs( q(i,j,iPatch) ) )
+            c = ( c_up + c_down + c_right + c_left ) / ( ndir * ( sqrt(2.) * dx ) * abs( q(i,j,iPatch) ) )
+            
+            !print*,i,j,iPatch,c
+            
+            if(c>1)then
+              trouble_cell(i,j,iPatch) = .true.
+            else
+              trouble_cell(i,j,iPatch) = .false.
+            endif
+            
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+    end subroutine trouble_cell_indicator
+    
     subroutine check_halo(q)
       real(r_kind), dimension(nVar,ims:ime,jms:jme,ifs:ife),intent(in) :: q
       

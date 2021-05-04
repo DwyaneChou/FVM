@@ -27,6 +27,14 @@ module temporal_mod
       
       real(r_kind),dimension(4),parameter :: RK4_weight = [1./6.,1./3.,1./3.,1./6.]
       
+      integer :: iVar
+      
+      if(trim(reconstruct_scheme)=='WENO'.and.use_trouble_cell_indicator)then
+        do iVar = 1,nVar
+          call trouble_cell_indicator(trouble_cell(iVar,:,:,:),stat_old%q(iVar,:,:,:))
+        enddo
+      endif
+      
       !call copyStat(stat(k1),stat_old)
       
       call spatial_operator (stat_old, tend(k1))
@@ -48,6 +56,14 @@ module temporal_mod
     subroutine RK3_TVD(stat_new,stat_old)
       type(stat_field), intent(inout) :: stat_new
       type(stat_field), intent(inout) :: stat_old
+      
+      integer :: iVar
+      
+      if(trim(reconstruct_scheme)=='WENO'.and.use_trouble_cell_indicator)then
+        do iVar = 1,nVar
+          call trouble_cell_indicator(trouble_cell(iVar,:,:,:),stat_old%q(iVar,:,:,:))
+        enddo
+      endif
       
       !call copyStat(stat(k1),stat_old)
       
@@ -74,6 +90,14 @@ module temporal_mod
     subroutine SSPRK(stat_new,stat_old)
       type(stat_field), intent(inout) :: stat_new
       type(stat_field), intent(inout) :: stat_old
+      
+      integer :: iVar
+      
+      if(trim(reconstruct_scheme)=='WENO'.and.use_trouble_cell_indicator)then
+        do iVar = 1,nVar
+          call trouble_cell_indicator(trouble_cell(iVar,:,:,:),stat_old%q(iVar,:,:,:))
+        enddo
+      endif
     
       call spatial_operator (stat_old, tend(k1))
       call update_stat      (stat(k1), stat_old, tend(k1), 0.5_r_kind * dt)
@@ -93,7 +117,13 @@ module temporal_mod
       type(stat_field), intent(inout) :: stat_new
       type(stat_field), intent(inout) :: stat_old
       
-      integer :: iPoint
+      integer :: iVar
+      
+      if(trim(reconstruct_scheme)=='WENO'.and.use_trouble_cell_indicator)then
+        do iVar = 1,nVar
+          call trouble_cell_indicator(trouble_cell(iVar,:,:,:),stat_old%q(iVar,:,:,:))
+        enddo
+      endif
       
       !call copyStat(stat(k1),stat_old)
       

@@ -64,6 +64,8 @@
       real   (r_kind), dimension(:,:,:), allocatable :: iAWENO   ! (nWenoStencil,nWenoTerms,nWenoTerms)
       integer(i_kind), dimension(:,:  ), allocatable :: wenoIdx  ! (nWenoStencil,nWenoCells)
       
+      real   (r_kind), dimension(:,:,:), allocatable :: iAPoly   ! (nWenoType,nWenoPoints,nWenoTerms)
+      integer(i_kind), dimension(:,:  ), allocatable :: existPolyTerm
       integer(i_kind), dimension(:,:  ), allocatable :: wenoLack
       
       integer(i_kind), dimension(:,:), allocatable :: xDirWENO
@@ -254,19 +256,21 @@
           allocate( availableStencil(nWenoType,nWenoStencil) )
           allocate( AWENO           (nWenoStencil,nWenoTerms ,nWenoTerms) )
           allocate( iAWENO          (nWenoStencil,nWenoTerms ,nWenoTerms) )
+          allocate( iAPoly          (nWenoType,nWenoPoints,maxRecCells) )
+          allocate( existPolyTerm   (nWenoType,maxRecCells) )
           allocate( wenoIdx         (nWenoStencil,nWenoCells) )
           allocate( wenoLack        (nWenoType,nWenoLack) )
           allocate( xw              (nWenoPoints) )
           allocate( yw              (nWenoPoints) )
           allocate( ps              (nWenoPoints,nWenoTerms) )
-      
+          
           allocate( wenoLIdx(nPointsOnEdge    , -1:1, -1:1) )
           allocate( wenoRIdx(nPointsOnEdge    , -1:1, -1:1) )
           allocate( wenoBIdx(nPointsOnEdge    , -1:1, -1:1) )
           allocate( wenoTIdx(nPointsOnEdge    , -1:1, -1:1) )
           allocate( wenoQIdx(nQuadPointsOnCell, -1:1, -1:1) )
           
-          call calc_weno_coef(wenoCoef,availableStencil,iAWENO,wenoIdx,xw,yw,stencil_width_sub,wenoLack,stencil_width,nPointsOnEdge)
+          call calc_weno_coef(wenoCoef,availableStencil,iAWENO,iAPoly,existPolyTerm,wenoIdx,xw,yw,stencil_width_sub,wenoLack,stencil_width,nPointsOnEdge)
           
           call calc_rectangle_poly_matrix(stencil_width_sub,stencil_width_sub,nWenoPoints,xw,yw,ps)
           
@@ -390,7 +394,7 @@
         
         integer(i_kind) :: iStencil,jStencil,iCell,iPoint,iTerm,iCount
         
-        real(r_kind), dimension(nWenoCells) :: qC
+        real(r_kind), dimension(nWenoCells ) :: qC
         
         real(r_kind), dimension(nWenoStencil,nWenoTerms ) :: a  ! coef of reconstruction polynomial
         real(r_kind), dimension(nWenoStencil            ) :: SI
@@ -412,7 +416,7 @@
         real(r_kind) :: sigmap
         real(r_kind) :: sigman
         
-        real(r_kind) :: tau,phi,min_SI
+        real(r_kind) :: tau
         
         ! Rematch cells on each stencil
         do iStencil = 1,nWenoStencil
@@ -431,21 +435,16 @@
             SI(iStencil) = Inf
           endif
         enddo
-        min_SI = minval(SI)
         
         ! For WENO-Z
         tau    = 0
         iCount = 0
-        phi    = 0
         do jStencil = 1,nWENOStencil-1
           if( availableStencil(wenoType,jStencil) )then
             do iStencil = jStencil+1,nWENOStencil
               if( availableStencil(wenoType,iStencil) )then
                 iCount = iCount + 1
                 tau = tau + abs( SI(iStencil) - SI(jStencil) )
-        
-                ! Fix 3rd order scheme
-                phi = max( abs( SI(iStencil) - SI(jStencil) ), phi )
               endif
             enddo
           endif
@@ -455,13 +454,9 @@
         
         do iPoint = 1,nWenoPoints
           if( .not.any(wenoCoef(wenoType,iPoint,:)<0) )then
-            if(phi>min_SI)then
-              !w(:,iPoint) = wenoCoef(wenoType,iPoint,:) / ( SI + eps )**2 ! Origin
-              w(:,iPoint) = wenoCoef(wenoType,iPoint,:) * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
-              w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
-            else
-              w(:,iPoint) = wenoCoef(wenoType,iPoint,:)
-            endif
+            !w(:,iPoint) = wenoCoef(wenoType,iPoint,:) / ( SI + eps )**2 ! Origin
+            w(:,iPoint) = wenoCoef(wenoType,iPoint,:) * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
+            w(:,iPoint) = w(:,iPoint) / sum(w(:,iPoint))
             
             do iTerm = 1,nWenoTerms
               wa(iPoint,iTerm) = dot_product( w(:,iPoint), a(:,iTerm) )
@@ -479,18 +474,13 @@
             rp = rp / sigmap
             rn = rn / sigman
             
-            if(phi>min_SI)then
-              !wp(:,iPoint) = rp / ( SI + eps )**2 ! Origin
-              wp(:,iPoint) = rp * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
-              wp(:,iPoint) = wp(:,iPoint) / sum(wp(:,iPoint))
-              
-              !wn(:,iPoint) = rn / ( SI + eps )**2 ! Origin
-              wn(:,iPoint) = rn * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
-              wn(:,iPoint) = wn(:,iPoint) / sum(wn(:,iPoint))
-            else
-              wp(:,iPoint) = rp
-              wn(:,iPoint) = rn
-            endif
+            !wp(:,iPoint) = rp / ( SI + eps )**2 ! Origin
+            wp(:,iPoint) = rp * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
+            wp(:,iPoint) = wp(:,iPoint) / sum(wp(:,iPoint))
+            
+            !wn(:,iPoint) = rn / ( SI + eps )**2 ! Origin
+            wn(:,iPoint) = rn * ( 1. + tau / ( SI + eps ) ) ! WENO-Z
+            wn(:,iPoint) = wn(:,iPoint) / sum(wn(:,iPoint))
             
             do iTerm = 1,nWenoTerms
               wap(iPoint,iTerm) = dot_product( wp(:,iPoint), a(:,iTerm) )
@@ -503,7 +493,6 @@
             qrec(iPoint) = sigmap * qrecp(iPoint) - sigman * qrecn(iPoint)
           endif
         enddo
-        
       end subroutine WENO
       
       function WLS_ENO(A,u,h,m,n,ic,x0)

@@ -5,10 +5,12 @@
       public calc_weno_coef
       
     contains
-      subroutine calc_weno_coef(coef,availableStencil,iAWENO,wenoIdx,xw,yw,stencil_width_sub,lack_pos,stencil_width,nPointsOnEdge)
+      subroutine calc_weno_coef(coef,availableStencil,iAWENO,iAPoly,existPolyTerm,wenoIdx,xw,yw,stencil_width_sub,lack_pos,stencil_width,nPointsOnEdge)
         real   (r_kind), dimension(:,:,:), allocatable, intent(out) :: coef
         logical        , dimension(:,:  ), allocatable, intent(out) :: availableStencil
         real   (r_kind), dimension(:,:,:), allocatable, intent(out) :: iAWENO
+        real   (r_kind), dimension(:,:,:), allocatable, intent(out) :: iAPoly
+        integer(i_kind), dimension(:,:  ), allocatable, intent(out) :: existPolyTerm
         integer(i_kind), dimension(:,:  ), allocatable, intent(out) :: wenoIdx
         real   (r_kind), dimension(:    ), allocatable, intent(out) :: xw
         real   (r_kind), dimension(:    ), allocatable, intent(out) :: yw
@@ -103,6 +105,8 @@
         allocate( coef            (nWenoType,nPoints,nStencil) )
         allocate( availableStencil(nWenoType,nStencil) )
         allocate( iAWENO          (nStencil,nCOSL,nCOSL) )
+        allocate( iAPoly          (nWenoType,nPoints,nCOSH) )
+        allocate( existPolyTerm   (nWenoType,nCOSH) )
         allocate( wenoIdx         (nStencil,nCOSL) )
         allocate( xw              (nPoints) )
         allocate( yw              (nPoints) )
@@ -216,7 +220,7 @@
         
         availableStencil  = .false.
         nAvailableStencil = 0
-        
+        iAPoly            = 0
         do iType = 1,nWenoType
           existTermL = 0
           existTermH = 0
@@ -308,6 +312,8 @@
           enddo
           nExistTermH = sum(existTermH)
           
+          existPolyTerm(iType,:) = existTermH
+          
           nRCH = nExistTermH
           nx   = stencil_width
           ny   = stencil_width
@@ -334,6 +340,8 @@
           call calc_rectangle_poly_matrix(nx,ny,nPoints,xP,yP,PH(1:nPoints,1:nRCH),existTermH)
           
           RH(1:nPoints,1:nRCH) = matmul( PH(1:nPoints,1:nRCH), iAH(1:nRCH,1:nRCH) )
+          
+          iAPoly(iType,:,:) = RH
           
           iStencil = 0
           do jStencil = 1,nStencil

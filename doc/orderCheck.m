@@ -2,7 +2,7 @@ clc
 clear
 
 time_start = 1;
-time_end   = 129;
+time_end   = 289;
 
 history_path = '..\run';
 % history_path = '..\run\WENO_case2';
@@ -14,7 +14,7 @@ res_nc{1} = [history_path,'\','output.nc'];
 
 % res_nc{1} = [history_path,'\','output_3rd_2p0.nc'];
 % res_nc{2} = [history_path,'\','output_3rd_1p0.nc'];
-res_nc{2} = [history_path,'\','output_3rd_0p5.nc'];
+% res_nc{2} = [history_path,'\','output_3rd_0p5.nc'];
 
 % res_nc{1} = [history_path,'\','output_5th_2p0.nc'];
 % res_nc{2} = [history_path,'\','output_5th_1p0.nc'];

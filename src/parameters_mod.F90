@@ -41,6 +41,7 @@ module parameters_mod
   integer(i_kind) :: recBdy        = 2
   real   (r_kind) :: epsilon       = 1.e-2 ! Coefficient for avioding divide 0 in WLS-ENO, 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
                                            ! or in other words, increasing by finer grid
+  logical         :: use_trouble_cell_indicator = .true.
                                            
   ! WENO 2D
   integer(i_kind) :: nStencil_all ! number of high oder WENO 2d stencil
@@ -113,7 +114,8 @@ module parameters_mod
                            quad_opt          ,&
                            nQuadOrder        ,&
                            stencil_width     ,&
-                           epsilon
+                           epsilon           ,&
+                           use_trouble_cell_indicator
   
   contains
   
@@ -224,6 +226,9 @@ module parameters_mod
     ime  = Nx + xhalo
     jms  = 1  - yhalo
     jme  = Ny + yhalo
+    
+    Nx_halo = ime - ims + 1
+    Ny_halo = jme - jms + 1
     
     ! Setting the starting patch index and ending patch index
     ifs = 1
