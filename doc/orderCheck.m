@@ -16,7 +16,7 @@ res_nc{1} = [history_path,'\','output.nc'];
 % res_nc{2} = [history_path,'\','output_3rd_1p0.nc'];
 % res_nc{2} = [history_path,'\','output_3rd_0p5.nc'];
 
-% res_nc{1} = [history_path,'\','output_5th_2p0.nc'];
+res_nc{2} = [history_path,'\','output_5th_2p0.nc'];
 % res_nc{2} = [history_path,'\','output_5th_1p0.nc'];
 % res_nc{3} = [history_path,'\','output_5th_0p5.nc'];
 
