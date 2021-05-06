@@ -748,9 +748,8 @@ module spatial_operators_mod
         enddo
       enddo
       !$OMP END DO
-      !$OMP END PARALLEL
       
-      !$OMP PARALLEL DO PRIVATE(i,j,iVar) COLLAPSE(4)
+      !$OMP DO PRIVATE(i,j,iVar) COLLAPSE(4)
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
@@ -762,7 +761,8 @@ module spatial_operators_mod
           enddo
         enddo
       enddo
-      !$OMP END PARALLEL DO
+      !$OMP END DO
+      !$OMP END PARALLEL
       
       !print*,maxval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife)),&
       !       minval(tend%q(:,ids:ide,jds:jde,ifs:ife)/stat%q(:,ids:ide,jds:jde,ifs:ife))
