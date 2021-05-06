@@ -11,8 +11,6 @@
       use diag_mod
       implicit none
       
-      
-      integer(i_kind) iVar
       integer(i_kind) it
       
       integer(i_kind) :: old = 0
@@ -58,17 +56,8 @@
       
       ! time integration
       do it = 1,nsteps
-        ! Check trouble cells
-        if(trim(reconstruct_scheme)=='WENO'.and.use_trouble_cell_indicator)then
-          do iVar = 1,nVar
-            call trouble_cell_indicator(trouble_cell(iVar,:,:,:),stat(old)%q(iVar,:,:,:))
-          enddo
-        endif
-        
         if(trim(adjustl(integral_scheme))=='RK3_TVD')call RK3_TVD(stat(new),stat(old))
         if(trim(adjustl(integral_scheme))=='RK4'    )call RK4    (stat(new),stat(old))
-        if(trim(adjustl(integral_scheme))=='PC2'    )call PC2    (stat(new),stat(old))
-        if(trim(adjustl(integral_scheme))=='SSPRK'  )call SSPRK  (stat(new),stat(old))
         
         ! Write output
         if( mod(it,output_step)==0 .and. (it>=output_step) )then

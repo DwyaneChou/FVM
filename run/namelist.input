@@ -1,15 +1,15 @@
 &time_settings
-run_days         = 12
+run_days         = 15
 run_hours        = 0
 run_minutes      = 0
 run_seconds      = 0
 dt               = 400 ! 200s for 1 degree
 history_interval = 3600
-integral_scheme  = 'RK3_TVD' ! Choose from 'RK3_TVD' or 'RK4'
+integral_scheme  = 'RK4' ! Choose from 'RK3_TVD' or 'RK4' or 'PC2' or 'SSPRK'
 /
 
 &case_select
-case_num    = 2, ! Choose from 2, 5, 6, 8, 9
+case_num    = 5, ! Choose from 2, 5, 6, 8, 9
 /
 
 &domain
@@ -19,7 +19,7 @@ nPointsOnEdge        = 3,
 /
 
 &dynamic_opt
-reconstruct_scheme         = 'WENO' ! Choose from 'WLS-ENO', 'Polynomial', 'WENO3', 'WENO5', 'WENO2D', 'WENO'
+reconstruct_scheme         = 'WENO' ! Choose from 'Polynomial', 'WENO3', 'WENO5', 'WENO'
 epsilon                    = 1.e-2! Coefficient for avioding divide 0 in WLS-ENO
 stencil_width              = 5,
 quad_opt                   = 1, ! 1 for square gaussian quadratrue, 2 for triangular quaduature

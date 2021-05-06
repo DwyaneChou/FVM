@@ -34,6 +34,18 @@
       real(r_kind), dimension(:), allocatable :: xq
       real(r_kind), dimension(:), allocatable :: yq
       
+      ! For WENO 2D
+      integer(i_kind), dimension(:,:,:,:), allocatable :: iCenWENO           ! center cell index on reconstruction stencil for WENO2D
+      real   (r_kind), dimension(:,:    ), allocatable :: r                  ! optimal coefficients for WENO 2D
+      integer(i_kind), dimension(:,:,:,:,:), allocatable :: rematch_idx_3_to_3_SI ! Just for calculating smooth indicator(SI) for 1st order stencil
+      integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_3_to_3
+      integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_5_to_5
+      integer(i_kind), dimension(:,:,:,:), allocatable :: rematch_idx_7_to_7
+      integer(i_kind), dimension(:      ), allocatable :: rematch_idx_2_to_3
+      integer(i_kind), dimension(:      ), allocatable :: rematch_idx_3_to_5
+      integer(i_kind), dimension(:      ), allocatable :: rematch_idx_5_to_7
+      ! For WENO 2D
+      
       ! For WENO
       ! WENO stencil type, record the indices of cells in corner
       integer(i_kind) :: nWenoStencil
@@ -219,6 +231,10 @@
             iPOC = iPOC + 1
             xq(iPOC) = quad_pos_1d(iQP) - 0.5
             yq(iPOC) = quad_pos_1d(jQP) - 0.5
+            !print*,iQP,jQP
+            !print*,xq(iPOC)
+            !print*,yq(iPOC)
+            !print*,''
           enddo
         enddo
         
@@ -479,6 +495,141 @@
         enddo
       end subroutine WENO
       
+      function WLS_ENO(A,u,h,m,n,ic,x0)
+        ! WLS_ENO
+        ! Ax = b -> WAx=Wb -> min|| WAx - Wb || -> x
+        ! where A->A, x->WLS_ENO, b->u
+        ! WLS_ENO : unknown vector x (the vector of reconstruction polynomial coefficients)
+        ! A       : matrix of coordinate coefficient
+        ! u       : vector of known values
+        ! h       : average edge length of cell
+        ! m       : number of known values (volumn integration value on cell, or in other words, number of cells in a stencil)
+        ! n       : number of coefficients of reconstruction polynomial
+        ! ic      : index of center cell on stencil
+        ! x0      : initial value for Conjugate Gradient Method
+        real   (r_kind), dimension(n  )             :: WLS_ENO
+        integer(i_kind)                , intent(in) :: m
+        integer(i_kind)                , intent(in) :: n
+        real   (r_kind), dimension(m,n), intent(in) :: A
+        real   (r_kind), dimension(m  ), intent(in) :: u
+        real   (r_kind), dimension(m  ), intent(in) :: h
+        integer(i_kind)                , intent(in) :: ic
+        
+        real   (r_kind), dimension(n  ), intent(in),optional :: x0
+        
+        real(r_kind),parameter :: alpha   = 1.5
+        !real(r_kind),parameter :: epsilon = 1.e-2 ! 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
+        
+        real(r_kind), dimension(m,n) :: WA
+        real(r_kind), dimension(m  ) :: Wu
+        real(r_kind), dimension(m  ) :: W ! weights on each cells
+        real(r_kind), dimension(m  ) :: beta
+
+        real(r_kind), dimension(m  ) :: u_bar
+        real(r_kind)                 :: u_avg
+
+        !  For LAPACK only
+        real   (r_kind), dimension(m+n) :: work
+        integer(i_kind) :: INFO
+        
+        integer(i_kind) :: i,j,k
+        
+        u_bar = u
+        u_avg = sum( abs(u) ) / m
+        if(u_avg/=0) u_bar = ( u - u_avg ) / u_avg
+        
+        !u_bar = std(u,m)
+
+        do j = 1,m
+          beta(j) = ( u_bar(j) - u_bar(ic) )**2 + epsilon * h(j)**2
+        enddo
+        beta(ic) = minval(beta,beta>0)
+        
+        W = 1./beta
+        W(ic) = alpha * W(ic)
+        W = W / sum(W)
+        
+        !print*,'u_bar'
+        !write(*,'(5e)')u_bar
+        !print*,'W'
+        !write(*,'(5e)')W
+        !print*,'h'
+        !write(*,'(5e)')h
+        !print*,'diff u'
+        !write(*,'(5e)')( u_bar - u_bar(ic) )**2
+        !print*,'eps*h**2'
+        !write(*,'(5e)')epsilon * h**2
+        !print*,''
+        
+        do j = 1,m
+          WA(j,:) = W(j) * A(j,:)
+          Wu(j  ) = W(j) * u(j  )
+        enddo
+        
+        ! Solver by Tsinghua
+        call qr_solver(M,N,WA,Wu,WLS_ENO)
+        
+        !if(present(x0))then
+        !  call qr_solver(M,N,WA,Wu,WLS_ENO,x0)
+        !else
+        !  call qr_solver(M,N,WA,Wu,WLS_ENO)
+        !endif
+        
+        !! Solver by LAPACK DGELS
+        !call DGELS( 'N', M, N, 1, WA, M, Wu, M, WORK, M+N, INFO )
+        !WLS_ENO = Wu
+        
+      end function WLS_ENO
+      
+      function std(q,m)
+        integer(i_kind) :: m
+        real(r_kind), dimension(m) :: std
+        real(r_kind), dimension(m) :: q
+        
+        real   (r_kind) :: avg
+        real   (r_kind) :: n
+        
+        n = real(m,r_kind)
+        
+        avg = sum(q) / n
+        
+        std = sqrt( sum( ( q - avg )**2 ) / n )
+        
+        std = ( q - avg ) / std
+        
+      end function std
+      
+      subroutine WENO_limiter(Qrec,Q,dir)
+        real   (r_kind)              , intent(out) :: Qrec
+        real   (r_kind), dimension(5), intent(in ) :: Q
+        integer(i_kind)              , intent(in ) :: dir
+        
+        integer(i_kind), parameter :: nStencil = 3
+        real   (r_kind), parameter :: weno_coef(3)  = [0.1, 0.6, 0.3]
+        real   (r_kind), parameter :: eps           = 1.E-16
+        
+        real(r_kind) Qim(nStencil-1)
+        real(r_kind) Qip(nStencil-1)
+        real(r_kind) Qi
+        
+        integer(i_kind) iStencil
+        
+        Qim(2) = Q(1)
+        Qim(1) = Q(2)
+        Qi     = Q(3)
+        Qip(1) = Q(4)
+        Qip(2) = Q(5)
+        
+        if( .not. any(Q==FillValue) )then
+          call WENO5(Qrec,Q,dir)
+        elseif( any(Q==FillValue) .and. Qi/=FillValue )then
+          call WENO3(Qrec,Q(2:4),dir)
+        else
+          print*,'Center point is FillValue, WENO cannot be implemented.'
+        endif
+        
+      end subroutine WENO_limiter
+      
       ! 1D WENO 5th order slope limiter, according to Sun,2015
       ! "A Slope Constrained 4th OrderMulti-Moment Finite Volume Method with WENO Limiter"
       ! and Jiang and Shu, 1996
@@ -649,6 +800,187 @@
         
       end subroutine WENO3
       
+      subroutine WENO2D(polyCoef,nWenoCells,rematch_idx_3_to_3_SI,rematch_idx_3_to_3,rematch_idx_5_to_5,rematch_idx_7_to_7,p,i,j,iPatch)
+        real   (r_kind),dimension(:,:),intent(in ) :: polyCoef
+        integer(i_kind),dimension(:  ),intent(in ) :: nWenoCells    ! nWenoCells
+        integer(i_kind),dimension(:,:),intent(in ) :: rematch_idx_3_to_3_SI
+        integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_3_to_3
+        integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_5_to_5
+        integer(i_kind),dimension(:  ),intent(in ) :: rematch_idx_7_to_7
+        real   (r_kind),dimension(:  ),intent(out) :: p
+        integer(i_kind), intent(in) :: i,j,iPatch
+        
+        real(r_kind), dimension(nStencil1) :: beta1     ! smooth indicator for 1st order stencil
+        real(r_kind), dimension(nStencil1) :: sigma
+        real(r_kind), dimension(nStencil ) :: beta      ! smooth indicator for high order stencil
+        real(r_kind), dimension(nStencil ) :: alpha
+        real(r_kind), dimension(nStencil ) :: w
+        
+        real(r_kind), dimension(1 ) :: a1         ! polynomial coefficients after rematch
+        real(r_kind), dimension(9 ) :: a3         ! polynomial coefficients after rematch
+        real(r_kind), dimension(25) :: a5         ! polynomial coefficients after rematch
+        real(r_kind), dimension(49) :: a7         ! polynomial coefficients after rematch
+        
+        real(r_kind), dimension(          1 ) :: p1
+        real(r_kind), dimension(nStencil1,9 ) :: p3_SI
+        real(r_kind), dimension(          9 ) :: p3
+        real(r_kind), dimension(          25) :: p5
+        real(r_kind), dimension(          49) :: p7
+        
+        real(r_kind), dimension(9 ) :: p1_on_3
+        real(r_kind), dimension(25) :: p1_on_5
+        real(r_kind), dimension(25) :: p3_on_5
+        real(r_kind), dimension(49) :: p1_on_7
+        real(r_kind), dimension(49) :: p3_on_7
+        real(r_kind), dimension(49) :: p5_on_7
+      
+        real(r_kind) :: tau
+        real(r_kind) :: sigma_sum
+        real(r_kind), parameter :: eps = 1.e-15
+        
+        integer(i_kind) :: iCOS,iStencil
+        integer(i_kind) :: m
+        
+        do iStencil = 1,nStencil_all
+          m = nWenoCells(iStencil)
+          if(iStencil<=nStencil1)then
+            if(m>0)then
+              do iCOS = 1,m
+                p3_SI( iStencil,rematch_idx_3_to_3_SI(iStencil,iCOS) ) = polyCoef(iStencil,iCOS)
+              enddo
+              beta1(iStencil) = WENO_smooth_indicator_3(p3_SI(iStencil,:))
+            else
+              beta1(iStencil) = abs(Inf)
+            endif
+          elseif(iStencil==nStencil1+1)then
+            a1 = polyCoef(iStencil,1:m)
+            p1 = a1
+            beta(1) = minval(beta1) / r(2,2)
+          elseif(iStencil==nStencil1+2)then
+            ! Rematch array for calculating smooth indicator for 3rd order stencil
+            a3 = 0
+            do iCOS = 1,m
+              a3( rematch_idx_3_to_3(iCOS) ) = polyCoef(iStencil,iCOS)
+            enddo
+            
+            ! Rematch polynomial coefficients and calculate 3rd order polynomial
+            p1_on_3    = 0
+            p1_on_3(1) = p1(1)
+            p3 = ( a3 - p1_on_3 * r(1,2) ) / r(2,2)
+            
+            beta(2) = WENO_smooth_indicator_3(p3)
+            beta(1) = min( beta(1), beta(2) )
+          elseif(iStencil==nStencil1+3)then
+            ! Rematch array for calculating smooth indicator for 5th order stencil
+            a5 = 0
+            do iCOS = 1,m
+              a5( rematch_idx_5_to_5(iCOS) ) = polyCoef(iStencil,iCOS)
+            enddo
+            
+            ! Rematch polynomial coefficients and calculate 5th order polynomial
+            p1_on_5    = 0
+            p1_on_5(1) = p1(1)
+            p3_on_5    = 0
+            do iCOS = 1,9
+              p3_on_5( rematch_idx_3_to_5(iCOS) ) = p3(iCOS)
+            enddo
+            p5 = ( a5 - p1_on_5 * r(1,3) - p3_on_5 * r(2,3) ) / r(3,3)
+            
+            beta(3) = WENO_smooth_indicator_5(p5)
+          elseif(iStencil==nStencil1+4)then
+            ! Rematch array for calculating smooth indicator for 7th order stencil
+            a7 = 0
+            do iCOS = 1,m
+              a7( rematch_idx_7_to_7(iCOS) ) = polyCoef(iStencil,iCOS)
+            enddo
+            
+            ! Rematch polynomial coefficients and calculate 7th order polynomial
+            p1_on_7    = 0
+            p1_on_7(1) = p1(1)
+            p3_on_7    = 0
+            do iCOS = 1,25
+              p3_on_7( rematch_idx_5_to_7(iCOS) ) = p3_on_5(iCOS)
+            enddo
+            p5_on_7 = 0
+            do iCOS = 1,25
+              p5_on_7( rematch_idx_5_to_7(iCOS) ) = p5(iCOS)
+            enddo
+            p7 = ( a7 - p1_on_7 * r(1,4) - p3_on_7 * r(2,4) - p5_on_7 * r(3,4) ) / r(4,4)
+            
+            beta(4) = WENO_smooth_indicator_7(p7)
+          endif
+        enddo
+        
+        !! Engineer solution of low order smooth indicator
+        !if(nStencil>=3)then
+        !  if( abs( beta(3)-beta(2) ) / ( beta(2) + eps ) < 0.1 ) then
+        !    do iStencil = 2,nStencil
+        !      beta(iStencil) = beta(1)
+        !    enddo
+        !  endif
+        !endif
+        
+        !! In smooth region, the Smooth Indicator(SI) of high order stencil is smaller than SI for low order stencil
+        !! once the highest order stencil SI is small, we directly use high order stencil
+        !if(beta(nStencil)<=beta(nStencil-1))then
+        !  do iStencil = 1,nStencil-1
+        !    beta(iStencil) = beta(nStencil)
+        !  enddo
+        !endif
+        
+        !if(i==23.and.j==23.and.iPatch==1)then
+        !  print*,'beta1'
+        !  print*,beta1
+        !  print*,'beta'
+        !  print*,beta
+        !  print*,''
+        !  do iStencil = 1,nStencil1
+        !   print*,iStencil
+        !   print*,p3_SI(iStencil,:)
+        !  enddo
+        !  print*,9
+        !  do iCOS = 1,3
+        !    write(*,'(3e)'),a3(3*(iCOS-1)+1:3*iCOS)
+        !  enddo
+        !  print*,10
+        !  do iCOS = 1,5
+        !    write(*,'(5e)'),a5(5*(iCOS-1)+1:5*iCOS)
+        !  enddo
+        !  print*,11
+        !  do iCOS = 1,7
+        !    write(*,'(7e)'),a7(7*(iCOS-1)+1:7*iCOS)
+        !  enddo
+        !endif
+        
+        if(maxval(beta)/=0)beta = beta / maxval(beta)
+        
+        tau = ( sum( abs( beta(nStencil) - beta(1:nStencil-1) ) ) / ( nStencil - 1. ) )**2
+        do iStencil = 1,nStencil
+          alpha(iStencil) = r(iStencil,nStencil) * ( 1. + tau / ( beta(iStencil) + eps ) )
+        enddo
+        
+        !do iStencil = 1,nStencil
+        !  alpha(iStencil) = r(iStencil,nStencil) / ( beta(iStencil) + eps )**2
+        !enddo
+        
+        w = alpha / sum(alpha)
+        
+        !if(i==23.and.j==23.and.iPatch==1)then
+        !  print*,beta1
+        !  print*,beta
+        !  print*,alpha
+        !  print*,w
+        !  print*,r(:,nStencil)
+        !  print*,''
+        !endif
+        
+        if(nStencil==1)p = p1
+        if(nStencil==2)p = w(1) * p1_on_3 + w(2) * p3
+        if(nStencil==3)p = w(1) * p1_on_5 + w(2) * p3_on_5 + w(3) * p5
+        if(nStencil==4)p = w(1) * p1_on_7 + w(2) * p3_on_7 + w(3) * p5_on_7 + w(4) * p7
+        
+      end subroutine WENO2D
+      
       ! Reconstruct on the left most boundary
       function left_side_recon3(q)
         real(r_kind) :: left_side_recon3
@@ -685,17 +1017,27 @@
       
       end function right_side_recon3
       
-      function WENO_smooth_indicator_2(a) !(a_in)
+      function WENO_smooth_indicator_2(a_in)
         real(r_kind) :: WENO_smooth_indicator_2
-        real(r_kind) :: a(:)
-        !real(r_kind) :: a_in(:)
-        !real(r16) :: a(lbound(a_in,1):ubound(a_in,1))
+        real(r_kind) :: a_in(:)
+        real(r16) :: a(lbound(a_in,1):ubound(a_in,1))
         
-        !a = a_in
+        a = a_in
         
         WENO_smooth_indicator_2 = a(2)**2 + a(3)**2 + 7._r16 * a(4)**2 / 6._r16
         
       end function WENO_smooth_indicator_2
+      
+      !function WENO_smooth_indicator_2(a_in)
+      !  real(r_kind) :: WENO_smooth_indicator_2
+      !  real(r_kind) :: a_in(:)
+      !  real(r16) :: a(lbound(a_in,1):ubound(a_in,1))
+      !  
+      !  a = a_in
+      !  
+      !  WENO_smooth_indicator_2 = a(2)**2 + a(3)**2
+      !  
+      !end function WENO_smooth_indicator_2
       
       function WENO_smooth_indicator_3(a) !(a_in)
         real(r_kind) :: WENO_smooth_indicator_3

@@ -42,6 +42,11 @@ module parameters_mod
   real   (r_kind) :: epsilon       = 1.e-2 ! Coefficient for avioding divide 0 in WLS-ENO, 1.e-2 for dx>0.25 degree, 1.e+2 for dx<=0.25 degree
                                            ! or in other words, increasing by finer grid
   logical         :: use_trouble_cell_indicator = .true.
+                                           
+  ! WENO 2D
+  integer(i_kind) :: nStencil_all ! number of high oder WENO 2d stencil
+  integer(i_kind) :: nStencil     ! number of stencils for final reconstruction
+  integer(i_kind) :: nStencil1    ! number of 1st order weno 2d stencil
   
   ! Index parameter
   integer(i_kind) :: ids      ! The starting index in the x-direction (Physical domain)
@@ -165,6 +170,18 @@ module parameters_mod
       endif
     endif
     
+    !if(trim(reconstruct_scheme)=='WENO')then
+    !  nStencil = 9
+    !  if(stencil_width/=5)then
+    !    print*,'stencil_width is not 5, during using WENO, stencil_width has been reset to 5'
+    !    stencil_width = 5
+    !  endif
+    !  if(nPointsOnEdge/=2)then
+    !    print*,'nPointsOnEdge is not 2, during using WENO, nPointsOnEdge has been reset to 2'
+    !    nPointsOnEdge = 2
+    !  endif
+    !endif
+    
     ! Calculate total run time in seconds
     total_run_time = run_days * 86400 + run_hours * 3600 + run_minutes * 60 + run_seconds
     
@@ -185,8 +202,14 @@ module parameters_mod
     Ny = nint((y_max - y_min)/dy)
     
     recBdy = ( stencil_width - 1 ) / 2
-    xhalo  = recBdy
-    yhalo  = recBdy
+    xhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
+    yhalo  = recBdy + 1 ! plus 1 For calculating topo derivative in case 5
+    
+    if(trim(reconstruct_scheme)=='WENO2D')then
+      nStencil     = recBdy + 1
+      nStencil1    = 8
+      nStencil_all = nStencil1 + recBdy + 1 ! 4 1st order stencils + high order stencils
+    endif
     
     ! Calculate starting and ending index for physical domain
     ids  = 1
@@ -224,12 +247,8 @@ module parameters_mod
       nIntegralSubSteps = 3
     elseif(trim(adjustl(integral_scheme)) == 'RK4')then
       nIntegralSubSteps = 4
-    elseif(trim(adjustl(integral_scheme)) == 'PC2')then
-      nIntegralSubSteps = 2
-    elseif(trim(adjustl(integral_scheme)) == 'SSPRK')then
-      nIntegralSubSteps = 4
     else
-      stop 'Unknown integral scheme, please select from RK3_TVD, RK4, PC2 or SSPRK ...'
+      stop 'Unknown integral scheme, please select from RK3_TVD or RK4 ...'
     endif
     
     nsteps = total_run_time / dt
