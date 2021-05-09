@@ -3,9 +3,9 @@ run_days         = 15
 run_hours        = 0
 run_minutes      = 0
 run_seconds      = 0
-dt               = 400 ! 200s for 1 degree
-history_interval = 3600
-integral_scheme  = 'RK4' ! Choose from 'RK3_TVD' or 'RK4' or 'PC2' or 'SSPRK'
+dt               = 600 ! 300s for 1 degree
+history_interval = 86400
+integral_scheme  = 'RK3_WRF' ! Choose from 'RK3_TVD' or 'RK3_WRF' or 'RK4' or 'PC2' or 'SSPRK'
 /
 
 &case_select

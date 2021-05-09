@@ -222,6 +222,8 @@ module parameters_mod
     ! Setting the number of substeps in temporal integration scheme
     if(trim(adjustl(integral_scheme)) == 'RK3_TVD')then
       nIntegralSubSteps = 3
+    elseif(trim(adjustl(integral_scheme)) == 'RK3_WRF')then
+      nIntegralSubSteps = 3
     elseif(trim(adjustl(integral_scheme)) == 'RK4')then
       nIntegralSubSteps = 4
     elseif(trim(adjustl(integral_scheme)) == 'PC2')then

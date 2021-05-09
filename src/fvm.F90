@@ -66,6 +66,7 @@
         endif
         
         if(trim(adjustl(integral_scheme))=='RK3_TVD')call RK3_TVD(stat(new),stat(old))
+        if(trim(adjustl(integral_scheme))=='RK3_WRF')call RK3_WRF(stat(new),stat(old))
         if(trim(adjustl(integral_scheme))=='RK4'    )call RK4    (stat(new),stat(old))
         if(trim(adjustl(integral_scheme))=='PC2'    )call PC2    (stat(new),stat(old))
         if(trim(adjustl(integral_scheme))=='SSPRK'  )call SSPRK  (stat(new),stat(old))

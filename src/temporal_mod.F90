@@ -10,7 +10,7 @@ module temporal_mod
   
   private
   
-  public RK4, RK3_TVD, PC2, SSPRK
+  public RK4, RK3_TVD, RK3_WRF, PC2, SSPRK
   
   integer, parameter :: k1 = -1
   integer, parameter :: k2 = -2
@@ -44,6 +44,20 @@ module temporal_mod
       
       call update_stat (stat_new, stat_old, tend(new), dt)
     end subroutine RK4
+    
+    subroutine RK3_WRF(stat_new,stat_old)
+      type(stat_field), intent(inout) :: stat_new
+      type(stat_field), intent(inout) :: stat_old
+      
+      call spatial_operator (stat_old, tend(k1))
+      call update_stat      (stat(k2), stat_old, tend(k1), dt / 3._r_kind)
+      
+      call spatial_operator (stat(k2), tend(k2))
+      call update_stat      (stat(k3), stat_old, tend(k2), 0.5_r_kind * dt)
+      
+      call spatial_operator (stat(k3), tend(k3))
+      call update_stat      (stat_new, stat_old, tend(k3), dt)
+    end subroutine RK3_WRF
     
     subroutine RK3_TVD(stat_new,stat_old)
       type(stat_field), intent(inout) :: stat_new
