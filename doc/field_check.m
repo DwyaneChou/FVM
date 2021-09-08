@@ -2,17 +2,17 @@
 % clc
 % clear
 
-% var_name = 'phi';
+var_name = 'phi';
 % var_name = 'phit';
 % var_name = 'zonal_wind';
 % var_name = 'meridional_wind';
-var_name = 'vorticity';
-it       = 361;
+% var_name = 'vorticity';
+it       = 241;
 
 gravity = 9.80616;
 
-% nc_file = '..\run\output.nc';
-nc_file = 'F:\case_result\WENO_case5\output_5th_0p125.nc';
+nc_file = '..\run\output.nc';
+% nc_file = 'F:\case_result\WENO_case5\output_5th_0p125.nc';
 % nc_file = '..\run\output_poly.nc';
 % nc_file = '..\run\output_WENO.nc';
 % nc_file = '..\run\output_WENO2D.nc';

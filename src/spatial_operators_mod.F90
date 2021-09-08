@@ -740,10 +740,15 @@ module spatial_operators_mod
       do iPatch = ifs,ife
         do j = jds,jde
           do i = ids,ide
+            !src(:,i,j,iPatch) = calc_src(sqrtG(cqs:cqe,i,j,iPatch),matrixG(:,:,cqs:cqe,i,j,iPatch),matrixIG(:,:,cqs:cqe,i,j,iPatch),&
+            !                             qQ(:,:,i,j,iPatch),ghs(cqs:cqe,i,j,iPatch),dphitdx(:,i,j,iPatch),dphitdy(:,i,j,iPatch)    ,&
+            !                             tanx(cqs:cqe,i,j,iPatch),tany(cqs:cqe,i,j,iPatch)                                         ,&
+            !                             Coriolis(cqs:cqe,i,j,iPatch),delta(cqs:cqe,i,j,iPatch),iPatch)
             src(:,i,j,iPatch) = calc_src(sqrtG(cqs:cqe,i,j,iPatch),matrixG(:,:,cqs:cqe,i,j,iPatch),matrixIG(:,:,cqs:cqe,i,j,iPatch),&
                                          qQ(:,:,i,j,iPatch),ghs(cqs:cqe,i,j,iPatch),dphitdx(:,i,j,iPatch),dphitdy(:,i,j,iPatch)    ,&
-                                         tanx(cqs:cqe,i,j,iPatch),tany(cqs:cqe,i,j,iPatch)                                         ,&
+                                         x(cqs:cqe,i,j,iPatch),y(cqs:cqe,i,j,iPatch)                                         ,&
                                          Coriolis(cqs:cqe,i,j,iPatch),delta(cqs:cqe,i,j,iPatch),iPatch)
+
           enddo
         enddo
       enddo
@@ -1055,6 +1060,11 @@ module spatial_operators_mod
       real(r_kind), dimension(nQuadPointsOnCell) :: IG21
       real(r_kind), dimension(nQuadPointsOnCell) :: IG22
       
+      real(r_kind), dimension(nQuadPointsOnCell) :: gamma111
+      real(r_kind), dimension(nQuadPointsOnCell) :: gamma112
+      real(r_kind), dimension(nQuadPointsOnCell) :: gamma222
+      real(r_kind), dimension(nQuadPointsOnCell) :: gamma212
+      
       integer :: iVar
       
       phi  = q(1,:) / sqrtG
@@ -1073,9 +1083,18 @@ module spatial_operators_mod
       IG21 = matrixIG(2,1,:)
       IG22 = matrixIG(2,2,:)
       
+      gamma111 = -((8*Sin(2*x)*Sin(y)**2)/(-6-2*Cos(2*x)+Cos(2*(x-y))-2*Cos(2*y)+Cos(2*(x+y))))
+      gamma112 = ((8*Cos(x)**2*Tan(y))/(-6-2*Cos(2*x)+Cos(2*(x-y))-2*Cos(2*y)+Cos(2*(x+y))))
+      gamma212 = ((8*Cos(y)**2*Tan(x))/(-6-2*Cos(2*x)+Cos(2*(x-y))-2*Cos(2*y)+Cos(2*(x+y))))
+      gamma222 = -((8*Sin(x)**2*Sin(2*y))/(-6-2*Cos(2*x)+Cos(2*(x-y))-2*Cos(2*y)+Cos(2*(x+y))))
+      
+      !psi_M(1,:) = 0
+      !psi_M(2,:) = 2. * sqrtG / (delta**2) * (-x * y**2 * phiu * u + y * ( 1. + y**2 ) * phiu * v )
+      !psi_M(3,:) = 2. * sqrtG / (delta**2) * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
+      
       psi_M(1,:) = 0
-      psi_M(2,:) = 2. * sqrtG / (delta**2) * (-x * y**2 * phiu * u + y * ( 1. + y**2 ) * phiu * v )
-      psi_M(3,:) = 2. * sqrtG / (delta**2) * ( x * ( 1. + x**2 ) * phiu * v - x**2 * y * phiv * v )
+      psi_M(2,:) = -sqrtG*(gamma111*phiu*u + gamma112*phiu*v)
+      psi_M(3,:) = -sqrtG*(gamma212*phiu*v + gamma222*phiv*v)
       
       psi_C(1,:) = 0
       psi_C(2,:) = Coriolis * (  G12 * phiu + G22 * phiv )
